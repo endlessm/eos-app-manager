@@ -29,7 +29,7 @@ eam_pkgdb_class_init (EamPkgdbClass *klass)
 static void
 eam_pkgdb_init (EamPkgdb *db)
 {
-  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (priv);
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (db);
 
   priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
 }
