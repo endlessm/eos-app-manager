@@ -32,6 +32,7 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 
 AC_CONFIG_FILES([
 Makefile
+src/Makefile
 ],
 [])
 
