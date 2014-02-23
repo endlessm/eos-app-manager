@@ -15,3 +15,8 @@ source_h = \
 test_CFLAGS = $(DEPENDENCIES_CFLAGS)
 test_LDADD = $(DEPENDENCIES_LIBS)
 test_SOURCES = $(source_c) $(source_h) test.c
+
+noinst_LTLIBRARIES = libeam-1.0.la
+libeam_1_0_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
+libeam_1_0_la_LIBADD = $(DEPENDENCIES_LIBS)
+libeam_1_0_la_SOURCES = $(source_c) $(source_h)
