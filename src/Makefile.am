@@ -1,5 +1,7 @@
 bin_PROGRAMS = test
 
+AM_CPPFLAGS = -DG_LOG_DOMAIN=\"Eam\"
+
 source_c = \
 	eam-pkg.c \
 	eam-pkgdb.c \
