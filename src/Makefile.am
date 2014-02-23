@@ -1,12 +1,15 @@
 bin_PROGRAMS = test
 
-test_SOURCES = \
-	test.c \
+source_c = \
 	eam-pkg.c \
-	eam-pkg.h \
 	eam-pkgdb.c \
-	eam-pkgdb.h
+	$(NULL)
+
+source_h = \
+	eam-pkg.h \
+	eam-pkgdb.h \
+	$(NULL)
 
 test_CFLAGS = $(DEPENDENCIES_CFLAGS)
-
 test_LDADD = $(DEPENDENCIES_LIBS)
+test_SOURCES = $(source_c) $(source_h) test.c
