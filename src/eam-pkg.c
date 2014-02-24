@@ -145,6 +145,14 @@ eam_pkg_load_file (EamPkg *pkg)
   return retval;
 }
 
+/**
+ * eam_pkg_new_from_keyfile:
+ * @keyfile: the #GKeyFile to load
+ *
+ * Creates a new #EamPkg based on a parsed key-file
+ *
+ * Returns: a new #EamPkg, or %NULL if the key-file is not valid
+ */
 EamPkg *
 eam_pkg_new_from_keyfile (GKeyFile *keyfile)
 {
@@ -159,6 +167,14 @@ eam_pkg_new_from_keyfile (GKeyFile *keyfile)
   return pkg;
 }
 
+/**
+ * eam_pkg_new_from_filename:
+ * @filename: the bundle info file
+ *
+ * Creates a new #EamPkg based on a bundle info file
+ *
+ * Returns: a new #EamPkg, or %NULL if the info file is not valid
+ */
 EamPkg *
 eam_pkg_new_from_filename (const gchar *filename)
 {
