@@ -39,3 +39,42 @@ eam_pkgdb_new ()
 {
   return g_object_new (EAM_TYPE_PKGDB, NULL);
 }
+
+gboolean
+eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (appid != NULL, FALSE);
+  g_return_val_if_fail (EAM_IS_PKG (pkg), FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  /* appid collision */
+  if (g_hash_table_contains (priv->pkgtable, appid))
+    return FALSE;
+
+  return g_hash_table_insert (priv->pkgtable, g_strdup (appid), pkg);
+}
+
+gboolean
+eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (appid != NULL, FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  return g_hash_table_remove (priv->pkgtable, appid);
+}
+
+EamPkg *
+eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (appid != NULL, FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+  EamPkg *pkg = g_hash_table_lookup (priv->pkgtable, appid);
+
+  return (pkg) ? g_object_ref (pkg) : NULL;
+}

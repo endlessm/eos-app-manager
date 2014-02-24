@@ -47,11 +47,11 @@ GType           eam_pkgdb_get_type                               (void) G_GNUC_C
 
 EamPkgdb       *eam_pkgdb_new                                    (void);
 
-/* gboolean        eam_pkgdb_add                                    (EamPkgdb *pkgdb, EamPkg *pkg); */
+gboolean        eam_pkgdb_add                                    (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg);
 
-/* gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgdb, const gchar *appid); */
+gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgdb, const gchar *appid);
 
-/* EamPkg         *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid); */
+EamPkg         *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
 
 G_END_DECLS
 

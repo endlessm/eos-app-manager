@@ -2,7 +2,7 @@
 
 #include <string.h>
 #include <glib.h>
-#include <eam-pkg.h>
+#include <eam-pkgdb.h>
 
 #define bad_info_1 "[Bundle]"
 #define good_info "[Bundle]\nversion = 1"
@@ -14,19 +14,19 @@ test_pkg_basic (void)
   GKeyFile *keyfile;
   gchar *version;
 
-  g_assert (!eam_pkg_new_from_keyfile (NULL));
+  g_assert_false (eam_pkg_new_from_keyfile (NULL));
 
   keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, bad_info_1, strlen (bad_info_1),
     G_KEY_FILE_NONE, NULL);
-  g_assert (!eam_pkg_new_from_keyfile (keyfile));
+  g_assert_false (eam_pkg_new_from_keyfile (keyfile));
   g_key_file_free (keyfile);
 
   keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, good_info, strlen (good_info),
     G_KEY_FILE_NONE, NULL);
   pkg = eam_pkg_new_from_keyfile (keyfile);
-  g_assert (pkg);
+  g_assert_nonnull (pkg);
   g_key_file_free (keyfile);
 
   g_object_get (pkg, "version", &version, NULL);
@@ -35,12 +35,38 @@ test_pkg_basic (void)
   g_object_unref (pkg);
 }
 
+static void
+test_pkgdb_basic (void)
+{
+  EamPkg *pkg, *rpkg;
+  EamPkgdb *db;
+  GKeyFile *keyfile;
+
+  keyfile = g_key_file_new ();
+  g_key_file_load_from_data (keyfile, good_info, strlen (good_info),
+    G_KEY_FILE_NONE, NULL);
+  pkg = eam_pkg_new_from_keyfile (keyfile);
+  g_assert_nonnull (pkg);
+  g_key_file_free (keyfile);
+
+  db = eam_pkgdb_new ();
+  g_assert (eam_pkgdb_add (db, "app01", pkg));
+  rpkg = eam_pkgdb_get (db, "app01");
+  g_assert (pkg == rpkg);
+  g_object_unref (rpkg);
+  g_assert (eam_pkgdb_del (db, "app01"));
+  rpkg = eam_pkgdb_get (db, "app01");
+  g_assert_null (rpkg);
+  g_object_unref (db);
+}
+
 int
 main (int argc, char *argv[])
 {
   g_test_init (&argc, &argv, NULL);
 
   g_test_add_func ("/pkg/basic", test_pkg_basic);
+  g_test_add_func ("/pkgdb/basic", test_pkgdb_basic);
 
   return g_test_run ();
 }
