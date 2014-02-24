@@ -89,18 +89,39 @@ eam_pkgdb_init (EamPkgdb *db)
     g_object_unref);
 }
 
+/**
+ * eam_pkgdb_new:
+ *
+ * Create a new instance of #EamPkgdb with the default appdir.
+ */
 EamPkgdb *
 eam_pkgdb_new ()
 {
   return g_object_new (EAM_TYPE_PKGDB, NULL);
 }
 
+/**
+ * eam_pkgdb_new_with_appdir:
+ * @appdir: the directory where the application bundles live
+ *
+ * Create a new instance of #EamPkgdb setting an @appdir.
+ */
 EamPkgdb *
 eam_pkgdb_new_with_appdir (const gchar *appdir)
 {
   return g_object_new (EAM_TYPE_PKGDB, "appdir", appdir, NULL);
 }
 
+/**
+ * eam_pkgdb_add:
+ * @pkgdb: a #EamPkgdb
+ * @appid: the application ID
+ * @pkg: (full-transfer): the #EamPkg of the application
+ *
+ * Adds @pkg into the @pkgdb
+ *
+ * Returns: %TRUE if the @pkg was added successfully.
+ */
 gboolean
 eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
 {
@@ -117,6 +138,15 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   return g_hash_table_insert (priv->pkgtable, g_strdup (appid), pkg);
 }
 
+/**
+ * eam_pkgdb_del:
+ * @pkgdb: a #EamPkgdb
+ * @appid: the application ID
+ *
+ * Removes @pkg from the @pkgdb
+ *
+ * Returns: %TRUE if the @pkg was deleted successfully.
+ */
 gboolean
 eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
 {
@@ -128,6 +158,15 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
   return g_hash_table_remove (priv->pkgtable, appid);
 }
 
+/**
+ * eam_pkgdb_del:
+ * @pkgdb: a #EamPkgdb
+ * @appid: the application ID
+ *
+ * Removes @pkg from the @pkgdb
+ *
+ * Returns: (transfer full): #EamPkg if found or %NULL
+ */
 EamPkg *
 eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
 {
@@ -140,6 +179,12 @@ eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
   return (pkg) ? g_object_ref (pkg) : NULL;
 }
 
+/**
+ * eam_pkgdb_load:
+ * @pkgdb: a #EamPkgdb
+ *
+ * Loads all the @pkg found in the appdir
+ */
 void
 eam_pkgdb_load (EamPkgdb *pkgdb)
 {
