@@ -1,4 +1,4 @@
-bin_PROGRAMS = test
+bin_PROGRAMS = eam
 
 AM_CPPFLAGS = -DG_LOG_DOMAIN=\"Eam\"
 
@@ -12,9 +12,9 @@ source_h = \
 	eam-pkgdb.h \
 	$(NULL)
 
-test_CFLAGS = $(DEPENDENCIES_CFLAGS)
-test_LDADD = $(DEPENDENCIES_LIBS)
-test_SOURCES = $(source_c) $(source_h) test.c
+eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
+eam_LDADD = $(DEPENDENCIES_LIBS)
+eam_SOURCES = $(source_c) $(source_h) main.c
 
 noinst_LTLIBRARIES = libeam-1.0.la
 libeam_1_0_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
