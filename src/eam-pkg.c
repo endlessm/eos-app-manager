@@ -6,6 +6,7 @@
 struct _EamPkgPrivate
 {
   gchar *filename;
+  gchar *version;
   GKeyFile *keyfile;
 };
 
@@ -21,6 +22,7 @@ eam_pkg_finalize (GObject *obj)
 {
   EamPkgPrivate *priv = eam_pkg_get_instance_private (EAM_PKG (obj));
 
+  g_free (priv->version);
   g_free (priv->filename);
 
   if (priv->keyfile)
@@ -86,12 +88,26 @@ eam_pkg_init (EamPkg *pkg)
 static gboolean
 eam_pkg_load_from_keyfile (EamPkg *pkg, GKeyFile *keyfile)
 {
+  char *start_group, *version;
   EamPkgPrivate *priv = eam_pkg_get_instance_private (pkg);
 
   if (!keyfile)
     return FALSE;
 
-  /* @TODO: validate the key_file */
+  start_group = g_key_file_get_start_group (keyfile);
+  if (g_strcmp0 (start_group, "Bundle")) {
+    g_free (start_group);
+    return FALSE;
+  }
+  g_free (start_group);
+
+  version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
+  if (!version || version[0] == '\0') {
+    g_free (version);
+    return FALSE;
+  }
+
+  priv->version = version;
   priv->keyfile = g_key_file_ref (keyfile);
 
   return TRUE;
