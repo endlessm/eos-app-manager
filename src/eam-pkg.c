@@ -88,7 +88,8 @@ eam_pkg_load_from_keyfile (EamPkg *pkg, GKeyFile *keyfile)
 {
   EamPkgPrivate *priv = eam_pkg_get_instance_private (pkg);
 
-  g_return_val_if_fail (keyfile, FALSE);
+  if (!keyfile)
+    return FALSE;
 
   /* @TODO: validate the key_file */
   priv->keyfile = g_key_file_ref (keyfile);
@@ -103,7 +104,8 @@ eam_pkg_load_file (EamPkg *pkg)
   gboolean retval = FALSE;
   EamPkgPrivate *priv = eam_pkg_get_instance_private (pkg);
 
-  g_return_val_if_fail (priv->filename != NULL, FALSE);
+  if (!priv->filename)
+    return FALSE;
 
   keyfile = g_key_file_new ();
 

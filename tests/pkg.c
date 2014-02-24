@@ -7,8 +7,7 @@ test_pkg_basic (void)
 {
   EamPkg *pkg;
 
-  pkg = eam_pkg_new_from_keyfile (NULL);
-  g_assert (pkg);
+  g_assert (!eam_pkg_new_from_keyfile (NULL));
 }
 
 int
