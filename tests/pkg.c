@@ -60,6 +60,25 @@ test_pkgdb_basic (void)
   g_object_unref (db);
 }
 
+static void
+test_pkgdb_load (void)
+{
+  const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
+  EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
+  eam_pkgdb_load (db);
+
+  EamPkg *pkg = eam_pkgdb_get (db, "app01");
+  g_assert_nonnull (pkg);
+
+  gchar *version;
+  g_object_get (pkg, "version", &version, NULL);
+  g_assert_cmpstr (version, ==, "1");
+  g_free (version);
+  g_object_unref (pkg);
+
+  g_object_unref (db);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -67,6 +86,7 @@ main (int argc, char *argv[])
 
   g_test_add_func ("/pkg/basic", test_pkg_basic);
   g_test_add_func ("/pkgdb/basic", test_pkgdb_basic);
+  g_test_add_func ("/pkgdb/load", test_pkgdb_load);
 
   return g_test_run ();
 }

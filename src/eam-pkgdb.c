@@ -60,7 +60,6 @@ eam_pkgdb_get_property (GObject *obj, guint prop_id, GValue *value,
   }
 }
 
-
 static void
 eam_pkgdb_class_init (EamPkgdbClass *klass)
 {
@@ -139,4 +138,25 @@ eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
   EamPkg *pkg = g_hash_table_lookup (priv->pkgtable, appid);
 
   return (pkg) ? g_object_ref (pkg) : NULL;
+}
+
+void
+eam_pkgdb_load (EamPkgdb *pkgdb)
+{
+  g_return_if_fail (EAM_IS_PKGDB (pkgdb));
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+  GDir *dir = g_dir_open (priv->appdir, 0, NULL);
+  if (!dir)
+    return;
+
+  const gchar *appid;
+  while ((appid = g_dir_read_name (dir))) {
+    gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
+    EamPkg *pkg = eam_pkg_new_from_filename (info);
+    g_free (info);
+    if (pkg)
+      eam_pkgdb_add (pkgdb, appid, pkg);
+  }
+  g_dir_close (dir);
 }
