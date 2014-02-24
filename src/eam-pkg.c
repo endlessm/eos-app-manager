@@ -15,6 +15,7 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamPkg, eam_pkg, G_TYPE_OBJECT)
 enum
 {
   PROP_FILENAME = 1,
+  PROP_VERSION
 };
 
 static void
@@ -55,6 +56,9 @@ eam_pkg_get_property (GObject *obj, guint prop_id, GValue *value,
   case PROP_FILENAME:
     g_value_set_string (value, priv->filename);
     break;
+  case PROP_VERSION:
+    g_value_set_string (value, priv->version);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
     break;
@@ -78,6 +82,15 @@ eam_pkg_class_init (EamPkgClass *klass)
   g_object_class_install_property (object_class, PROP_FILENAME,
     g_param_spec_string ("filename", "Filename", "", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamPkg:version:
+   *
+   * The version of this #EamPkg
+   */
+  g_object_class_install_property (object_class, PROP_VERSION,
+    g_param_spec_string ("version", "Version", "", NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 }
 
 static void

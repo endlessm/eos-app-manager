@@ -12,6 +12,7 @@ test_pkg_basic (void)
 {
   EamPkg *pkg;
   GKeyFile *keyfile;
+  gchar *version;
 
   g_assert (!eam_pkg_new_from_keyfile (NULL));
 
@@ -27,6 +28,10 @@ test_pkg_basic (void)
   pkg = eam_pkg_new_from_keyfile (keyfile);
   g_assert (pkg);
   g_key_file_free (keyfile);
+
+  g_object_get (pkg, "version", &version, NULL);
+  g_assert_cmpstr (version, ==, "1");
+  g_free (version);
   g_object_unref (pkg);
 }
 
