@@ -47,6 +47,8 @@ GType           eam_pkgdb_get_type                               (void) G_GNUC_C
 
 EamPkgdb       *eam_pkgdb_new                                    (void);
 
+EamPkgdb       *eam_pkgdb_new_with_appdir                        (const gchar *appdir);
+
 gboolean        eam_pkgdb_add                                    (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg);
 
 gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgdb, const gchar *appid);

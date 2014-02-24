@@ -96,6 +96,12 @@ eam_pkgdb_new ()
   return g_object_new (EAM_TYPE_PKGDB, NULL);
 }
 
+EamPkgdb *
+eam_pkgdb_new_with_appdir (const gchar *appdir)
+{
+  return g_object_new (EAM_TYPE_PKGDB, "appdir", appdir, NULL);
+}
+
 gboolean
 eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
 {
