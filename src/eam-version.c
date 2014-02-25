@@ -10,7 +10,7 @@
 #include <string.h>
 #include "eam-version.h"
 
-G_DEFINE_BOXED_TYPE (EamPkgVersion, eam_pkg_version_new, eam_pkg_version_copy, eam_pkg_version_free)
+G_DEFINE_BOXED_TYPE (EamPkgVersion, eam_pkg_version, eam_pkg_version_copy, eam_pkg_version_free)
 
 /**
  * eam_pkg_version_new:
@@ -95,7 +95,7 @@ eam_pkg_version_parse (EamPkgVersion *version, const gchar *string)
   const gchar *end, *ptr;
   g_return_val_if_fail (version, FALSE);
 
-  if (!*string)
+  if (!string || string[0] == '\0')
     return FALSE;
 
   if (!g_str_is_ascii (string))

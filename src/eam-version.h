@@ -32,6 +32,10 @@ enum _EamRelation {
   EAM_RELATION_GE = EAM_RELATION_GT | EAM_RELATION_EQ,
 };
 
+#define EAM_TYPE_PKG_VERSION (eam_pkg_version_get_type ())
+
+GType           eam_pkg_version_get_type                         (void) G_GNUC_CONST;
+
 EamPkgVersion  *eam_pkg_version_new                              (void);
 
 EamPkgVersion  *eam_pkg_version_new_from_string                  (const gchar *string);

@@ -2,13 +2,14 @@
 
 #include "config.h"
 #include "eam-pkg.h"
+#include "eam-version.h"
 
 typedef struct _EamPkgPrivate EamPkgPrivate;
 
 struct _EamPkgPrivate
 {
   gchar *filename;
-  gchar *version;
+  EamPkgVersion *version;
   GKeyFile *keyfile;
 };
 
@@ -25,8 +26,10 @@ eam_pkg_finalize (GObject *obj)
 {
   EamPkgPrivate *priv = eam_pkg_get_instance_private (EAM_PKG (obj));
 
-  g_free (priv->version);
   g_free (priv->filename);
+
+  if (priv->version)
+    eam_pkg_version_free (priv->version);
 
   if (priv->keyfile)
     g_key_file_unref (priv->keyfile);
@@ -59,7 +62,7 @@ eam_pkg_get_property (GObject *obj, guint prop_id, GValue *value,
     g_value_set_string (value, priv->filename);
     break;
   case PROP_VERSION:
-    g_value_set_string (value, priv->version);
+    g_value_set_boxed (value, priv->version);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -91,7 +94,7 @@ eam_pkg_class_init (EamPkgClass *klass)
    * The version of this #EamPkg
    */
   g_object_class_install_property (object_class, PROP_VERSION,
-    g_param_spec_string ("version", "Version", "", NULL,
+    g_param_spec_boxed ("version", "Version", "", EAM_TYPE_PKG_VERSION,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 }
 
@@ -117,12 +120,12 @@ eam_pkg_load_from_keyfile (EamPkg *pkg, GKeyFile *keyfile)
   g_free (start_group);
 
   version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
-  if (!version || version[0] == '\0') {
+  priv->version = eam_pkg_version_new_from_string (version);
+  if (!priv->version) {
     g_free (version);
     return FALSE;
   }
 
-  priv->version = version;
   priv->keyfile = g_key_file_ref (keyfile);
 
   return TRUE;

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <glib.h>
 #include <eam-pkgdb.h>
+#include <eam-version.h>
 
 #define bad_info_1 "[Bundle]"
 #define good_info "[Bundle]\nversion = 1"
@@ -12,14 +13,14 @@ test_pkg_basic (void)
 {
   EamPkg *pkg;
   GKeyFile *keyfile;
-  gchar *version;
+  EamPkgVersion *version;
 
   g_assert_false (eam_pkg_new_from_keyfile (NULL));
 
   keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, bad_info_1, strlen (bad_info_1),
     G_KEY_FILE_NONE, NULL);
-  g_assert_false (eam_pkg_new_from_keyfile (keyfile));
+  g_assert_null (eam_pkg_new_from_keyfile (keyfile));
   g_key_file_free (keyfile);
 
   keyfile = g_key_file_new ();
@@ -30,8 +31,8 @@ test_pkg_basic (void)
   g_key_file_free (keyfile);
 
   g_object_get (pkg, "version", &version, NULL);
-  g_assert_cmpstr (version, ==, "1");
-  g_free (version);
+  g_assert_cmpstr (version->version, ==, "1");
+  eam_pkg_version_free (version);
   g_object_unref (pkg);
 }
 
@@ -70,9 +71,9 @@ test_pkgdb_load (void)
   EamPkg *pkg = eam_pkgdb_get (db, "app01");
   g_assert_nonnull (pkg);
 
-  gchar *version;
+  EamPkgVersion *version;
   g_object_get (pkg, "version", &version, NULL);
-  g_assert_cmpstr (version, ==, "1");
+  g_assert_cmpstr (version->version, ==, "1");
   g_free (version);
   g_object_unref (pkg);
 
