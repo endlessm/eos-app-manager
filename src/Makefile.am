@@ -5,11 +5,13 @@ AM_CPPFLAGS = -DG_LOG_DOMAIN=\"Eam\"
 source_c = \
 	eam-pkg.c \
 	eam-pkgdb.c \
+	eam-version.c \
 	$(NULL)
 
 source_h = \
 	eam-pkg.h \
 	eam-pkgdb.h \
+	eam-version.h \
 	$(NULL)
 
 eam_CFLAGS = $(DEPENDENCIES_CFLAGS)

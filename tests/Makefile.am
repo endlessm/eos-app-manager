@@ -14,4 +14,5 @@ dist_test_data = \
 
 test_programs = \
 	pkg \
+	version \
 	$(NULL)
