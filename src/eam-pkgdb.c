@@ -3,6 +3,8 @@
 #include "config.h"
 #include "eam-pkgdb.h"
 
+typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
+
 struct _EamPkgdbPrivate
 {
   GHashTable *pkgtable;

@@ -28,14 +28,10 @@ G_BEGIN_DECLS
 
 typedef struct _EamPkgdbClass	EamPkgdbClass;
 typedef struct _EamPkgdb	EamPkgdb;
-typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
 
 struct _EamPkgdb
 {
 	GObject parent;
-
-	/*< private >*/
-	EamPkgdbPrivate *priv;
 };
 
 struct _EamPkgdbClass

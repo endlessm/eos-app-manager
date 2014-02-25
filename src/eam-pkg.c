@@ -3,6 +3,8 @@
 #include "config.h"
 #include "eam-pkg.h"
 
+typedef struct _EamPkgPrivate EamPkgPrivate;
+
 struct _EamPkgPrivate
 {
   gchar *filename;

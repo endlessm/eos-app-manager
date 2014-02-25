@@ -27,7 +27,6 @@ G_BEGIN_DECLS
 
 typedef struct _EamPkgClass EamPkgClass;
 typedef struct _EamPkg EamPkg;
-typedef struct _EamPkgPrivate EamPkgPrivate;
 
 /**
  * EamPkg:
@@ -37,9 +36,6 @@ typedef struct _EamPkgPrivate EamPkgPrivate;
 struct _EamPkg
 {
   GObject parent;
-
-  /*< private >*/
-  EamPkgPrivate *priv;
 };
 
 struct _EamPkgClass
