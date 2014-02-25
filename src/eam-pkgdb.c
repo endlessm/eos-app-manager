@@ -1,6 +1,7 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 
 #include "config.h"
+#include <string.h>
 #include "eam-pkgdb.h"
 
 typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
@@ -114,6 +115,29 @@ eam_pkgdb_new_with_appdir (const gchar *appdir)
   return g_object_new (EAM_TYPE_PKGDB, "appdir", appdir, NULL);
 }
 
+static gboolean
+appid_is_legal (const char *appid)
+{
+  static const char alsoallowed[] = "-+.";
+  int c;
+
+  if (!appid || appid[0] == '\0')
+    return FALSE;
+
+  if (!g_ascii_isalnum (appid[0]))
+    return FALSE; /* must start with an alphanumeric character */
+
+  while ((c = *appid++) != '\0')
+    if (!g_ascii_isalnum (c) && !strchr (alsoallowed, c))
+      break;
+
+  if (!c)
+    return TRUE;
+
+  return FALSE;
+}
+
+
 /**
  * eam_pkgdb_add:
  * @pkgdb: a #EamPkgdb
@@ -130,6 +154,9 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
   g_return_val_if_fail (appid != NULL, FALSE);
   g_return_val_if_fail (EAM_IS_PKG (pkg), FALSE);
+
+  if (!appid_is_legal (appid))
+    return FALSE;
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
 
@@ -199,11 +226,16 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
 
   const gchar *appid;
   while ((appid = g_dir_read_name (dir))) {
+    if (!appid_is_legal (appid))
+      continue;
+
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
     EamPkg *pkg = eam_pkg_new_from_filename (info);
     g_free (info);
-    if (pkg)
-      eam_pkgdb_add (pkgdb, appid, pkg);
+    if (pkg) {
+      if (!eam_pkgdb_add (pkgdb, appid, pkg))
+        g_object_unref (pkg);
+    }
   }
   g_dir_close (dir);
 }
