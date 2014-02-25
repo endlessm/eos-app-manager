@@ -14,6 +14,7 @@ source_h = \
 	eam-version.h \
 	$(NULL)
 
+eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
 eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
 eam_LDADD = $(DEPENDENCIES_LIBS)
 eam_SOURCES = $(source_c) $(source_h) main.c
