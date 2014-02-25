@@ -1,3 +1,3 @@
-SUBDIRS = src tests
+SUBDIRS = src tests po
 
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}

@@ -19,6 +19,8 @@ LT_INIT([disable-static])
 
 AC_PROG_CC
 
+IT_PROG_INTLTOOL([0.50.0])
+
 PKG_PROG_PKG_CONFIG
 
 GLIB_TESTS
@@ -29,10 +31,16 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  gio-unix-2.0 >= $GLIB_REQUIRED
 		  ])
 
+GETTEXT_PACKAGE=eam
+AC_SUBST([GETTEXT_PACKAGE])
+AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE],["$GETTEXT_PACKAGE"],[Gettext package])
+AM_GLIB_GNU_GETTEXT
+
 AC_CONFIG_FILES([
 Makefile
 src/Makefile
 tests/Makefile
+po/Makefile.in
 ],
 [])
 
