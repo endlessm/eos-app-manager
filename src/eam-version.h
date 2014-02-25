@@ -9,6 +9,7 @@
 #ifndef EAM_VERSION_H
 #define EAM_VERSION_H
 
+#include <glib-object.h>
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -19,7 +20,7 @@ typedef enum _EamRelation EamRelation;
 struct _EamPkgVersion {
   guint epoch;
   gchar *version;
-  const gchar *revision;
+  gchar *revision;
 };
 
 enum _EamRelation {
@@ -33,7 +34,11 @@ enum _EamRelation {
 
 EamPkgVersion  *eam_pkg_version_new                              (void);
 
+EamPkgVersion  *eam_pkg_version_new_from_string                  (const gchar *string);
+
 void            eam_pkg_version_free                             (EamPkgVersion *version);
+
+EamPkgVersion  *eam_pkg_version_copy                             (const EamPkgVersion *version);
 
 gboolean        eam_pkg_version_parse                            (EamPkgVersion *version,
                                                                   const gchar *string);

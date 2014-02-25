@@ -93,108 +93,146 @@ test_version_relate (void)
 static void
 test_version_parse (void)
 {
-  EamPkgVersion a, b;
+  EamPkgVersion *a, b;
   const char *p;
   char *verstr;
 
   /* Test 0 versions. */
-  a = version (0, NULL, NULL);
   b = version (0, "0", "");
 
-  g_assert_true (eam_pkg_version_parse (&a, "0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
-  g_assert_true (eam_pkg_version_parse (&a, "0:0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
-  g_assert_true (eam_pkg_version_parse (&a, "0:0-"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0-");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   b = version (0, "0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   b = version (0, "0.0", "0.0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0.0-0.0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0.0-0.0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test epoched versions. */
   b = version (1, "0", "");
-  g_assert_true (eam_pkg_version_parse (&a, "1:0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("1:0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   b = version (5, "1", "");
-  g_assert_true (eam_pkg_version_parse (&a, "5:1"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("5:1");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test multiple hyphens. */
   b = version (0, "0-0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0-0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0-0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   b = version (0, "0-0-0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0-0-0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0-0-0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test multiple colons. */
   b = version (0, "0:0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0:0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0:0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   b = version (0, "0:0:0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0:0:0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0:0:0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test multiple hyphens and colons. */
   b = version (0, "0:0-0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0:0-0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0:0-0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   b = version (0, "0-0:0", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0-0:0-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0-0:0-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test valid characters in upstream version. */
   b = version (0, "09azAZ.-+~:", "0");
-  g_assert_true (eam_pkg_version_parse (&a, "0:09azAZ.-+~:-0"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:09azAZ.-+~:-0");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test valid characters in revision. */
   b = version (0, "0", "azAZ09.+~");
-  g_assert_true (eam_pkg_version_parse (&a, "0:0-azAZ09.+~"));
-  g_assert_cmpint (eam_pkg_version_compare (&a, &b), ==, 0);
+  a = eam_pkg_version_new_from_string ("0:0-azAZ09.+~");
+  g_assert_nonnull (a);
+  g_assert_cmpint (eam_pkg_version_compare (a, &b), ==, 0);
+  eam_pkg_version_free (a);
 
   /* Test empty version. */
-  g_assert_false (eam_pkg_version_parse (&a, ""));
+  a = eam_pkg_version_new_from_string ("");
+  g_assert_null (a);
 
   /* Test empty upstream version after epoch. */
-  g_assert_false (eam_pkg_version_parse (&a, "0:"));
+  a = eam_pkg_version_new_from_string ("0:");
+  g_assert_null (a);
 
-  /* Test version with embedded spaces. */
-  g_assert_false (eam_pkg_version_parse (&a, "0:0 0-1"));
+  /* Test version from embedded spaces. */
+  a = eam_pkg_version_new_from_string ("0:0 0-1");
+  g_assert_null (a);
 
   /* Test invalid characters in epoch. */
-  g_assert_false (eam_pkg_version_parse (&a, "a:0-0"));
-  g_assert_false (eam_pkg_version_parse (&a, "A:0-0"));
+  a = eam_pkg_version_new_from_string ("a:0-0");
+  g_assert_null (a);
+  a = eam_pkg_version_new_from_string ("A:0-0");
+  g_assert_null (a);
 
-  /* Test upstream version not starting with a digit */
-  g_assert_false (eam_pkg_version_parse (&a, "0:abc3-0"));
+  /* Test upstream version not starting from a digit */
+  a = eam_pkg_version_new_from_string ("0:abc3-0");
+  g_assert_null (a);
 
   /* Test invalid characters in upstream version. */
   verstr = g_strdup ("0:0a-0");
   for (p = "!#@$%&/|\\<>()[]{};,_=*^'"; *p; p++) {
     verstr[3] = *p;
-    g_assert_false (eam_pkg_version_parse (&a, verstr));
+    a = eam_pkg_version_new_from_string (verstr);
+    g_assert_null (a);
   }
   g_free (verstr);
 
   /* Test invalid characters in revision. */
-  g_assert_false (eam_pkg_version_parse (&a, "0:0-0:0"));
+  a = eam_pkg_version_new_from_string ("0:0-0:0");
+  g_assert_null (a);
 
   verstr = g_strdup ("0:0-0");
   for (p = "!#@$%&/|\\<>()[]{}:;,_=*^'"; *p; p++) {
     verstr[4] = *p;
-    g_assert_false (eam_pkg_version_parse (&a, verstr));
+    a = eam_pkg_version_new_from_string (verstr);
+    g_assert_null (a);
   }
   g_free (verstr);
 

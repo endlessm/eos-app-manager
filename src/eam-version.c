@@ -10,6 +10,8 @@
 #include <string.h>
 #include "eam-version.h"
 
+G_DEFINE_BOXED_TYPE (EamPkgVersion, eam_pkg_version_new, eam_pkg_version_copy, eam_pkg_version_free)
+
 /**
  * eam_pkg_version_new:
  *
@@ -44,6 +46,25 @@ eam_pkg_version_new_from_string (const gchar *string)
 }
 
 /**
+ * eam_pkg_version_copy:
+ * @version: the version string to copy
+ *
+ * Allocates a new #EamPkgVersion and copy the values of @vesion
+ *
+ * Returns: a new #EamPkgVersion
+ */
+EamPkgVersion *
+eam_pkg_version_copy (const EamPkgVersion *version)
+{
+  EamPkgVersion *new = eam_pkg_version_new ();
+  new->epoch = version->epoch;
+  new->version = g_strdup (version->version);
+  new->revision = g_strdup (version->revision);
+
+  return new;
+}
+
+/**
  * eam_pkg_version_free:
  * @version: an allocated #EamPkgVersion structure
  *
@@ -55,6 +76,7 @@ eam_pkg_version_free (EamPkgVersion *version)
   g_return_if_fail (version);
 
   g_free (version->version);
+  g_free (version->revision);
   g_free (version);
 }
 
@@ -116,17 +138,17 @@ eam_pkg_version_parse (EamPkgVersion *version, const gchar *string)
   gchar *hyphen = strrchr (version->version, '-');
   if (hyphen)
     *hyphen++ = '\0';
-  version->revision = hyphen ? hyphen : "";
+  version->revision = hyphen ? g_strdup (hyphen) : NULL;
 
   ptr = version->version;
-  if (*ptr && !g_ascii_isdigit(*ptr++))
+  if (ptr && *ptr && !g_ascii_isdigit(*ptr++))
     return FALSE; /* version number doesn't start with digit */
-  for (; *ptr; ptr++) {
+  for (; ptr && *ptr; ptr++) {
     if (!g_ascii_isdigit(*ptr) && !g_ascii_isalpha(*ptr) && strchr(".-+~:", *ptr) == NULL)
       return FALSE; /* invalid character in version number */
   }
 
-  for (ptr = version->revision; *ptr; ptr++) {
+  for (ptr = version->revision; ptr && *ptr; ptr++) {
     if (!g_ascii_isdigit(*ptr) && !g_ascii_isalpha(*ptr) && strchr(".+~", *ptr) == NULL)
       return FALSE; /* invalid characters in revision number */
   }
