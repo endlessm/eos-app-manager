@@ -33,6 +33,8 @@ eam_pkg_finalize (GObject *obj)
 
   if (priv->keyfile)
     g_key_file_unref (priv->keyfile);
+
+  G_OBJECT_CLASS (eam_pkg_parent_class)->finalize (obj);
 }
 
 static void

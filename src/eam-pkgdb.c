@@ -26,6 +26,8 @@ eam_pkgdb_finalize (GObject *obj)
 
   g_free (priv->appdir);
   g_hash_table_unref (priv->pkgtable);
+
+  G_OBJECT_CLASS (eam_pkgdb_parent_class)->finalize (obj);
 }
 
 static void
