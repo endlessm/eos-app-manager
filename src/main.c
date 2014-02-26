@@ -14,13 +14,6 @@ parse_options (int *argc, gchar ***argv)
     { NULL },
   };
 
-#ifdef ENABLE_NLS
-  /* Initialize the i18n stuff */
-  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
-  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
-  textdomain (GETTEXT_PACKAGE);
-#endif
-
  GOptionContext *ctxt = g_option_context_new (N_ ("- EndlessOS Application Manager"));
  g_option_context_add_main_entries (ctxt, entries, NULL);
  if (!g_option_context_parse (ctxt, argc, argv, &err)) {
@@ -38,6 +31,13 @@ parse_options (int *argc, gchar ***argv)
 int
 main (int argc, gchar **argv)
 {
+#ifdef ENABLE_NLS
+  /* Initialize the i18n stuff */
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
+#endif
+
   if (!parse_options (&argc, &argv))
     return EXIT_FAILURE;
 
