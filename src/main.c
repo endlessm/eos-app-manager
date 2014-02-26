@@ -2,6 +2,7 @@
 #include <glib/gi18n.h>
 
 #include "eam-pkgdb.h"
+#include "eam-dbus-server.h"
 
 gchar *opt_appdir;
 
@@ -31,6 +32,8 @@ parse_options (int *argc, gchar ***argv)
 int
 main (int argc, gchar **argv)
 {
+  gint ret = EXIT_FAILURE;
+
 #ifdef ENABLE_NLS
   /* Initialize the i18n stuff */
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
@@ -42,8 +45,14 @@ main (int argc, gchar **argv)
     return EXIT_FAILURE;
 
   EamPkgdb *db = eam_pkgdb_new_with_appdir (opt_appdir);
+  eam_pkgdb_load (db);
+
+  EamDbusServer *server = eam_dbus_server_new ();
+  if (eam_dbus_server_run (server))
+	  ret = EXIT_SUCCESS;
 
   g_object_unref (db);
+  g_object_unref (server);
 
-  return EXIT_SUCCESS;
+  return ret;
 }

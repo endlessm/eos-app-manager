@@ -6,12 +6,14 @@ source_c = \
 	eam-pkg.c \
 	eam-pkgdb.c \
 	eam-version.c \
+	eam-dbus-server.c \
 	$(NULL)
 
 source_h = \
 	eam-pkg.h \
 	eam-pkgdb.h \
 	eam-version.h \
+	eam-dbus-server.h \
 	$(NULL)
 
 eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
