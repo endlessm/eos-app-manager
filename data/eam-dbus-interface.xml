@@ -1,0 +1,22 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<!-- Copyright 2014 Endless Mobile, Inc. -->
+
+<node>
+  <!--
+      com.Endless.AppManager:
+      @short_description: The EOS Application Manager service
+
+      This is the interface you use to talk with the EOS Application Manager.
+  -->
+  <interface name="com.Endless.AppManager">
+
+    <!--
+	Refresh:
+
+        Refreshes the package database.
+    -->
+    <method name="Refresh" />
+  </interface>
+</node>

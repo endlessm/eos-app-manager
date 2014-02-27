@@ -7,6 +7,7 @@ source_c = \
 	eam-pkgdb.c \
 	eam-version.c \
 	eam-dbus-server.c \
+	eam-resources.c \
 	$(NULL)
 
 source_h = \
@@ -14,6 +15,10 @@ source_h = \
 	eam-pkgdb.h \
 	eam-version.h \
 	eam-dbus-server.h \
+	$(NULL)
+
+BUILT_SOURCES = \
+	eam-resources.c \
 	$(NULL)
 
 eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
@@ -25,3 +30,12 @@ noinst_LTLIBRARIES = libeam-1.0.la
 libeam_1_0_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
 libeam_1_0_la_LIBADD = $(DEPENDENCIES_LIBS)
 libeam_1_0_la_SOURCES = $(source_c) $(source_h)
+
+gresource_file = $(top_srcdir)/data/eam.gresource.xml
+resource_files = $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies --sourcedir=$(top_srcdir)/data $(gresource_file))
+eam-resources.c: $(gresource_file) $(resource_files)
+	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) \
+		--sourcedir=$(top_builddir)/data \
+		--target=$@ \
+		--generate-source \
+		$<
