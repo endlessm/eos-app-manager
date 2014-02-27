@@ -88,21 +88,40 @@ eam_dbus_server_init (EamDbusServer *server)
 }
 
 static void
+print_peer_credentials (GDBusConnection *connection)
+{
+  GCredentials *credentials;
+  gchar *s = NULL;
+
+  credentials = g_dbus_connection_get_peer_credentials(connection);
+  if (credentials)
+    s = g_credentials_to_string (credentials);
+
+  if (s)
+    g_debug ("Peer credentials: %s\n", s);
+  g_debug ("Negotiated capabilities: unix-fd-passing = %d",
+    g_dbus_connection_get_capabilities (connection) & G_DBUS_CAPABILITY_FLAGS_UNIX_FD_PASSING);
+
+  g_free (s);
+}
+
+static void
 on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
 {
-  g_print ("bus acquired\n");
+  g_debug ("bus acquired: %s", name);
+  print_peer_credentials (connection);
 }
 
 static void
 on_name_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
 {
-  g_print ("name acquired\n");
+  g_debug ("name acquired: %s", name);
 }
 
 static void
 on_name_lost (GDBusConnection *connection, const gchar *name, gpointer data)
 {
-  g_print ("name lost\n");
+  g_debug ("name lost: %s", name);
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
 }
 
