@@ -8,6 +8,7 @@
 #endif
 
 #include "eam-dbus-server.h"
+#include "eam-service.h"
 
 typedef struct _EamDbusServerPrivate EamDbusServerPrivate;
 
@@ -17,6 +18,8 @@ struct _EamDbusServerPrivate {
   guint hangup;
   guint terminate;
   guint interrupt;
+
+  EamService *service;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamDbusServer, eam_dbus_server, G_TYPE_OBJECT)
@@ -39,6 +42,8 @@ eam_dbus_server_finalize (GObject *obj)
 
   if (priv->interrupt > 0)
     g_source_remove (priv->interrupt);
+
+  g_object_unref (priv->service);
 
   G_OBJECT_CLASS (eam_dbus_server_parent_class)->finalize (obj);
 }
@@ -79,6 +84,7 @@ eam_dbus_server_init (EamDbusServer *server)
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
   priv->mainloop = g_main_loop_new (NULL, FALSE);
+  priv->service = eam_service_get ();
 
 #ifdef G_OS_UNIX
   priv->hangup = g_unix_signal_add (SIGHUP, signal_hangup, server);
@@ -108,8 +114,12 @@ print_peer_credentials (GDBusConnection *connection)
 static void
 on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
 {
+  EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (EAM_DBUS_SERVER (data));
+
   g_debug ("bus acquired: %s", name);
   print_peer_credentials (connection);
+
+  eam_service_dbus_register (priv->service, connection);
 }
 
 static void

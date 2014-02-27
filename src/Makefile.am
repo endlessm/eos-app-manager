@@ -8,6 +8,7 @@ source_c = \
 	eam-version.c \
 	eam-dbus-server.c \
 	eam-resources.c \
+	eam-service.c \
 	$(NULL)
 
 source_h = \
@@ -15,6 +16,7 @@ source_h = \
 	eam-pkgdb.h \
 	eam-version.h \
 	eam-dbus-server.h \
+	eam-service.h \
 	$(NULL)
 
 BUILT_SOURCES = \
