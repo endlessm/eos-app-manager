@@ -12,7 +12,7 @@ struct _EamPkgdbPrivate
   gchar *appdir;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE (EamPkgdb, eam_pkgdb, G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_PRIVATE (EamPkgdb, eam_pkgdb, G_TYPE_INITIALLY_UNOWNED)
 
 enum
 {

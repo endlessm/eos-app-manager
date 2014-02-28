@@ -31,12 +31,12 @@ typedef struct _EamPkgdb	EamPkgdb;
 
 struct _EamPkgdb
 {
-	GObject parent;
+	GInitiallyUnowned parent;
 };
 
 struct _EamPkgdbClass
 {
-	GObjectClass parent_class;
+	GInitiallyUnownedClass parent_class;
 };
 
 GType           eam_pkgdb_get_type                               (void) G_GNUC_CONST;
