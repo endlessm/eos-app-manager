@@ -87,10 +87,30 @@ eam_service_get (void)
 }
 
 static void
+eam_service_refresh (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (!priv->db)
+    return;
+
+  eam_pkgdb_load (priv->db);
+}
+
+static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
   GDBusMethodInvocation *invocation, gpointer data)
 {
+  EamService *service = EAM_SERVICE (data);
+
+  if (g_strcmp0 (interface, "com.Endless.AppManager"))
+    return;
+
+  if (!g_strcmp0 (method, "Refresh")) {
+    eam_service_refresh (service);
+    g_dbus_method_invocation_return_value (invocation, NULL);
+  }
 }
 
 static const GDBusInterfaceVTable interface_vtable = {
@@ -159,4 +179,5 @@ eam_service_initialize (EamService *service, EamPkgdb *db)
   }
 
   priv->db = g_object_ref_sink (db);
+  eam_pkgdb_load (priv->db);
 }
