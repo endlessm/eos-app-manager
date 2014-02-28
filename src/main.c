@@ -4,7 +4,7 @@
 #include "eam-pkgdb.h"
 #include "eam-dbus-server.h"
 
-gchar *opt_appdir;
+static const gchar *opt_appdir;
 
 static gboolean
 parse_options (int *argc, gchar ***argv)
@@ -45,13 +45,11 @@ main (int argc, gchar **argv)
     return EXIT_FAILURE;
 
   EamPkgdb *db = eam_pkgdb_new_with_appdir (opt_appdir);
-  eam_pkgdb_load (db);
+  EamDbusServer *server = eam_dbus_server_new (db);
 
-  EamDbusServer *server = eam_dbus_server_new ();
   if (eam_dbus_server_run (server))
 	  ret = EXIT_SUCCESS;
 
-  g_object_unref (db);
   g_object_unref (server);
 
   return ret;

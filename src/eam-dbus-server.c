@@ -24,6 +24,11 @@ struct _EamDbusServerPrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamDbusServer, eam_dbus_server, G_TYPE_OBJECT)
 
+enum
+{
+  PROP_DB = 1,
+};
+
 static void
 eam_dbus_server_finalize (GObject *obj)
 {
@@ -49,9 +54,37 @@ eam_dbus_server_finalize (GObject *obj)
 }
 
 static void
+eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
+  GParamSpec *pspec)
+{
+  EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (EAM_DBUS_SERVER (obj));
+
+  switch (prop_id) {
+  case PROP_DB:
+    eam_service_initialize (priv->service, g_value_get_object (value));
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+    break;
+  }
+}
+
+static void
 eam_dbus_server_class_init (EamDbusServerClass *class)
 {
-  G_OBJECT_CLASS (class)->finalize = eam_dbus_server_finalize;
+  GObjectClass *object_class = G_OBJECT_CLASS (class);
+
+  object_class->finalize = eam_dbus_server_finalize;
+  object_class->set_property = eam_dbus_server_set_property;
+
+  /**
+   * EamDbusServer:db:
+   *
+   * The #EamPkdb to handle by this server
+   */
+  g_object_class_install_property (object_class, PROP_DB,
+    g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 #ifdef G_OS_UNIX
@@ -136,9 +169,9 @@ on_name_lost (GDBusConnection *connection, const gchar *name, gpointer data)
 }
 
 EamDbusServer *
-eam_dbus_server_new ()
+eam_dbus_server_new (EamPkgdb *db)
 {
-  return g_object_new (EAM_TYPE_DBUS_SERVER, NULL);
+  return g_object_new (EAM_TYPE_DBUS_SERVER, "db", db, NULL);
 }
 
 gboolean

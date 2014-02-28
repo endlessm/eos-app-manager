@@ -6,6 +6,8 @@
 #include <glib-object.h>
 #include <gio/gio.h>
 
+#include "eam-pkgdb.h"
+
 G_BEGIN_DECLS
 
 #define EAM_TYPE_SERVICE (eam_service_get_type())
@@ -43,6 +45,8 @@ EamService     *eam_service_get                                   (void);
 void            eam_service_dbus_register                         (EamService *service,
 								   GDBusConnection *connection);
 
+void            eam_service_initialize                            (EamService *service,
+								   EamPkgdb *db);
 
 G_END_DECLS
 

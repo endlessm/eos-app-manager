@@ -8,9 +8,16 @@ typedef struct _EamServicePrivate EamServicePrivate;
 struct _EamServicePrivate {
   GDBusConnection *connection;
   guint registration_id;
+
+  EamPkgdb *db;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
+
+enum
+{
+  PROP_DB = 1,
+};
 
 static void
 eam_service_dispose (GObject *obj)
@@ -23,13 +30,42 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
+  if (priv->db)
+    g_clear_object (&priv->db);
+
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
+}
+
+static void
+eam_service_set_property (GObject *obj, guint prop_id, const GValue *value,
+  GParamSpec *pspec)
+{
+  switch (prop_id) {
+  case PROP_DB:
+    eam_service_initialize (EAM_SERVICE (obj), g_value_get_object (value));
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+    break;
+  }
 }
 
 static void
 eam_service_class_init (EamServiceClass *class)
 {
-  G_OBJECT_CLASS (class)->dispose = eam_service_dispose;
+  GObjectClass *object_class = G_OBJECT_CLASS (class);
+
+  object_class->dispose = eam_service_dispose;
+  object_class->set_property = eam_service_set_property;
+
+  /**
+   * EamService:db:
+   *
+   * The #EamPkdb to handle by this service
+   */
+  g_object_class_install_property (object_class, PROP_DB,
+    g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
+      G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -58,7 +94,7 @@ handle_method_call (GDBusConnection *connection, const char *sender,
 }
 
 static const GDBusInterfaceVTable interface_vtable = {
-  handle_method_call, NULL, NULL
+  handle_method_call, NULL, NULL,
 };
 
 static GDBusNodeInfo*
@@ -107,4 +143,20 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
+}
+
+void
+eam_service_initialize (EamService *service, EamPkgdb *db)
+{
+  g_return_if_fail (EAM_IS_SERVICE (service));
+  g_return_if_fail (EAM_IS_PKGDB (db));
+
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->db) {
+    g_warning ("Don't set the package database twice.");
+    return;
+  }
+
+  priv->db = g_object_ref_sink (db);
 }
