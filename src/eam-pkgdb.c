@@ -194,7 +194,7 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
- * Removes @pkg from the @pkgdb
+ * Gets a @pkg from the @pkgdb
  *
  * Returns: (transfer full): #EamPkg if found or %NULL
  */
