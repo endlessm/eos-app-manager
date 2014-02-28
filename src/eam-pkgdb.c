@@ -139,7 +139,6 @@ appid_is_legal (const char *appid)
   return FALSE;
 }
 
-
 /**
  * eam_pkgdb_add:
  * @pkgdb: a #EamPkgdb
@@ -239,6 +238,14 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
   g_return_if_fail (EAM_IS_PKGDB (pkgdb));
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  /* IDEA: Instead of using EamPkg as hash value, we shall use another
+   * boxed structure. That structure will contain the EamPkg, a visited
+   * counter the parsed timestamp. Hence we could reload the database
+   * more efficiently.
+   */
+  g_hash_table_remove_all (priv->pkgtable);
+
   GDir *dir = g_dir_open (priv->appdir, 0, NULL);
   if (!dir)
     return;
