@@ -51,6 +51,8 @@ gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgd
 
 EamPkg         *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
 
+gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgdb, const gchar *appid);
+
 void            eam_pkgdb_load                                   (EamPkgdb *pkgdb);
 
 G_END_DECLS

@@ -211,6 +211,23 @@ eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
 }
 
 /**
+ * eam_pkgdb_del:
+ * @pkgdb: a #EamPkgdb
+ * @appid: the application ID
+ *
+ * Returns: %TRUE if @appid exist in @pkgdb
+ */
+gboolean
+eam_pkgdb_exists (EamPkgdb *pkgdb, const gchar *appid)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (appid != NULL, FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+  return g_hash_table_contains (priv->pkgtable, appid);
+}
+
+/**
  * eam_pkgdb_load:
  * @pkgdb: a #EamPkgdb
  *
