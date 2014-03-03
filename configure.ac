@@ -41,6 +41,7 @@ AM_GLIB_GNU_GETTEXT
 
 AC_CONFIG_FILES([
 Makefile
+data/Makefile
 src/Makefile
 tests/Makefile
 po/Makefile.in
