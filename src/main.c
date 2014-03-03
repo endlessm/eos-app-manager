@@ -25,6 +25,7 @@ parse_options (int *argc, gchar ***argv)
 
  if (opt_appdir == NULL)
    opt_appdir = "/endless";
+ g_option_context_free (ctxt);
 
  return TRUE;
 }
