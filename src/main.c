@@ -1,17 +1,18 @@
 #include <stdlib.h>
 #include <glib/gi18n.h>
 
+#include "eam-config.h"
 #include "eam-pkgdb.h"
 #include "eam-dbus-server.h"
 
-static const gchar *opt_appdir;
+static const gchar *opt_cfgfile;
 
 static gboolean
 parse_options (int *argc, gchar ***argv)
 {
   GError *err = NULL;
   GOptionEntry entries[] = {
-    { "appdir", 'd', 0, G_OPTION_ARG_STRING, &opt_appdir, N_ ("Applications directory"), NULL },
+    { "config", 'd', 0, G_OPTION_ARG_FILENAME, &opt_cfgfile, N_ ("Configuration file"), NULL },
     { NULL },
   };
 
@@ -23,11 +24,39 @@ parse_options (int *argc, gchar ***argv)
    return FALSE;
  }
 
- if (opt_appdir == NULL)
-   opt_appdir = "/endless";
  g_option_context_free (ctxt);
 
  return TRUE;
+}
+
+static gboolean
+load_config ()
+{
+  GKeyFile *keyfile = NULL;
+  gboolean ret = TRUE;
+
+  if (!opt_cfgfile)
+    goto bail;
+
+  GError *err = NULL;
+  keyfile = g_key_file_new ();
+  if (!g_key_file_load_from_file (keyfile, opt_cfgfile, G_KEY_FILE_NONE, &err)) {
+    g_warning (N_ ("Error parsing configuration file: %s"), err->message);
+    g_key_file_unref (keyfile);
+    g_error_free (err);
+    keyfile = NULL;
+  }
+
+bail:
+  if (!eam_config_load (eam_config_get (), keyfile)) {
+    g_warning (N_ ("Cannot load configuration parameters"));
+    ret = FALSE;
+  }
+
+  if (keyfile)
+    g_key_file_unref (keyfile);
+
+  return ret;
 }
 
 int
@@ -45,13 +74,17 @@ main (int argc, gchar **argv)
   if (!parse_options (&argc, &argv))
     return EXIT_FAILURE;
 
-  EamPkgdb *db = eam_pkgdb_new_with_appdir (opt_appdir);
+  if (!load_config ())
+    return EXIT_FAILURE;
+
+  EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_get()->appdir);
   EamDbusServer *server = eam_dbus_server_new (db);
 
   if (eam_dbus_server_run (server))
 	  ret = EXIT_SUCCESS;
 
   g_object_unref (server);
+  eam_config_free (NULL);
 
   return ret;
 }

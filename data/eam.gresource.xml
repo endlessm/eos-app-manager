@@ -2,6 +2,7 @@
 <gresources>
   <gresource prefix="/com/Endless/AppManager">
     <file preprocess="xml-stripblanks" compressed="true">eam-dbus-interface.xml</file>
+    <file>eam-default.cfg</file>
   </gresource>
 </gresources>
 
