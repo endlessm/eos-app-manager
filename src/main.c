@@ -12,7 +12,7 @@ parse_options (int *argc, gchar ***argv)
 {
   GError *err = NULL;
   GOptionEntry entries[] = {
-    { "config", 'd', 0, G_OPTION_ARG_FILENAME, &opt_cfgfile, N_ ("Configuration file"), NULL },
+    { "config", 'c', 0, G_OPTION_ARG_FILENAME, &opt_cfgfile, N_ ("Configuration file"), NULL },
     { NULL },
   };
 
