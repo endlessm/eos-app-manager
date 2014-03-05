@@ -6,7 +6,10 @@
  * Copyright © 2006-2012 Guillem Jover <guillem@debian.org>
  */
 
-#include <config.h>
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <string.h>
 #include "eam-version.h"
 

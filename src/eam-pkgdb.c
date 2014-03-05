@@ -1,6 +1,9 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
+
 #include <string.h>
 #include "eam-pkgdb.h"
 

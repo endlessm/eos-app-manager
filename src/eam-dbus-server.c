@@ -1,6 +1,8 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <gio/gio.h>
 #ifdef G_OS_UNIX
