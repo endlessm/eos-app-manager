@@ -10,6 +10,8 @@ source_c = \
 	eam-resources.c \
 	eam-service.c \
 	eam-config.c \
+	eam-wc.c \
+	eam-wc-file.c \
 	$(NULL)
 
 source_h = \
@@ -19,6 +21,8 @@ source_h = \
 	eam-dbus-server.h \
 	eam-service.h \
 	eam-config.h \
+	eam-wc.h \
+	eam-wc-file.h \
 	$(NULL)
 
 BUILT_SOURCES = \
