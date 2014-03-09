@@ -57,9 +57,9 @@ eam_wc_file_get_property (GObject *obj, guint propid, GValue *value,
 }
 
 static void
-eam_wc_file_finalize (GObject *obj)
+eam_wc_file_reset (EamWcFile *self)
 {
-  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (EAM_WC_FILE (obj));
+  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
 
   if (priv->file)
     g_clear_object (&priv->file);
@@ -67,9 +67,16 @@ eam_wc_file_finalize (GObject *obj)
   if (priv->strm)
     g_clear_object (&priv->strm);
 
-  if (priv->queue)
+  if (priv->queue) {
     g_queue_free_full (priv->queue, (GDestroyNotify) g_bytes_unref);
+    priv->queue = NULL;
+  }
+}
 
+static void
+eam_wc_file_finalize (GObject *obj)
+{
+  eam_wc_file_reset (EAM_WC_FILE (obj));
   G_OBJECT_CLASS (eam_wc_file_parent_class)->finalize (obj);
 }
 
@@ -91,7 +98,6 @@ eam_wc_file_class_init (EamWcFileClass *class)
   g_object_class_install_property (object_class, PROP_SIZE,
     g_param_spec_uint64 ("size", "File size", "",
       0, G_MAXUINT64, 0, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
 }
 
 static void
@@ -305,6 +311,7 @@ eam_wc_file_write_bytes_finish (EamWcFile *self, GAsyncResult *result,
   GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  eam_wc_file_reset (self);
   return g_task_propagate_boolean (G_TASK (result), error);
 }
 
