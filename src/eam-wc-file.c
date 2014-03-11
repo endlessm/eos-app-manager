@@ -60,6 +60,9 @@ eam_wc_file_reset (EamWcFile *self)
 {
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
 
+  priv->sum = 0;
+  priv->size = 0;
+
   if (priv->file)
     g_clear_object (&priv->file);
 
