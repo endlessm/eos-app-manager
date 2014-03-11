@@ -25,6 +25,13 @@ enum {
   PROP_SIZE = 1,
 };
 
+enum {
+  SIG_PROGRESS,
+  SIG_MAX
+};
+
+static gint signals[SIG_MAX];
+
 static void
 eam_wc_file_set_property (GObject *obj, guint propid, const GValue *value,
   GParamSpec *pspec)
@@ -90,6 +97,16 @@ eam_wc_file_class_init (EamWcFileClass *class)
   object_class->finalize = eam_wc_file_finalize;
   object_class->set_property = eam_wc_file_set_property;
   object_class->get_property = eam_wc_file_get_property;
+
+  /**
+   * EamWcFile::progress:
+   * @self: The #EamWcFile instance
+   *
+   * Returns the number of bytes wrote in disk
+   */
+  signals[SIG_PROGRESS] = g_signal_new ("progress",
+    G_TYPE_FROM_CLASS (object_class), G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION, 0,
+    NULL, NULL, g_cclosure_marshal_VOID__ULONG, G_TYPE_NONE, 0);
 
   /**
    * EamWc::size:
@@ -282,6 +299,8 @@ write_cb (GObject *source, GAsyncResult *result, gpointer data)
   gssize missing = priv->size - priv->sum;
   g_debug ("%li bytes written of a total of %li bytes. Missing %li",
     wrote, priv->sum, missing);
+
+  g_signal_emit (self, signals[SIG_PROGRESS], 0, priv->sum);
 
   if (g_task_return_error_if_cancelled (task))
     goto done;

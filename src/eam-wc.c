@@ -19,6 +19,7 @@ struct _EamWcPrivate
   SoupLoggerLogLevel level;
   gchar *filename;
   EamWcFile *file;
+  gulong phnd; /* file progress signal handle */
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
@@ -29,12 +30,22 @@ enum {
   PROP_FILENAME
 };
 
+enum {
+  SIG_PROGRESS,
+  SIG_MAX
+};
+
+static gint signals[SIG_MAX];
 
 static void
 eam_wc_reset (EamWc *self)
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (self);
 
+  if (priv->phnd > 0) {
+    g_signal_handler_disconnect (priv->file, priv->phnd);
+    priv->phnd = 0;
+  }
 
   if (priv->file)
     g_clear_object (&priv->file);
@@ -133,6 +144,16 @@ eam_wc_class_init (EamWcClass *klass)
   g_object_class_install_property (object_class, PROP_USER_AGENT,
     g_param_spec_string ("user-agent", "User Agent", "User agent identifier",
       NULL, G_PARAM_READWRITE |  G_PARAM_CONSTRUCT |  G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamWcFile::progress:
+   * @self: The #EamWcFile instance
+   *
+   * Returns the number of bytes wrote in disk
+   */
+  signals[SIG_PROGRESS] = g_signal_new ("progress",
+    G_TYPE_FROM_CLASS (object_class), G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION, 0,
+    NULL, NULL, g_cclosure_marshal_VOID__ULONG, G_TYPE_NONE, 0);
 }
 
 static void
@@ -262,6 +283,12 @@ bail:
 }
 
 static void
+emit_progress (EamWc *self, gulong sum, gpointer data)
+{
+  g_signal_emit (self, signals[SIG_PROGRESS], 0, sum);
+}
+
+static void
 request_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   SoupRequest *request = SOUP_REQUEST (source);
@@ -289,6 +316,8 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
   EamWcPrivate *priv = eam_wc_get_instance_private (wc);
   priv->file = eam_wc_file_new ();
   g_object_set (priv->file, "size", len, NULL);
+  priv->phnd = g_signal_connect_swapped (priv->file, "progress",
+    G_CALLBACK (emit_progress), wc);
 
   /* chunks of 8K as webkitgtk+ does */
   clos->length = (len > 0 && len < 8192) ? len : 8192;

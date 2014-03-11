@@ -21,6 +21,12 @@ wc_cb (GObject *source, GAsyncResult *result, gpointer data)
   g_main_loop_quit (data);
 }
 
+static void
+print_progress (EamWc *wc, gulong total)
+{
+  g_print (".");
+}
+
 static gboolean
 parse_options (int *argc, gchar ***argv)
 {
@@ -59,15 +65,17 @@ main (gint argc, char **argv)
   EamWc *wc = eam_wc_new ();
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
 
+  g_signal_connect (wc, "progress", G_CALLBACK (print_progress), NULL);
+
   g_object_set (wc, "filename", outfile, NULL);
   eam_wc_request_async (wc, arguments[0], NULL, wc_cb, loop);
+  g_free (outfile);
+  g_strfreev (arguments);
 
   g_main_loop_run (loop);
 
-  g_strfreev (arguments);
-  g_free (outfile);
   g_object_unref (wc);
   g_main_loop_unref (loop);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
