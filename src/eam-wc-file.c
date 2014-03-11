@@ -237,6 +237,25 @@ eam_wc_file_write_bytes_async (EamWcFile *self, GBytes *buffer,
   eam_wc_file_queue_bytes (self, buffer);
 }
 
+static GBytes *
+merge_buffers (EamWcFile *self)
+{
+  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
+  GByteArray *array = g_byte_array_new ();
+  GBytes *buffer;
+  gsize size;
+
+  while ((buffer = g_queue_pop_tail (priv->queue)) != NULL
+         && array->len <  G_MAXSSIZE - 1) {
+    gpointer data = g_bytes_unref_to_data (buffer, &size);
+    g_byte_array_append (array, data, size);
+  }
+
+  buffer = g_byte_array_free_to_bytes (array);
+  g_queue_push_head (priv->queue, buffer);
+  return buffer;
+}
+
 void
 write_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
@@ -269,13 +288,20 @@ write_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   guint len = g_queue_get_length (priv->queue);
   if (wrote == 0 && len == 0) {
-    g_task_return_boolean (task, missing <= 0); /* finished! */
+    g_task_return_boolean (task, missing <= 0); /* finished! */ /* shall we flush? */
     goto done;
   }
 
   if (len > 0) {
+    GBytes *buffer;
     GCancellable *cancellable = g_task_get_cancellable (task);
-    GBytes *buffer = g_queue_peek_tail (priv->queue);
+
+    if (len == 1) {
+      buffer = g_queue_peek_tail (priv->queue);
+    } else  {
+      buffer = merge_buffers (self);
+    }
+
     g_output_stream_write_bytes_async (priv->strm, buffer, G_PRIORITY_DEFAULT,
       cancellable, write_cb, priv->task);
   }
