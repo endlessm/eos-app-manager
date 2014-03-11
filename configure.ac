@@ -26,7 +26,8 @@ PKG_PROG_PKG_CONFIG
 GLIB_TESTS
 
 # GResource
-AC_PATH_PROG(GLIB_COMPILE_RESOURCES, glib-compile-resources)
+glib_compile_resources=`pkg-config --variable=glib_compile_resourse gio-2.0`
+AC_PATH_PROG(GLIB_COMPILE_RESOURCES, $glib_compile_resources)
 
 GLIB_REQUIRED=2.38.0
 SOUP_REQUIRED=2.44.0
