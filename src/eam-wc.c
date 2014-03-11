@@ -29,11 +29,6 @@ enum {
   PROP_FILENAME
 };
 
-GQuark
-eam_wc_error_quark (void)
-{
-  return g_quark_from_static_string ("grl-wc-error-quark");
-}
 
 static void
 eam_wc_finalize (GObject *obj)
