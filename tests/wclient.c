@@ -2,6 +2,11 @@
 
 #include <stdlib.h>
 #include <glib.h>
+
+#ifdef G_OS_UNIX
+#include <glib-unix.h>
+#endif
+
 #include "eam-wc.h"
 
 static char **arguments;
@@ -20,6 +25,15 @@ wc_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   g_main_loop_quit (data);
 }
+
+#ifdef G_OS_UNIX
+static gboolean
+signal_terminate (gpointer data)
+{
+  g_cancellable_cancel (G_CANCELLABLE (data));
+  return FALSE;
+}
+#endif
 
 static void
 print_progress (EamWc *wc, gulong total)
@@ -62,15 +76,23 @@ main (gint argc, char **argv)
     return EXIT_FAILURE;
   }
 
+  GCancellable *cancellable = g_cancellable_new ();
   EamWc *wc = eam_wc_new ();
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
 
   g_signal_connect (wc, "progress", G_CALLBACK (print_progress), NULL);
 
   g_object_set (wc, "filename", outfile, NULL);
-  eam_wc_request_async (wc, arguments[0], NULL, wc_cb, loop);
   g_free (outfile);
+
+  eam_wc_request_async (wc, arguments[0], cancellable, wc_cb, loop);
   g_strfreev (arguments);
+
+#ifdef G_OS_UNIX
+  g_unix_signal_add (SIGHUP, signal_terminate, cancellable);
+  g_unix_signal_add (SIGTERM, signal_terminate, cancellable);
+  g_unix_signal_add (SIGINT, signal_terminate, cancellable);
+#endif
 
   g_main_loop_run (loop);
 
