@@ -15,7 +15,6 @@ struct _EamWcFilePrivate
   GFile *file;
   GOutputStream *strm;
   guint64 size, sum;
-  gboolean started;
   GQueue *queue;
   GTask *task;
 };
