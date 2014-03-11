@@ -31,15 +31,24 @@ enum {
 
 
 static void
+eam_wc_reset (EamWc *self)
+{
+  EamWcPrivate *priv = eam_wc_get_instance_private (self);
+
+
+  if (priv->file)
+    g_clear_object (&priv->file);
+
+  g_free (priv->filename);
+}
+
+static void
 eam_wc_finalize (GObject *obj)
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (EAM_WC (obj));
 
   g_object_unref (priv->session);
-
-  if (priv->file)
-    g_clear_object (&priv->file);
-  g_free (priv->filename);
+  eam_wc_reset (EAM_WC (obj));
 
   G_OBJECT_CLASS (eam_wc_parent_class)->finalize (obj);
 }
@@ -451,6 +460,7 @@ eam_wc_request_finish (EamWc *self, GAsyncResult *result, gchar **content,
   gsize *length, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  eam_wc_reset (self);
   return g_task_propagate_boolean (G_TASK (result), error);
 }
 
