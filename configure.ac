@@ -25,10 +25,6 @@ PKG_PROG_PKG_CONFIG
 
 GLIB_TESTS
 
-# GResource
-glib_compile_resources=`pkg-config --variable=glib_compile_resourse gio-2.0`
-AC_PATH_PROG(GLIB_COMPILE_RESOURCES, $glib_compile_resources)
-
 GLIB_REQUIRED=2.38.0
 SOUP_REQUIRED=2.44.0
 PKG_CHECK_MODULES([DEPENDENCIES], [
@@ -36,6 +32,13 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  gio-unix-2.0 >= $GLIB_REQUIRED
 		  libsoup-2.4 >= $SOUP_REQUIRED
 		  ])
+
+# GResource
+glib_compile_resources=`pkg-config --variable=glib_compile_resources gio-2.0`
+AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [$glib_compile_resources], [no])
+if test x$GLIB_COMPILE_RESOURCES = xno; then
+   AC_MSG_ERROR(["Could not find a glib-compile-resources in your PATH"])
+fi
 
 GETTEXT_PACKAGE=eam
 AC_SUBST([GETTEXT_PACKAGE])
