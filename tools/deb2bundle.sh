@@ -8,40 +8,42 @@
 #
 # $ deb2bundle.sh package.deb
 
+failure_exit() 
+{
+    echo $1 
+    exit 255
+}
 
 TMPDIR=/var/tmp
 
-DPKGDEB=$(which dpkg-deb) || exit -1
-MKTEMP=$(which mktemp) || exit -1
-TAR=$(which tar) || exit -1
-RM=$(which rm) || exit -1
-TR=$(which tr) || exit -1
+DPKGDEB=$(which dpkg-deb) || failure_exit "Can't find dpkg-deb"
+MKTEMP=$(which mktemp) || failure_exit "Can't find mktemp"
+TAR=$(which tar) || failure_exit "Can't find tar"
+RM=$(which rm) || failure_exit "Can't find rm"
+TR=$(which tr) || failure_exit "Can't find tr"
 
 DEB=$1
 if [ ! -f $DEB ]; then
-    echo "Missing debian package"
-    exit -1
+    failure_exit "Missing debian package"
 fi
 
 WDIR=$(${MKTEMP} -d)
 if [ ! -d $WDIR ]; then
-    echo "Could not create working directory"
-    exit -1
+    failure_exit "Could not create working directory" 
 fi
 
 # get the tarball name
 PACKAGE=$(${DPKGDEB} --show --showformat "\${Package}" ${DEB})
 if [ -z $PACKAGE ]; then
-    echo "Can't query debian package"
-    exit -1
+    failure_exit "Can't query debian package"
 fi
 
 ARCHIVE=$(${DPKGDEB} --show --showformat "\${Package}.tar.gz" ${DEB})
 
 # extract
-mkdir ${WDIR}/${PACKAGE} || exit -1
+mkdir ${WDIR}/${PACKAGE} || failure_exit -1
 ${DPKGDEB} --fsys-tarfile ${DEB} | \
-    ${TAR} --directory ${WDIR}/${PACKAGE} --extract || exit -1
+    ${TAR} --directory ${WDIR}/${PACKAGE} --extract || failure_exit -1
 
 # craft info file
 VERSION=$(${DPKGDEB} --show --showformat "\${Version}" ${DEB})
