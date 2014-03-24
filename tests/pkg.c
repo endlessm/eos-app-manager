@@ -55,6 +55,7 @@ test_pkgdb_basic (void)
   rpkg = eam_pkgdb_get (db, "app01");
   g_assert (pkg == rpkg);
   g_object_unref (rpkg);
+  g_object_unref (pkg);
   g_assert (eam_pkgdb_del (db, "app01"));
   rpkg = eam_pkgdb_get (db, "app01");
   g_assert_null (rpkg);

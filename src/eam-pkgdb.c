@@ -146,7 +146,7 @@ appid_is_legal (const char *appid)
  * eam_pkgdb_add:
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
- * @pkg: (full-transfer): the #EamPkg of the application
+ * @pkg: the #EamPkg of the application
  *
  * Adds @pkg into the @pkgdb
  *
@@ -168,7 +168,8 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   if (g_hash_table_contains (priv->pkgtable, appid))
     return FALSE;
 
-  return g_hash_table_insert (priv->pkgtable, g_strdup (appid), pkg);
+  return g_hash_table_insert (priv->pkgtable, g_strdup (appid),
+    g_object_ref (pkg));
 }
 
 /**
@@ -262,8 +263,8 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
     EamPkg *pkg = eam_pkg_new_from_filename (info);
     g_free (info);
     if (pkg) {
-      if (!eam_pkgdb_add (pkgdb, appid, pkg))
-        g_object_unref (pkg);
+      eam_pkgdb_add (pkgdb, appid, pkg);
+      g_object_unref (pkg);
     }
   }
   g_dir_close (dir);
