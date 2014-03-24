@@ -126,10 +126,9 @@ eam_pkg_load_from_keyfile (EamPkg *pkg, GKeyFile *keyfile)
 
   version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
   priv->version = eam_pkg_version_new_from_string (version);
-  if (!priv->version) {
-    g_free (version);
+  g_free (version);
+  if (!priv->version)
     return FALSE;
-  }
 
   priv->keyfile = g_key_file_ref (keyfile);
 

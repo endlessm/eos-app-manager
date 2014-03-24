@@ -75,7 +75,7 @@ test_pkgdb_load (void)
   EamPkgVersion *version;
   g_object_get (pkg, "version", &version, NULL);
   g_assert_cmpstr (version->version, ==, "1");
-  g_free (version);
+  eam_pkg_version_free (version);
   g_object_unref (pkg);
 
   g_object_unref (db);
