@@ -41,9 +41,6 @@ eam_pkgdb_set_property (GObject *obj, guint prop_id, const GValue *value,
 
   switch (prop_id) {
   case PROP_APPDIR:
-    if (priv->appdir)
-      g_free (priv->appdir);
-
     priv->appdir = g_value_dup_string (value);
     break;
   default:
@@ -92,7 +89,6 @@ eam_pkgdb_init (EamPkgdb *db)
 {
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (db);
 
-  priv->appdir = g_strdup("/endless");
   priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
     g_object_unref);
 }
