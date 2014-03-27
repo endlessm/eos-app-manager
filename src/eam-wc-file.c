@@ -273,7 +273,7 @@ merge_buffers (EamWcFile *self)
   return buffer;
 }
 
-void
+static void
 write_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
