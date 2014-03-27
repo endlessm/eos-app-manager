@@ -207,7 +207,7 @@ eam_wc_file_open_async (EamWcFile *self, const char *path,
   if (parent) {
     GError *error = NULL;
     g_file_make_directory_with_parents (parent, cancellable, &error);
-    if (error && error->code != G_IO_ERROR_EXISTS) {
+    if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS)) {
       g_task_return_error (task, error);
       g_object_unref (task);
       return;
