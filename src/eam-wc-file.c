@@ -341,7 +341,7 @@ eam_wc_file_queue_bytes (EamWcFile *self, GBytes *buffer)
   g_return_if_fail (priv->queue);
   g_return_if_fail (priv->task);
 
-  g_queue_push_head (priv->queue, buffer);
+  g_queue_push_head (priv->queue, g_bytes_ref (buffer));
 
   if (g_queue_get_length (priv->queue) == 1) {
     GCancellable *cancellable = g_task_get_cancellable (priv->task);

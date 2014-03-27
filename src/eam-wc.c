@@ -220,8 +220,10 @@ read_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto done;
   }
 
-  if (g_task_return_error_if_cancelled (task))
+  if (g_task_return_error_if_cancelled (task)) {
+    g_bytes_unref (buffer);
     goto done;
+  }
 
   EamWc *wc = g_task_get_source_object (task);
   EamWcPrivate *priv = eam_wc_get_instance_private (wc);
@@ -241,6 +243,8 @@ read_cb (GObject *source, GAsyncResult *result, gpointer data)
     g_input_stream_read_bytes_async (instream, clos->length, G_PRIORITY_DEFAULT,
       cancellable, read_cb, data);
   }
+
+  g_bytes_unref (buffer);
 
   return;
 
