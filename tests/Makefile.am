@@ -17,5 +17,3 @@ test_programs = \
 	version \
 	cfg \
 	$(NULL)
-
-bin_PROGRAMS = wclient
