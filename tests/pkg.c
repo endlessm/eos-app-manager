@@ -63,12 +63,8 @@ test_pkgdb_basic (void)
 }
 
 static void
-test_pkgdb_load (void)
+load_tests (EamPkgdb *db)
 {
-  const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
-  EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
-  eam_pkgdb_load (db);
-
   EamPkg *pkg = eam_pkgdb_get (db, "app01");
   g_assert_nonnull (pkg);
 
@@ -77,9 +73,42 @@ test_pkgdb_load (void)
   g_assert_cmpstr (version->version, ==, "1");
   eam_pkg_version_free (version);
   g_object_unref (pkg);
+}
+
+static void
+test_pkgdb_load (void)
+{
+  const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
+  EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
+  eam_pkgdb_load (db);
+
+  load_tests (db);
 
   g_object_unref (db);
 }
+
+static void
+load_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res);
+  g_main_loop_quit (data);
+}
+
+static void
+test_pkgdb_load_async (void)
+{
+  GMainLoop *loop = g_main_loop_new (NULL, FALSE);
+  const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
+  EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
+
+  eam_pkgdb_load_async (db, NULL, load_cb, loop);
+  g_main_loop_run (loop);
+
+  load_tests (db);
+
+  g_object_unref (db);
+}
+
 
 int
 main (int argc, char *argv[])
@@ -89,6 +118,7 @@ main (int argc, char *argv[])
   g_test_add_func ("/pkg/basic", test_pkg_basic);
   g_test_add_func ("/pkgdb/basic", test_pkgdb_basic);
   g_test_add_func ("/pkgdb/load", test_pkgdb_load);
+  g_test_add_func ("/pkgdb/load_async", test_pkgdb_load_async);
 
   return g_test_run ();
 }

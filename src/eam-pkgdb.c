@@ -265,3 +265,53 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
   }
   g_dir_close (dir);
 }
+
+static void
+load_pkgdb_thread (GTask *task, gpointer source, gpointer data,
+  GCancellable *cancellable)
+{
+  EamPkgdb *pkgdb = g_task_get_source_object (task);
+  g_assert (pkgdb);
+
+  eam_pkgdb_load (pkgdb);
+  g_task_return_pointer (task, NULL, NULL);
+}
+
+/**
+ * eam_pkgdb_load_async:
+ * @pkgdb: a #EamPkgdb
+ * @cancellable: (allow-none): optional #GCancellable object,
+ *     %NULL to ignore
+ * @callback: (scope async): a #GAsyncReadyCallback to call when the
+ *     request is satisfied
+ * @user_data: (closure): the data to pass to callback function
+ *
+ * Loads all the @pkg found in the appdir asynchronously
+ */
+void
+eam_pkgdb_load_async (EamPkgdb *pkgdb, GCancellable *cancellable,
+  GAsyncReadyCallback callback, gpointer data)
+{
+  g_return_if_fail (EAM_IS_PKGDB (pkgdb));
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback);
+
+  GTask *task = g_task_new (pkgdb, cancellable, callback, data);
+
+  g_task_run_in_thread (task, load_pkgdb_thread);
+  g_object_unref (task);
+}
+
+/**
+ * eam_pkgdb_load_finish:
+ * @pkgdb: a #EamPkgdb
+ * @res: a #GAsyncResult
+ *
+ * Finishes an async packages load, see eam_pkgdb_load_async().
+ */
+gboolean
+eam_pkgdb_load_finish (EamPkgdb *pkgdb, GAsyncResult *res)
+{
+  g_return_val_if_fail (g_task_is_valid (res, pkgdb), FALSE);
+  return TRUE;
+}

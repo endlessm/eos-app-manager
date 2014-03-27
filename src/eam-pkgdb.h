@@ -3,7 +3,7 @@
 #ifndef EAM_PKGDB_H
 #define EAM_PKGDB_H
 
-#include <glib-object.h>
+#include <gio/gio.h>
 
 #include "eam-pkg.h"
 
@@ -54,6 +54,15 @@ EamPkg         *eam_pkgdb_get                                    (EamPkgdb *pkgd
 gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgdb, const gchar *appid);
 
 void            eam_pkgdb_load                                   (EamPkgdb *pkgdb);
+
+void            eam_pkgdb_load_async                             (EamPkgdb *pkgdb,
+								  GCancellable *cancellable,
+								  GAsyncReadyCallback callback,
+								  gpointer data);
+
+gboolean        eam_pkgdb_load_finish                            (EamPkgdb *pkgdb,
+								  GAsyncResult *res);
+
 
 G_END_DECLS
 
