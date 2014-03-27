@@ -518,6 +518,7 @@ eam_wc_set_log_level (EamWc *self, guint level)
   g_object_unref (logger);
 
   priv->level = (SoupLoggerLogLevel) level;
+  g_object_notify (G_OBJECT (self), "loglevel");
 }
 
 EamWc *
