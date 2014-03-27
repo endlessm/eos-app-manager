@@ -19,7 +19,7 @@ wc_cb (GObject *source, GAsyncResult *result, gpointer data)
   gboolean res = eam_wc_request_finish (EAM_WC (source), result, NULL, NULL, &error);
   g_print ("%s\n", res ? "Success!" : "Failure");
   if (error) {
-    g_printerr ("Error: %s", error->message);
+    g_printerr ("Error: %s\n", error->message);
     g_error_free (error);
   }
 
