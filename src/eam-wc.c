@@ -462,6 +462,7 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
   g_task_set_task_data (task, clos, (GDestroyNotify) task_closure_free);
 
   soup_request_send_async (request, cancellable, request_cb, task);
+  g_object_unref (request);
 }
 
 
