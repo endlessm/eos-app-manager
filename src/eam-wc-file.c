@@ -70,11 +70,8 @@ eam_wc_file_reset (EamWcFile *self)
   priv->sum = 0;
   priv->size = 0;
 
-  if (priv->file)
-    g_clear_object (&priv->file);
-
-  if (priv->strm)
-    g_clear_object (&priv->strm);
+  g_clear_object (&priv->file);
+  g_clear_object (&priv->strm);
 
   if (priv->queue) {
     g_queue_free_full (priv->queue, (GDestroyNotify) g_bytes_unref);
