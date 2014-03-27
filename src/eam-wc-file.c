@@ -128,7 +128,6 @@ replace_cb (GObject *source, GAsyncResult *result, gpointer data)
   GError *error = NULL;
   GFileOutputStream *strm = g_file_replace_finish (G_FILE (source), result, &error);
   if (!strm) {
-    g_object_unref (source);
     g_task_return_error (task, error);
     g_object_unref (task);
     return;
