@@ -168,7 +168,7 @@ query_fs_cb (GObject *source, GAsyncResult *result, gpointer data)
     return;
   }
 
-  EamWcFile *self = g_task_get_task_data (task);
+  EamWcFile *self = g_task_get_source_object (task);
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
 
   /* let's be cautious: request twice the size or 20K, please */
@@ -215,8 +215,6 @@ eam_wc_file_open_async (EamWcFile *self, const char *path,
     if (error)
       g_error_free (error);
   }
-
-  g_task_set_task_data (task, g_object_ref (self), (GDestroyNotify) g_object_unref);
 
   /* 1. check if there's "enough" space */
   g_file_query_filesystem_info_async (parent,
