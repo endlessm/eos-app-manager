@@ -303,6 +303,7 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   if (g_task_return_error_if_cancelled (task)) {
     g_object_unref (task);
+    g_object_unref (instream);
     return;
   }
 
