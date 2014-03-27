@@ -47,8 +47,7 @@ eam_wc_reset (EamWc *self)
     priv->phnd = 0;
   }
 
-  if (priv->file)
-    g_clear_object (&priv->file);
+  g_clear_object (&priv->file);
 
   g_free (priv->filename);
 }
