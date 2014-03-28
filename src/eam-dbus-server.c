@@ -169,12 +169,27 @@ on_name_lost (GDBusConnection *connection, const gchar *name, gpointer data)
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
 }
 
+/**
+ * eam_dbus_server_new:
+ * @db: A #EamPkgdb instance.
+ *
+ * Returns: a #EamDbusServer.
+ **/
 EamDbusServer *
 eam_dbus_server_new (EamPkgdb *db)
 {
   return g_object_new (EAM_TYPE_DBUS_SERVER, "db", db, NULL);
 }
 
+/**
+ * eam_dbus_server_run:
+ * @server: a #EamDbusServer.
+ *
+ * Acquire the DBus name "com.Endlesss.AppManager" and launch de
+ * AppManager service.
+ *
+ * Returns: %TRUE if the server is launched. Otherwise %FALSE;
+ **/
 gboolean
 eam_dbus_server_run (EamDbusServer *server)
 {
@@ -195,6 +210,12 @@ eam_dbus_server_run (EamDbusServer *server)
   return TRUE;
 }
 
+/**
+ * eam_dbus_server_quit:
+ * @server: a #EamDbusServer.
+ *
+ * Quits the AppManager DBus service.
+ **/
 void
 eam_dbus_server_quit (EamDbusServer *server)
 {

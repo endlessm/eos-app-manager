@@ -77,6 +77,12 @@ eam_service_init (EamService *service)
 {
 }
 
+/**
+ * eam_service_new:
+ * @db: a #EamPkgdb instance.
+ *
+ * Returns: Creates a new #EamService instance.
+ **/
 EamService *
 eam_service_new (EamPkgdb *db)
 {
@@ -127,6 +133,13 @@ load_introspection (GError **error)
   return info;
 }
 
+/**
+ * eam_service_dbus_register:
+ * @service: a #EamService instance.
+ * @connection: (transfer full): a #GDBusConnection instance.
+ *
+ * Registers the #EamService service in the DBus connection.
+ **/
 void
 eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 {
