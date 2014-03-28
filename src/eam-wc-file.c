@@ -160,6 +160,22 @@ query_fs_cb (GObject *source, GAsyncResult *result, gpointer data)
     G_PRIORITY_DEFAULT, cancellable, replace_cb, task);
 }
 
+/**
+ * eam_wc_file_open_async:
+ * @self: A #EamWcFile instance
+ * @path: a string containing a relative or absolute path.
+ *     The string must be encoded in the glib filename encoding.
+ * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
+ * @callback: (scope async): callback to call when the request is satisfied
+ * @data: (closure): the data to pass to callback function
+ *
+ * Asynchronously opens or overwrites the file, replacing the
+ * contents if it already exists.
+ *
+ * It also obtains information about the filesystem the @self is on,
+ * to verify if the filesystem have enough space to store the file to
+ * download.
+ **/
 void
 eam_wc_file_open_async (EamWcFile *self, const char *path,
   GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
@@ -194,6 +210,18 @@ eam_wc_file_open_async (EamWcFile *self, const char *path,
     query_fs_cb, task);
 }
 
+/**
+ * eam_wc_file_open_finish:
+ * @self: A #EamWcFile instance.
+ * @result: a #GAsyncResult.
+ * @error: a #GError location to store the error occurring, or %NULL to
+ * ignore.
+ *
+ * Finishes an asynchronous file open operation started with
+ * eam_wc_file_open_async().
+ *
+ * Returns: %TRUE if the file was open correctly, otherwise %FALSE
+ **/
 gboolean
 eam_wc_file_open_finish (EamWcFile *self, GAsyncResult *result, GError **error)
 {
@@ -224,6 +252,17 @@ done:
   }
 }
 
+
+/**
+ * eam_wc_file_splice_async:
+ * @self: A #EamWcFile instance
+ * @source: A #GInputStream instance
+ * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
+ * @callback: (scope async): callback to call when the request is satisfied
+ * @data: (closure): the data to pass to callback function
+ *
+ * Splices asynchronously an input stream into an EamWcFile.
+ **/
 void
 eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
   GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
@@ -241,6 +280,17 @@ eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
     G_PRIORITY_DEFAULT, cancellable, splice_cb, task);
 }
 
+/**
+ * eam_wc_file_splice_finish:
+ * @self:A #EamWcFile instance
+ * @result: a #GAsyncResult.
+ * @error: a #GError location to store the error occurring, or %NULL to
+ * ignore.
+ *
+ * Finishes a stream splice operation
+ *
+ * Returns: a #gssize containing the number of bytes writtern to the #EamWcFile.
+ **/
 gssize
 eam_wc_file_splice_finish (EamWcFile *self, GAsyncResult *result, GError **error)
 {
@@ -248,6 +298,14 @@ eam_wc_file_splice_finish (EamWcFile *self, GAsyncResult *result, GError **error
   return g_task_propagate_int (G_TASK (result), error);
 }
 
+/**
+ * eam_wc_file_new:
+ *
+ * Creates a new #EamWcFile instance.
+ *
+ * This class is intendet to be a helper for #EamWc. It is used to store in disk
+ * the web content.
+ */
 EamWcFile *
 eam_wc_file_new ()
 {
