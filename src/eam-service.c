@@ -33,8 +33,7 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
-  if (priv->db)
-    g_clear_object (&priv->db);
+  g_clear_object (&priv->db);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
 }

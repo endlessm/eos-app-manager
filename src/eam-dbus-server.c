@@ -50,7 +50,7 @@ eam_dbus_server_finalize (GObject *obj)
   if (priv->interrupt > 0)
     g_source_remove (priv->interrupt);
 
-  g_object_unref (priv->service);
+  g_clear_object (&priv->service);
 
   G_OBJECT_CLASS (eam_dbus_server_parent_class)->finalize (obj);
 }
