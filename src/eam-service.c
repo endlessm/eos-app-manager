@@ -42,9 +42,11 @@ static void
 eam_service_set_property (GObject *obj, guint prop_id, const GValue *value,
   GParamSpec *pspec)
 {
+  EamServicePrivate *priv = eam_service_get_instance_private (EAM_SERVICE (obj));
+
   switch (prop_id) {
   case PROP_DB:
-    eam_service_initialize (EAM_SERVICE (obj), g_value_get_object (value));
+    priv->db = g_object_ref_sink (g_value_get_object (value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -67,7 +69,7 @@ eam_service_class_init (EamServiceClass *class)
    */
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
-      G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS));
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -75,17 +77,10 @@ eam_service_init (EamService *service)
 {
 }
 
-static gpointer
-eam_service_create_instance (gpointer data)
-{
-  return g_object_new (EAM_TYPE_SERVICE, NULL);
-}
-
 EamService *
-eam_service_get (void)
+eam_service_new (EamPkgdb *db)
 {
-  static GOnce once_init = G_ONCE_INIT;
-  return EAM_SERVICE (g_once (&once_init, eam_service_create_instance, NULL));
+  return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
 }
 
 static void
@@ -93,9 +88,7 @@ eam_service_refresh (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  if (!priv->db)
-    return;
-
+  g_assert (priv->db);
   eam_pkgdb_load (priv->db);
 }
 
@@ -165,21 +158,4 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
-}
-
-void
-eam_service_initialize (EamService *service, EamPkgdb *db)
-{
-  g_return_if_fail (EAM_IS_SERVICE (service));
-  g_return_if_fail (EAM_IS_PKGDB (db));
-
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->db) {
-    g_warning ("Don't set the package database twice.");
-    return;
-  }
-
-  priv->db = g_object_ref_sink (db);
-  eam_pkgdb_load (priv->db);
 }

@@ -40,13 +40,10 @@ struct _EamServiceClass {
 
 GType           eam_service_get_type                              (void) G_GNUC_CONST;
 
-EamService     *eam_service_get                                   (void);
+EamService     *eam_service_new                                   (EamPkgdb *db);
 
 void            eam_service_dbus_register                         (EamService *service,
 								   GDBusConnection *connection);
-
-void            eam_service_initialize                            (EamService *service,
-								   EamPkgdb *db);
 
 G_END_DECLS
 

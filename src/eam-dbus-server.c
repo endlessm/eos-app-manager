@@ -63,7 +63,7 @@ eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
 
   switch (prop_id) {
   case PROP_DB:
-    eam_service_initialize (priv->service, g_value_get_object (value));
+    priv->service = eam_service_new (g_value_get_object (value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -119,7 +119,6 @@ eam_dbus_server_init (EamDbusServer *server)
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
   priv->mainloop = g_main_loop_new (NULL, FALSE);
-  priv->service = eam_service_get ();
 
 #ifdef G_OS_UNIX
   priv->hangup = g_unix_signal_add (SIGHUP, signal_hangup, server);
