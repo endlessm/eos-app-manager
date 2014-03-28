@@ -16,8 +16,8 @@ static void
 wc_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GError *error = NULL;
-  gboolean res = eam_wc_request_finish (EAM_WC (source), result, NULL, NULL, &error);
-  g_print ("%s\n", res ? "Success!" : "Failure");
+  gssize size = eam_wc_request_finish (EAM_WC (source), result, NULL, NULL, &error);
+  g_print ("%s (%ld bytes)\n", size > 0 ? "Success!" : "Failure", size);
   if (error) {
     g_printerr ("Error: %s\n", error->message);
     g_error_free (error);
@@ -34,12 +34,6 @@ signal_terminate (gpointer data)
   return FALSE;
 }
 #endif
-
-static void
-print_progress (EamWc *wc, gulong total)
-{
-  g_print (".");
-}
 
 static gboolean
 parse_options (int *argc, gchar ***argv)
@@ -79,8 +73,6 @@ main (gint argc, char **argv)
   GCancellable *cancellable = g_cancellable_new ();
   EamWc *wc = eam_wc_new ();
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-
-  g_signal_connect (wc, "progress", G_CALLBACK (print_progress), NULL);
 
   g_object_set (wc, "filename", outfile, NULL);
   g_free (outfile);

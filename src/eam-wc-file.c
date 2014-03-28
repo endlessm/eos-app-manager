@@ -14,9 +14,7 @@ struct _EamWcFilePrivate
 {
   GFile *file;
   GOutputStream *strm;
-  guint64 size, sum;
-  GQueue *queue;
-  GTask *task;
+  gssize size;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWcFile, eam_wc_file, G_TYPE_OBJECT)
@@ -24,13 +22,6 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamWcFile, eam_wc_file, G_TYPE_OBJECT)
 enum {
   PROP_SIZE = 1,
 };
-
-enum {
-  SIG_PROGRESS,
-  SIG_MAX
-};
-
-static gint signals[SIG_MAX];
 
 static void
 eam_wc_file_set_property (GObject *obj, guint propid, const GValue *value,
@@ -67,16 +58,8 @@ eam_wc_file_reset (EamWcFile *self)
 {
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
 
-  priv->sum = 0;
-  priv->size = 0;
-
-  g_clear_object (&priv->file);
   g_clear_object (&priv->strm);
-
-  if (priv->queue) {
-    g_queue_free_full (priv->queue, (GDestroyNotify) g_bytes_unref);
-    priv->queue = NULL;
-  }
+  g_clear_object (&priv->file);
 }
 
 static void
@@ -94,16 +77,6 @@ eam_wc_file_class_init (EamWcFileClass *class)
   object_class->finalize = eam_wc_file_finalize;
   object_class->set_property = eam_wc_file_set_property;
   object_class->get_property = eam_wc_file_get_property;
-
-  /**
-   * EamWcFile::progress:
-   * @self: The #EamWcFile instance
-   *
-   * Returns the number of bytes wrote in disk
-   */
-  signals[SIG_PROGRESS] = g_signal_new ("progress",
-    G_TYPE_FROM_CLASS (object_class), G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION, 0,
-    NULL, NULL, g_cclosure_marshal_VOID__ULONG, G_TYPE_NONE, 0);
 
   /**
    * EamWc::size:
@@ -228,145 +201,55 @@ eam_wc_file_open_finish (EamWcFile *self, GAsyncResult *result, GError **error)
   return g_task_propagate_boolean (G_TASK (result), error);
 }
 
-void
-eam_wc_file_write_bytes_async (EamWcFile *self, GBytes *buffer,
-  GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
-{
-  g_return_if_fail (EAM_IS_WC_FILE (self));
-  g_return_if_fail (buffer);
-  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
-  g_return_if_fail (callback);
-
-  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
-  g_return_if_fail (G_IS_OUTPUT_STREAM (priv->strm));
-  g_return_if_fail (!priv->queue);
-  g_return_if_fail (!priv->task);
-
-  priv->queue = g_queue_new ();
-  priv->task = g_task_new (self, cancellable, callback, data);
-
-  eam_wc_file_queue_bytes (self, buffer);
-}
-
-static GBytes *
-merge_buffers (EamWcFile *self)
-{
-  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
-  GByteArray *array = g_byte_array_new ();
-  GBytes *buffer;
-  gsize size;
-
-  while ((buffer = g_queue_pop_tail (priv->queue)) != NULL
-         && array->len <  G_MAXSSIZE - 1) {
-    gpointer data = g_bytes_unref_to_data (buffer, &size);
-    g_byte_array_append (array, data, size);
-  }
-
-  buffer = g_byte_array_free_to_bytes (array);
-  g_queue_push_head (priv->queue, buffer);
-  return buffer;
-}
-
 static void
-write_cb (GObject *source, GAsyncResult *result, gpointer data)
+splice_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
-  EamWcFile *self = g_task_get_source_object (task);
-  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
-  GOutputStream *strm = G_OUTPUT_STREAM (source);
-
-  g_assert (strm == priv->strm);
 
   GError *error = NULL;
-  gssize wrote = g_output_stream_write_bytes_finish (strm, result, &error);
-
-  /* this should destroy the written buffer */
-  GBytes *buffer = g_queue_pop_tail (priv->queue);
-  g_bytes_unref (buffer);
-
+  gssize size = g_output_stream_splice_finish (G_OUTPUT_STREAM (source), result, &error);
   if (error) {
     g_task_return_error (task, error);
     goto done;
   }
 
-  priv->sum += wrote;
-  gssize missing = priv->size - priv->sum;
-  g_debug ("%li bytes written of a total of %li bytes. Missing %li",
-    wrote, priv->sum, missing);
-
-  g_signal_emit (self, signals[SIG_PROGRESS], 0, priv->sum);
-
-  if (g_task_return_error_if_cancelled (task))
-    goto done;
-
-  guint len = g_queue_get_length (priv->queue);
-  if (wrote == 0 && len == 0) {
-    g_task_return_boolean (task, missing <= 0); /* finished! */ /* shall we flush? */
-    goto done;
-  }
-
-  if (len > 0) {
-    GBytes *buffer;
-    GCancellable *cancellable = g_task_get_cancellable (task);
-
-    if (len == 1) {
-      buffer = g_queue_peek_tail (priv->queue);
-    } else  {
-      buffer = merge_buffers (self);
-    }
-
-    g_output_stream_write_bytes_async (priv->strm, buffer, G_PRIORITY_DEFAULT,
-      cancellable, write_cb, priv->task);
-  }
-
-  return;
+  g_task_return_int (task, size);
 
 done:
-  g_output_stream_close (strm, NULL, NULL);
-  g_object_unref (task);
+  {
+    EamWcFile *self = g_task_get_source_object (task);
+    eam_wc_file_reset (self); /* let's close everything */
+
+    g_object_unref (task);
+  }
 }
 
 void
-eam_wc_file_queue_bytes (EamWcFile *self, GBytes *buffer)
+eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
+  GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
 {
   g_return_if_fail (EAM_IS_WC_FILE (self));
-  g_return_if_fail (buffer);
+  g_return_if_fail (G_IS_INPUT_STREAM (source));
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback);
 
+  GTask *task = g_task_new (self, cancellable, callback, data);
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
-  /* check the state */
-  g_return_if_fail (G_IS_OUTPUT_STREAM (priv->strm));
-  g_return_if_fail (priv->queue);
-  g_return_if_fail (priv->task);
 
-  g_queue_push_head (priv->queue, g_bytes_ref (buffer));
-
-  if (g_queue_get_length (priv->queue) == 1) {
-    GCancellable *cancellable = g_task_get_cancellable (priv->task);
-    g_output_stream_write_bytes_async (priv->strm, buffer,
-      G_PRIORITY_DEFAULT, cancellable, write_cb, priv->task);
-  }
+  g_output_stream_splice_async (priv->strm, source,
+    G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+    G_PRIORITY_DEFAULT, cancellable, splice_cb, task);
 }
 
-gboolean
-eam_wc_file_write_bytes_finish (EamWcFile *self, GAsyncResult *result,
-  GError **error)
+gssize
+eam_wc_file_splice_finish (EamWcFile *self, GAsyncResult *result, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
-  eam_wc_file_reset (self);
-  return g_task_propagate_boolean (G_TASK (result), error);
+  return g_task_propagate_int (G_TASK (result), error);
 }
 
 EamWcFile *
 eam_wc_file_new ()
 {
   return g_object_new (EAM_TYPE_WC_FILE, NULL);
-}
-
-gboolean
-eam_wc_file_queueing (EamWcFile *self)
-{
-  g_return_val_if_fail (EAM_IS_WC_FILE (self), FALSE);
-
-  EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
-  return (priv->queue && priv->task);
 }

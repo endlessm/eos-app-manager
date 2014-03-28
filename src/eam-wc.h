@@ -78,7 +78,7 @@ void            eam_wc_request_with_headers_async                (EamWc *self,
 								  gpointer user_data,
 								  ...) G_GNUC_NULL_TERMINATED;
 
-gboolean        eam_wc_request_finish                            (EamWc *self,
+gssize          eam_wc_request_finish                            (EamWc *self,
 								  GAsyncResult *result,
 								  gchar **content,
 								  gsize *length,

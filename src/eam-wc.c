@@ -19,7 +19,6 @@ struct _EamWcPrivate
   SoupLoggerLogLevel level;
   gchar *filename;
   EamWcFile *file;
-  gulong phnd; /* file progress signal handle */
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
@@ -42,13 +41,7 @@ eam_wc_reset (EamWc *self)
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (self);
 
-  if (priv->phnd > 0) {
-    g_signal_handler_disconnect (priv->file, priv->phnd);
-    priv->phnd = 0;
-  }
-
   g_clear_object (&priv->file);
-
   g_free (priv->filename);
 }
 
@@ -57,7 +50,7 @@ eam_wc_finalize (GObject *obj)
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (EAM_WC (obj));
 
-  g_object_unref (priv->session);
+  g_clear_object (&priv->session);
   eam_wc_reset (EAM_WC (obj));
 
   G_OBJECT_CLASS (eam_wc_parent_class)->finalize (obj);
@@ -166,25 +159,12 @@ eam_wc_init (EamWc *wc)
   priv->filename = NULL;
 }
 
-struct task_clos {
-  GInputStream *instream;
-  gsize length;
-};
-
 static void
-task_closure_free (struct task_clos *clos)
-{
-  if (clos->instream)
-    g_object_unref (clos->instream);
-  g_slice_free (struct task_clos, clos);
-}
-
-static void
-file_write_cb (GObject *source, GAsyncResult *result, gpointer data)
+splice_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
   GError *error = NULL;
-  eam_wc_file_write_bytes_finish (EAM_WC_FILE (source), result, &error);
+  gssize size = eam_wc_file_splice_finish (EAM_WC_FILE (source), result, &error);
   if (error) {
     g_task_return_error (task, error);
     goto done;
@@ -194,62 +174,9 @@ file_write_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto done;
 
   g_debug ("finished!");
-  g_task_return_boolean (task, TRUE); /* we finished! */
+  g_task_return_int (task, size);
 
 done:
-  {
-    struct task_clos *clos = g_task_get_task_data (task);
-    g_input_stream_close (clos->instream, NULL, NULL);
-    g_object_unref (task);
-  }
-}
-
-static void
-read_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  struct task_clos *clos = g_task_get_task_data (task);
-  GInputStream *instream = G_INPUT_STREAM (source);
-
-  g_assert (instream == clos->instream);
-
-  GError *error = NULL;
-  GBytes *buffer = g_input_stream_read_bytes_finish (instream, result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto done;
-  }
-
-  if (g_task_return_error_if_cancelled (task)) {
-    g_bytes_unref (buffer);
-    goto done;
-  }
-
-  EamWc *wc = g_task_get_source_object (task);
-  EamWcPrivate *priv = eam_wc_get_instance_private (wc);
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  gsize bufsiz = g_bytes_get_size (buffer);
-
-  if (eam_wc_file_queueing (priv->file)) {
-    eam_wc_file_queue_bytes (priv->file, buffer);
-  } else {
-    g_debug ("write buffer async");
-    eam_wc_file_write_bytes_async (priv->file, buffer, cancellable,
-      file_write_cb, data);
-  }
-
-  if (bufsiz > 0) { /* we still have something to read */
-    g_debug ("reading %li bytes", clos->length);
-    g_input_stream_read_bytes_async (instream, clos->length, G_PRIORITY_DEFAULT,
-      cancellable, read_cb, data);
-  }
-
-  g_bytes_unref (buffer);
-
-  return;
-
-done:
-  g_input_stream_close (clos->instream, NULL, NULL);
   g_object_unref (task);
 }
 
@@ -258,9 +185,6 @@ file_open_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   EamWcFile *file = EAM_WC_FILE (source);
   GTask *task = data;
-
-  struct task_clos *clos = g_task_get_task_data (task);
-  g_assert (clos->instream);
 
   GError *error = NULL;
   eam_wc_file_open_finish (file, result, &error);
@@ -272,23 +196,15 @@ file_open_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  g_debug ("reading %li bytes", clos->length);
   GCancellable *cancellable = g_task_get_cancellable (task);
-  g_input_stream_read_bytes_async (clos->instream, clos->length,
-    G_PRIORITY_DEFAULT, cancellable, read_cb, data);
+  GInputStream *instream = g_task_get_task_data (task);
+  eam_wc_file_splice_async (file, instream, cancellable, splice_cb, data);
 
   return;
 
 bail:
-    g_input_stream_close (clos->instream, NULL, NULL);
     g_object_unref (task);
     return;
-}
-
-static void
-emit_progress (EamWc *self, gulong sum, gpointer data)
-{
-  g_signal_emit (self, signals[SIG_PROGRESS], 0, sum);
 }
 
 static void
@@ -311,21 +227,15 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
     return;
   }
 
-  struct task_clos *clos = g_task_get_task_data (task);
-  clos->instream = instream;
-
-  goffset len = soup_request_get_content_length (request);
+  g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
 
   EamWc *wc = g_task_get_source_object (task);
   EamWcPrivate *priv = eam_wc_get_instance_private (wc);
-  priv->file = eam_wc_file_new ();
-  g_object_set (priv->file, "size", len, NULL);
-  priv->phnd = g_signal_connect_swapped (priv->file, "progress",
-    G_CALLBACK (emit_progress), wc);
 
-  /* chunks of 8K as webkitgtk+ does */
-  clos->length = (len > 0 && len < 8192) ? len : 8192;
-  g_debug ("Downlading %li bytes in chunks of %li bytes", len, clos->length);
+  priv->file = eam_wc_file_new ();
+  goffset len = soup_request_get_content_length (request);
+  g_debug ("Downloading %ld bytes", len);
+  g_object_set (priv->file, "size", len, NULL);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   eam_wc_file_open_async (priv->file, priv->filename, cancellable, file_open_cb, data);
@@ -463,9 +373,6 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
     }
   }
 
-  struct task_clos *clos = g_slice_new0 (struct task_clos);
-  g_task_set_task_data (task, clos, (GDestroyNotify) task_closure_free);
-
   soup_request_send_async (request, cancellable, request_cb, task);
   g_object_unref (request);
 }
@@ -489,13 +396,13 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
  *
  * Returns: %TRUE if the request was successfull. If %FALSE an error occurred.
  */
-gboolean
+gssize
 eam_wc_request_finish (EamWc *self, GAsyncResult *result, gchar **content,
   gsize *length, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   eam_wc_reset (self);
-  return g_task_propagate_boolean (G_TASK (result), error);
+  return g_task_propagate_int (G_TASK (result), error);
 }
 
 /**

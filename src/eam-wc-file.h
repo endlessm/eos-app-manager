@@ -64,21 +64,15 @@ gboolean        eam_wc_file_open_finish                          (EamWcFile *sel
 								  GAsyncResult *result,
 								  GError **error);
 
-void            eam_wc_file_write_bytes_async                    (EamWcFile *self,
-								  GBytes *bytes,
+void            eam_wc_file_splice_async                         (EamWcFile *self,
+                                                                  GInputStream *source,
 								  GCancellable *cancellable,
 								  GAsyncReadyCallback callback,
 								  gpointer data);
 
-void            eam_wc_file_queue_bytes                          (EamWcFile *self,
-                                                                  GBytes *buffer);
-
-gboolean        eam_wc_file_write_bytes_finish                   (EamWcFile *self,
+gssize          eam_wc_file_splice_finish                        (EamWcFile *self,
                                                                   GAsyncResult *result,
                                                                   GError **error);
-
-
-gboolean        eam_wc_file_queueing                             (EamWcFile *self);
 
 G_END_DECLS
 
