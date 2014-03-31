@@ -4,16 +4,18 @@
 #include "eam-config.h"
 
 static gpointer
-eam_config_allocate (gpointer data)
+eam_config_init (gpointer data)
 {
-  return g_new0 (EamConfig, 1);
+  EamConfig *cfg = g_new0 (EamConfig, 1);
+  eam_config_load (cfg, NULL);
+  return cfg;
 }
 
 EamConfig *
 eam_config_get (void)
 {
   static GOnce once_init = G_ONCE_INIT;
-  return g_once (&once_init, eam_config_allocate, NULL);
+  return g_once (&once_init, eam_config_init, NULL);
 }
 
 void
