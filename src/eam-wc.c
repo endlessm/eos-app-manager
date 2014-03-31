@@ -365,9 +365,6 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
  * eam_wc_request_finish:
  * @self: a #EamWc instance
  * @result: The result of the request
- * @content: The contents of the resource
- * @length: (allow-none): The length of the contents or %NULL if it is not
- * needed
  * @error: return location for a #GError, or %NULL
  *
  * Finishes an asynchronous load of the file's contents.
@@ -380,8 +377,7 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
  * Returns: %TRUE if the request was successfull. If %FALSE an error occurred.
  */
 gssize
-eam_wc_request_finish (EamWc *self, GAsyncResult *result, gchar **content,
-  gsize *length, GError **error)
+eam_wc_request_finish (EamWc *self, GAsyncResult *result, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   eam_wc_reset (self);

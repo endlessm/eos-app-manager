@@ -80,8 +80,6 @@ void            eam_wc_request_with_headers_async                (EamWc *self,
 
 gssize          eam_wc_request_finish                            (EamWc *self,
 								  GAsyncResult *result,
-								  gchar **content,
-								  gsize *length,
 								  GError **error);
 
 void           eam_wc_set_log_level                              (EamWc *self,
