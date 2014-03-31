@@ -12,8 +12,8 @@ typedef struct _EamConfig EamConfig;
 struct _EamConfig
 {
   gchar *appdir;
-  gchar *serveraddr;
   gchar *dldir;
+  gchar *saddr;
 };
 
 EamConfig      *eam_config_get                                    (void);
@@ -25,8 +25,8 @@ gboolean        eam_config_load                                   (EamConfig *cf
 
 void            eam_config_set                                    (EamConfig *cfg,
                                                                    gchar *appdir,
-                                                                   gchar *serveraddr,
-                                                                   gchar *dldir);
+                                                                   gchar *dldir,
+                                                                   gchar *saddr);
 
 G_END_DECLS
 

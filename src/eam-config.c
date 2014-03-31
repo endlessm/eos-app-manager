@@ -19,22 +19,22 @@ eam_config_get (void)
 }
 
 void
-eam_config_set (EamConfig *cfg, gchar *appdir, gchar *serveraddr,
-  gchar *dldir)
+eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
+  gchar *saddr)
 {
   if (appdir) {
     g_free (cfg->appdir);
     cfg->appdir = appdir;
   }
 
-  if (serveraddr) {
-    g_free (cfg->serveraddr);
-    cfg->serveraddr = serveraddr;
-  }
-
   if (dldir) {
     g_free (cfg->dldir);
     cfg->dldir = dldir;
+  }
+
+  if (saddr) {
+    g_free (cfg->saddr);
+    cfg->saddr = saddr;
   }
 }
 
@@ -48,7 +48,7 @@ eam_config_free (EamConfig *cfg)
     return;
 
   g_free (cfg->appdir);
-  g_free (cfg->serveraddr);
+  g_free (cfg->saddr);
   g_free (cfg->dldir);
   g_free (cfg);
 }
@@ -107,7 +107,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   saddr = get_str (keyfile, grp, "serveraddress");
   dldir = get_str (keyfile, grp, "downloaddir");
 
-  eam_config_set (cfg, appdir, saddr, dldir);
+  eam_config_set (cfg, appdir, dldir, saddr);
 
   ret = TRUE;
 
