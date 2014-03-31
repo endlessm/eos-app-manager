@@ -17,4 +17,5 @@ test_programs = \
 	version \
 	cfg \
 	rest \
+	updates \
 	$(NULL)
