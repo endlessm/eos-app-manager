@@ -56,7 +56,6 @@ eam_config_free (EamConfig *cfg)
   g_free (cfg->saddr);
   g_free (cfg->protver);
   g_free (cfg->dldir);
-  g_free (cfg);
 }
 
 static inline gchar *
