@@ -53,9 +53,13 @@ eam_config_free (EamConfig *cfg)
     return;
 
   g_free (cfg->appdir);
+  cfg->appdir = NULL;
   g_free (cfg->saddr);
+  cfg->saddr = NULL;
   g_free (cfg->protver);
+  cfg->protver = NULL;
   g_free (cfg->dldir);
+  cfg->dldir = NULL;
 }
 
 static inline gchar *
