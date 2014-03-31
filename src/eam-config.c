@@ -20,7 +20,7 @@ eam_config_get (void)
 
 void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
-  gchar *saddr)
+  gchar *saddr, gchar *protver)
 {
   if (appdir) {
     g_free (cfg->appdir);
@@ -36,6 +36,11 @@ eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
     g_free (cfg->saddr);
     cfg->saddr = saddr;
   }
+
+  if (protver) {
+    g_free (cfg->protver);
+    cfg->protver = protver;
+  }
 }
 
 void
@@ -49,6 +54,7 @@ eam_config_free (EamConfig *cfg)
 
   g_free (cfg->appdir);
   g_free (cfg->saddr);
+  g_free (cfg->protver);
   g_free (cfg->dldir);
   g_free (cfg);
 }
@@ -94,7 +100,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 
   gboolean ret = FALSE;
   gboolean own = FALSE;
-  gchar *grp, *appdir, *saddr, *dldir;
+  gchar *grp, *appdir, *saddr, *dldir, *protver;
 
   if (!keyfile) {
     if (!(keyfile = load_default ()))
@@ -106,8 +112,9 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   appdir = get_str (keyfile, grp, "appdir");
   saddr = get_str (keyfile, grp, "serveraddress");
   dldir = get_str (keyfile, grp, "downloaddir");
+  protver = get_str (keyfile, grp, "protocolversion");
 
-  eam_config_set (cfg, appdir, dldir, saddr);
+  eam_config_set (cfg, appdir, dldir, saddr, protver);
 
   ret = TRUE;
 
