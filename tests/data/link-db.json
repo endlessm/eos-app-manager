@@ -1,0 +1,79 @@
+{
+    "linkdb": [
+	"application": {
+	    "appId": "com.application.id1",
+            "appName": "App Name 1",
+            "codeVersion": "1.1",
+            "minOsVersion": "1eos1",
+            "donwloadLink": "http://oneurl.com/1",
+            "shaHash": "aabbccdd",
+            "isDiff": false
+	},
+
+	"application": {
+	    "appId": "com.application.id2",
+            "appName": "App Name 2",
+            "codeVersion": "2.22",
+            "minOsVersion": "1eos1",
+            "donwloadLink": "http://twourl.com/220to222",
+            "shaHash": "bbccddee-2.20",
+            "isDiff": true,
+            "fromVersion": "2.20"
+	},
+
+	"application": {
+	    "appId": "com.application.id2",
+            "appName": "App Name 2",
+            "codeVersion": "2.22",
+            "minOsVersion": "1eos1",
+            "donwloadLink": "http://twourl.com/221to222",
+            "shaHash": "bbccddee-2.21",
+            "isDiff": true,
+            "fromVersion": "2.21"
+	},
+
+	"application": {
+	    "appId": "com.application.id2",
+            "appName": "App Name 2",
+            "codeVersion": "2.22",
+            "minOsVersion": "1eos1",
+            "donwloadLink": "http://twourl.com/222full",
+            "shaHash": "bbccddee-2.22-full",
+            "isDiff": false,
+            "fromVersion": "2.21"
+	},
+
+	"application": {
+	    "appId": "com.application.id3",
+            "appName": "App Name 3",
+            "codeVersion": "3.333",
+            "minOsVersion": "3eos3",
+            "donwloadLink": "http://threeurl.com/3",
+            "shaHash": "ccddeeff",
+            "isDiff": false
+	},
+
+
+	"application": {
+	    "appId": "com.application.id3",
+            "appName": "App Name 3",
+            "codeVersion": "3.333",
+            "minOsVersion": "3eos3",
+            "personality": "global",
+            "donwloadLink": "http://threeurl.com/3global",
+            "shaHash": "globalccddeeff",
+            "isDiff": false
+	},
+
+	"application": {
+	    "appId": "com.application.id3",
+            "appName": "App Name 3",
+            "codeVersion": "3.333",
+            "minOsVersion": "3eos3",
+            "personality": "brazil",
+            "donwloadLink": "http://threeurl.com/3brazil",
+            "shaHash": "brazilccddeeff",
+            "isDiff": false
+	},
+    ]
+}
