@@ -16,4 +16,5 @@ test_programs = \
 	pkg \
 	version \
 	cfg \
+	rest \
 	$(NULL)

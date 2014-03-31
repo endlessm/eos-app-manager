@@ -13,6 +13,7 @@ source_c = \
 	eam-wc.c \
 	eam-wc-file.c \
 	eam-os.c \
+	eam-rest.c \
 	$(NULL)
 
 source_h = \
@@ -25,6 +26,7 @@ source_h = \
 	eam-wc.h \
 	eam-wc-file.h \
 	eam-os.h \
+	eam-rest.h \
 	$(NULL)
 
 BUILT_SOURCES = \
