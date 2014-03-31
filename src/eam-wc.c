@@ -29,13 +29,6 @@ enum {
   PROP_FILENAME
 };
 
-enum {
-  SIG_PROGRESS,
-  SIG_MAX
-};
-
-static gint signals[SIG_MAX];
-
 static void
 eam_wc_reset (EamWc *self)
 {
@@ -136,16 +129,6 @@ eam_wc_class_init (EamWcClass *klass)
   g_object_class_install_property (object_class, PROP_USER_AGENT,
     g_param_spec_string ("user-agent", "User Agent", "User agent identifier",
       NULL, G_PARAM_READWRITE |  G_PARAM_CONSTRUCT |  G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamWcFile::progress:
-   * @self: The #EamWcFile instance
-   *
-   * Returns the number of bytes wrote in disk
-   */
-  signals[SIG_PROGRESS] = g_signal_new ("progress",
-    G_TYPE_FROM_CLASS (object_class), G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION, 0,
-    NULL, NULL, g_cclosure_marshal_VOID__ULONG, G_TYPE_NONE, 0);
 }
 
 static void
