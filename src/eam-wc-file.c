@@ -299,7 +299,7 @@ eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
 gssize
 eam_wc_file_splice_finish (EamWcFile *self, GAsyncResult *result, GError **error)
 {
-  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  g_return_val_if_fail (g_task_is_valid (result, self), -1);
   return g_task_propagate_int (G_TASK (result), error);
 }
 
