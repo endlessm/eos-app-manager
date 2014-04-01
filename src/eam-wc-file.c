@@ -137,13 +137,13 @@ query_fs_cb (GObject *source, GAsyncResult *result, gpointer data)
     return;
   }
 
-  guint64 free = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FILESYSTEM_FREE);
-  g_object_unref (info);
-
   if (g_task_return_error_if_cancelled (task)) {
     g_object_unref (task);
     return;
   }
+
+  guint64 free = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FILESYSTEM_FREE);
+  g_object_unref (info);
 
   EamWcFile *self = g_task_get_source_object (task);
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
