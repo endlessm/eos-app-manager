@@ -1,6 +1,6 @@
 {
     "linkdb": [
-	"application": {
+	{
 	    "appId": "com.application.id1",
             "appName": "App Name 1",
             "codeVersion": "1.1",
@@ -10,7 +10,7 @@
             "isDiff": false
 	},
 
-	"application": {
+	{
 	    "appId": "com.application.id2",
             "appName": "App Name 2",
             "codeVersion": "2.22",
@@ -21,7 +21,7 @@
             "fromVersion": "2.20"
 	},
 
-	"application": {
+	{
 	    "appId": "com.application.id2",
             "appName": "App Name 2",
             "codeVersion": "2.22",
@@ -32,7 +32,7 @@
             "fromVersion": "2.21"
 	},
 
-	"application": {
+	{
 	    "appId": "com.application.id2",
             "appName": "App Name 2",
             "codeVersion": "2.22",
@@ -43,7 +43,7 @@
             "fromVersion": "2.21"
 	},
 
-	"application": {
+	{
 	    "appId": "com.application.id3",
             "appName": "App Name 3",
             "codeVersion": "3.333",
@@ -53,8 +53,7 @@
             "isDiff": false
 	},
 
-
-	"application": {
+	{
 	    "appId": "com.application.id3",
             "appName": "App Name 3",
             "codeVersion": "3.333",
@@ -65,7 +64,7 @@
             "isDiff": false
 	},
 
-	"application": {
+	{
 	    "appId": "com.application.id3",
             "appName": "App Name 3",
             "codeVersion": "3.333",
@@ -74,6 +73,6 @@
             "donwloadLink": "http://threeurl.com/3brazil",
             "shaHash": "brazilccddeeff",
             "isDiff": false
-	},
+	}
     ]
 }
