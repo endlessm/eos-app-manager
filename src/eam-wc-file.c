@@ -294,7 +294,7 @@ eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
  *
  * Finishes a stream splice operation
  *
- * Returns: a #gssize containing the number of bytes writtern to the #EamWcFile.
+ * Returns: a #gssize containing the number of bytes written to the #EamWcFile.
  **/
 gssize
 eam_wc_file_splice_finish (EamWcFile *self, GAsyncResult *result, GError **error)
