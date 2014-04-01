@@ -106,6 +106,7 @@ test_pkgdb_load_async (void)
 
   load_tests (db);
 
+  g_main_loop_unref (loop);
   g_object_unref (db);
 }
 
