@@ -1,0 +1,318 @@
+PackageKit Interface
+####################
+
+Daemon Interface
+================
+
+property VersionMajor: The major version number.
+
+property VersionMinor: The minor version number.
+
+property VersionMicro: The micro version number.
+
+property BackendName: The backend name, e.g. "yum"
+
+property BackendDescription: The backend description, e.g. "Yellow Dog Update
+	 Modifier"
+
+property BackendAuthor: The backend author, e.g. "Joe Bloggs <joe@blogs.com>;"
+
+property Roles: The roles the backend supports, e.g. search-name|refresh-cache
+
+property Groups: The groups the backend supports, e.g. accessories|games
+
+property Filters: The filters the backend supports, e.g. installed|newest
+
+property MimeTypes: The mime-types the backend supports,
+	 e.g. ['application/x-rpm;', 'application/x-deb']
+
+property Locked: Set when the backend is locked and native tools would fail.
+
+
+property NetworkState: Gets the network state from the daemon. This is
+	 provided as some clients may not want to use NetworkManager if the
+	 system daemon is configured to use something else.
+
+	 If the system is managed using NetworkManager then the following
+	 states are supported: unknown, offline, online, wifi, mobile or
+	 wired.
+
+	 If the system is configured for legacy UNIX network fallback, or
+	 NetworkManager is not running then the folowing states are supported:
+	 unknown, offline or online.
+
+property DistroId: The distribution identification, in the distro;version;arch
+	 form e.g. "debian;squeeze/sid;x86_64".
+
+method CanAuthorize: Allows a client to find out if it would be allowed to
+       authorize an action.
+
+method CreateTransaction: Creates a new transaction that can have operations
+       done on it.
+
+       Note: The dameon will automatically destroy this transaction if it is
+       not used after a few minutes.
+
+method GetTimeSinceAction: This method allows us to query how long since an
+       action has successfully completed.
+
+method GetTransactionList: Gets the transaction list of any transactions that
+       are in progress
+
+method StateHasChanged: This method suggests to PackageKit that the package
+       backend state may have changed. This allows plugins to the native
+       package manager to suggest that PackageKit drops it's caches.
+
+method SuggestDaemonQuit: Suggests to the daemon that it should quit as soon
+       as possible, for instance if a native package management tool is
+       waiting to be used.
+
+method GetPackageHistory: Gets the history for a given package name. This uses
+       the internal PackageKit history database and will not return
+       transactions done outside of PackageKit using a distribution native tool.
+
+method GetDaemonState: Gets the debugging state from the daemon. No secure
+       state will be shown, and all information is for reference only.
+
+method SetProxy: Sets the proxy used by the dameon.
+
+signal TransactionListChanged: The transaction list has changed, because
+       either a transaction has finished or a new transaction created.
+
+signal RestartSchedule: A system restart has been sceduled
+
+signal RepoListChanged: This signal is emitted when the repository list has
+       changed
+
+signal UpdatesChanged: This signal is emitted when the number of updates has
+       changed
+
+
+Transaction interface
+=====================
+
+Property Role: The transaction role enum
+
+property Status: The transaction status enum
+
+property LastPackage: The last package_id that was processed
+
+property Uid: The uid of the user that started the transaction.
+
+property Percentage: The percentage complete of the transaction.
+
+	 Backends should set this value to 101 if the amount complete cannot
+	 be calculated.
+
+
+property AllowCancel: If the transaction can be cancelled.
+
+property CallerActive: If the original caller of the method is still connected
+	 to the system bus. This is usually an indication that the client can
+	 handle it's own error handling and EULA callbacks rather than another
+	 program taking over.
+ 
+
+property ElapsedTime: The amount of time elapsed during the transaction in
+	 seconds.
+
+property RemainingTime: The estimated time remaining of the transaction in
+	 seconds, or 0 if not known.
+
+property Speed: The estimated speed of the transaction (copying, downloading,
+	 etc.) in bits per second, or 0 if not known.
+
+property DownloadSizeRemaining: The number of bytes remaining to download, 0
+	 if nothing is left to download.
+
+property TransactionFlags: The flags set for this transaction, e.g. SIMULATE
+	 or ONLY_DOWNLOAD.
+
+method SetHints: This method allows the calling session to set transaction
+       hints for the package manager which can change as the transaction runs.
+
+       This method can be sent before the transaction has been run or whilst
+       it is running. There is no limit to the number of times this method can
+       be sent, although some backends may only use the values that were set
+       before the transaction was started.
+
+method AcceptEula: This method allows the user to accept a end user licence
+       agreement.
+
+method Cancel: This method cancels a transaction that is already running
+
+method DownloadPackages: This method downloads packages into a temporary
+       directory.
+
+method GetCategories: This method return the collection categories
+
+method DependsOn: This method returns packages that this package depends on.
+
+method GetDetails: This method should return all the details about a specific
+
+method GetDetailsLocal: This method should return all the details about a
+       specific local file.
+
+method GetFilesLocal: This method should return all the file lists for a
+       specific local file.
+
+method GetFiles: This method should return the file list of the
+
+method GetOldTransactions: This method allows a client to view details for old
+       transactions.
+
+method GetPackages: This method returns all the packages without a search
+       term.
+
+method GetRepoList: This method returns the list of repositories used in the
+       system.
+
+method RequiredBy: This method returns packages that depend on this package.
+
+method GetUpdateDetail: This method returns details about a specific update.
+
+method GetUpdates: This method should return a list of packages that are
+       installed and are upgradable.
+       
+       It should only return the newest update for each installed package.
+
+method GetDistroUpgrades: This method should return a list of distribution
+       upgrades that are available.
+       
+       It should not return updates, only major upgrades.
+
+method InstallFiles: This method installs local package files onto the local
+       system.
+
+method InstallPackages: This method installs new packages on the local system.
+
+method InstallSignature: This method allows us to install new security keys.
+
+method RefreshCache: This method should fetch updated meta-data for all
+       enabled repositories.
+
+       This operation should be only scheduled when the computer is idle as
+       the network connection will be very active, and will the computer will
+       have have non-trivial levels of hard disk and processor activity. For
+       these reasons, it should not be done automatically when on battery
+       power.
+      
+      When fetching each software source, ensure to emit RepoDetail for the
+      current source to give the user interface some extra details. Be sure to
+      have the "enabled:field set to true, otherwise you wouldn't be fetching
+      that source.
+
+method RemovePackages: This method removes packages from the local system.
+
+method RepoEnable: This method enables the repository specified.
+
+method RepoSetData: This method allows arbitary data to be passed to the
+       repository handler.
+
+method RepoRemove: This method removes the repo and optionally removes all the
+       packages installed from the repo.
+
+method Resolve: This method turns a single package name into a package_id
+       suitable for the other methods.
+
+       If the package is a fully formed package_id, then this should be
+       treated as an exact package match. This is useful to find the summary
+       or installed status of a package_id returned from other methods.
+
+method SearchDetails: This method allows deeper searching than SearchName().
+
+       Do not refresh the package cache. This should be fast.  This is very
+       similar to search-name.  This should search as much data as possible,
+       including, if possible repo names, package summaries, descriptions,
+       licenses and URLs.
+
+method SearchFiles: This method searches for files on the local system and
+       files in available packages.
+       
+       This should search for files.  This should allow an application to find
+       out what package owns a file on the system.
+
+method SearchGroups: This method returns packages from a given group
+       enumerated type.
+      
+       Do not refresh the package cache. This should be fast.
+
+method SearchNames: This method searches the package database by package name.
+      
+       Do not refresh the package cache. This should be fast.
+
+method UpdatePackages: This method updates existing packages on the local
+       system.
+             
+        The installer should always update extra packages automatically to
+        fulfil dependencies.
+      
+      
+        This should allow an application to find out what package owns a file
+        on the system.
+
+method WhatProvides: This method returns packages that provide the supplied
+       attributes.
+       
+       This method is useful for finding out what package(s) provide a
+       modalias or GStreamer codec string.
+
+
+method RepairSystem: This method recovers the package management system from
+       e.g. unsatisfied dependencies of installed packages.
+
+signal Category: This signal send information about a collection category
+
+signal Details: This signal allows the backend to convey more details about
+       the package.
+
+signal ErrorCode: This signal is used to report errors back to the session
+       program.
+
+signal Files: This signal is used to push file lists from the backend to the
+       session.
+
+signal Finished: This signal is used to signal that the transaction has
+       finished.
+
+signal Package: This signal allows the backend to communicate packages to the
+       session.
+      
+       If updating, as packages are updated then emit them to the screen.
+       This allows a summary to be presented after the transaction.
+
+signal RepoDetail: This signal describes a repository on the system.
+
+signal RepoSignatureRequired: This signal is emitted when a transaction is not
+       possible due to a missing security certificate.
+
+signal EulaRequired: This signal is emitted when a transaction is not possible
+       due to a EULA that needs to be agreed to at install time.
+
+       Some backends support EULAs, which have to be agreed to before the
+       install can proceed.
+
+signal MediaChangeRequired: This signal is emitted when a transaction needs a
+       different media to grab the packages.
+
+       Some backends support Media changing, which will fail the transaction
+       each time it needs a new media.
+
+signal RequireRestart: This signal is sent when the session program should
+       notify the user that a restart is required.
+
+signal Transaction: This signal is sent when more details are required about a
+       specific transaction.
+
+signal UpdateDetail: This signal is sent when more details are required about
+       a specific update.
+
+signal DistroUpgrade: This signal allows the backend to communicate
+       distribution upgrades to the session.
+
+signal ItemProgress: This signal allows the backend to send infomation about
+       package or repository progress when using Simultanous mode.
+
+signal Destroy: This signal is sent when the transaction has been destroyed
+       and is no longer available for use.
+
