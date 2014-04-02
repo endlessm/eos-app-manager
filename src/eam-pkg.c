@@ -4,232 +4,128 @@
 #include "config.h"
 #endif
 
-#include <gio/gio.h>
-
 #include "eam-pkg.h"
-#include "eam-version.h"
 
-typedef struct _EamPkgPrivate EamPkgPrivate;
+G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
-struct _EamPkgPrivate
+void
+eam_pkg_free (gpointer data)
 {
-  gchar *filename;
-  EamPkgVersion *version;
-  GKeyFile *keyfile;
-};
+  EamPkg *pkg = data;
 
-static void initable_iface_init (GInitableIface *initable_iface);
+  g_free (pkg->id);
+  g_free (pkg->name);
 
-G_DEFINE_TYPE_EXTENDED (EamPkg, eam_pkg, G_TYPE_OBJECT, 0,
-  G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
-  G_ADD_PRIVATE (EamPkg));
+  if (pkg->version)
+    eam_pkg_version_free (pkg->version);
 
-enum
-{
-  PROP_FILENAME = 1,
-  PROP_KEYFILE,
-  PROP_VERSION
-};
-
-static void
-eam_pkg_finalize (GObject *obj)
-{
-  EamPkgPrivate *priv = eam_pkg_get_instance_private (EAM_PKG (obj));
-
-  g_free (priv->filename);
-
-  if (priv->version)
-    eam_pkg_version_free (priv->version);
-
-  if (priv->keyfile)
-    g_key_file_unref (priv->keyfile);
-
-  G_OBJECT_CLASS (eam_pkg_parent_class)->finalize (obj);
+  g_slice_free (EamPkg, pkg);
 }
 
-static void
-eam_pkg_set_property (GObject *obj, guint prop_id, const GValue *value,
-  GParamSpec *pspec)
+gpointer
+eam_pkg_copy (gpointer data)
 {
-  EamPkgPrivate *priv = eam_pkg_get_instance_private (EAM_PKG (obj));
+  EamPkg *pkg = data;
 
-  switch (prop_id) {
-  case PROP_FILENAME:
-    priv->filename = g_value_dup_string (value);
-    break;
-  case PROP_KEYFILE: {
-    GKeyFile *keyfile = g_value_get_boxed (value);
-    if (keyfile)
-      priv->keyfile = g_key_file_ref (keyfile);
-    break;
-  }
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-    break;
-  }
+  EamPkg *copy = g_slice_new (EamPkg);
+  copy->id = g_strdup (pkg->id);
+  copy->version = eam_pkg_version_copy (pkg->version);
+
+  return copy;
 }
 
-static void
-eam_pkg_get_property (GObject *obj, guint prop_id, GValue *value,
-  GParamSpec *pspec)
+static inline EamPkg *
+create_pkg (gchar *id, gchar *name, const gchar *ver)
 {
-  EamPkgPrivate *priv = eam_pkg_get_instance_private (EAM_PKG (obj));
+  EamPkgVersion *version = eam_pkg_version_new_from_string (ver);
+  if (!version)
+    return NULL;
 
-  switch (prop_id) {
-  case PROP_FILENAME:
-    g_value_set_string (value, priv->filename);
-    break;
-  case PROP_VERSION:
-    g_value_set_boxed (value, priv->version);
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-    break;
-  }
+  EamPkg *pkg = g_slice_new (EamPkg);
+  pkg->id = id;
+  pkg->name = name;
+  pkg->version = version;
+
+  return pkg;
 }
 
-static void
-eam_pkg_class_init (EamPkgClass *klass)
+static EamPkg *
+eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  gchar *start_group, *ver, *id, *name;
 
-  object_class->finalize = eam_pkg_finalize;
-  object_class->get_property = eam_pkg_get_property;
-  object_class->set_property = eam_pkg_set_property;
-
-  /**
-   * EamPkg:filename:
-   *
-   * The manifest filename of this #EamPkg
-   */
-  g_object_class_install_property (object_class, PROP_FILENAME,
-    g_param_spec_string ("filename", "Filename", "", NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamPkg:keyfile:
-   *
-   * The manifest keyfile of this #EamPkg
-   */
-  g_object_class_install_property (object_class, PROP_KEYFILE,
-    g_param_spec_boxed ("keyfile", "KeyFile", "", G_TYPE_KEY_FILE,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamPkg:version:
-   *
-   * The version of this #EamPkg
-   */
-  g_object_class_install_property (object_class, PROP_VERSION,
-    g_param_spec_boxed ("version", "Version", "", EAM_TYPE_PKG_VERSION,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
-}
-
-static void
-eam_pkg_init (EamPkg *pkg)
-{
-}
-
-static gboolean
-eam_pkg_load_from_keyfile (EamPkg *pkg, GKeyFile *keyfile)
-{
-  char *start_group, *version;
-  EamPkgPrivate *priv = eam_pkg_get_instance_private (pkg);
-
-  if (!keyfile)
-    return FALSE;
+  ver = id = name = NULL;
 
   start_group = g_key_file_get_start_group (keyfile);
-  if (g_strcmp0 (start_group, "Bundle")) {
-    g_free (start_group);
-    return FALSE;
-  }
+  if (g_ascii_strcasecmp (start_group, "bundle"))
+    goto bail;
+
+  id = g_key_file_get_string (keyfile, start_group, "appId", error);
+  if (!id)
+    goto bail;
+
+  name = g_key_file_get_string (keyfile, start_group, "appName", error);
+  if (!name)
+    goto bail;
+
+  ver = g_key_file_get_string (keyfile, start_group, "codeVersion", error);
+  if (!ver)
+    goto bail;
+
+  EamPkg *pkg = create_pkg (id, name, ver);
+
+  g_free (start_group);
+  g_free (ver); /* we don't need it anymore */
+
+  return pkg;
+
+bail:
+  g_free (id);
+  g_free (ver);
+  g_free (name);
   g_free (start_group);
 
-  version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
-  if (!version)
-    return FALSE;
-
-  priv->version = eam_pkg_version_new_from_string (version);
-  g_free (version);
-  if (!priv->version)
-    return FALSE;
-
-  priv->keyfile = g_key_file_ref (keyfile);
-
-  return TRUE;
-}
-
-static gboolean
-eam_pkg_load_file (EamPkg *pkg)
-{
-  GKeyFile *keyfile;
-  gboolean retval = FALSE;
-  EamPkgPrivate *priv = eam_pkg_get_instance_private (pkg);
-
-  if (!priv->filename)
-    return FALSE;
-
-  keyfile = g_key_file_new ();
-
-  if (g_key_file_load_from_file (keyfile, priv->filename, G_KEY_FILE_NONE, NULL))
-    retval = eam_pkg_load_from_keyfile (pkg, keyfile);
-
-  g_key_file_unref (keyfile);
-  return retval;
-}
-
-static gboolean
-initable_init (GInitable *initable, GCancellable  *cancellable, GError **error)
-{
-  EamPkg *pkg = EAM_PKG (initable);
-  EamPkgPrivate *priv = eam_pkg_get_instance_private (pkg);
-
-  /* keyfile has priority */
-  if (priv->keyfile) {
-    g_free (priv->filename);
-    if (!eam_pkg_load_from_keyfile (pkg, priv->keyfile))
-      return FALSE;
-  } else if (priv->filename) {
-    if (!eam_pkg_load_file (pkg))
-      return FALSE;
-  } else {
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
-static void
-initable_iface_init (GInitableIface *initable_iface)
-{
-  initable_iface->init = initable_init;
+  return NULL;
 }
 
 /**
  * eam_pkg_new_from_keyfile:
  * @keyfile: the #GKeyFile to load
+ * @error: return location for a #GError, or %NULL
  *
  * Creates a new #EamPkg based on a parsed key-file
  *
  * Returns: a new #EamPkg, or %NULL if the key-file is not valid
  */
 EamPkg *
-eam_pkg_new_from_keyfile (GKeyFile *keyfile)
+eam_pkg_new_from_keyfile (GKeyFile *keyfile, GError **error)
 {
-  return g_initable_new (EAM_TYPE_PKG, NULL, NULL, "keyfile", keyfile, NULL);
+  g_return_val_if_fail (keyfile, NULL);
+
+  return eam_pkg_load_from_keyfile (keyfile, error);
 }
 
 /**
  * eam_pkg_new_from_filename:
  * @filename: the bundle info file
+ * @error: return location for a #GError, or %NULL
  *
  * Creates a new #EamPkg based on a bundle info file
  *
  * Returns: a new #EamPkg, or %NULL if the info file is not valid
  */
 EamPkg *
-eam_pkg_new_from_filename (const gchar *filename)
+eam_pkg_new_from_filename (const gchar *filename, GError **error)
 {
-  return g_initable_new (EAM_TYPE_PKG, NULL, NULL, "filename", filename, NULL);
+  g_return_val_if_fail (filename, NULL);
+
+  GKeyFile *keyfile = g_key_file_new ();
+  EamPkg *pkg = NULL;
+
+  if (g_key_file_load_from_file (keyfile, filename, G_KEY_FILE_NONE, error))
+    pkg = eam_pkg_load_from_keyfile (keyfile, error);
+
+  g_key_file_unref (keyfile);
+
+  return pkg;
 }

@@ -90,7 +90,7 @@ eam_pkgdb_init (EamPkgdb *db)
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (db);
 
   priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-    g_object_unref);
+    eam_pkg_free);
 }
 
 /**
@@ -153,7 +153,7 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
 {
   g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
   g_return_val_if_fail (appid != NULL, FALSE);
-  g_return_val_if_fail (EAM_IS_PKG (pkg), FALSE);
+  g_return_val_if_fail (pkg, FALSE);
 
   if (!appid_is_legal (appid))
     return FALSE;
@@ -164,8 +164,7 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   if (g_hash_table_contains (priv->pkgtable, appid))
     return FALSE;
 
-  return g_hash_table_insert (priv->pkgtable, g_strdup (appid),
-    g_object_ref (pkg));
+  return g_hash_table_insert (priv->pkgtable, g_strdup (appid), pkg);
 }
 
 /**
@@ -193,9 +192,11 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
- * Gets a @pkg from the @pkgdb
+ * Gets a @pkg from the @pkgdb.
  *
- * Returns: (transfer full): #EamPkg if found or %NULL
+ * Do not modify the content of the @pkg.
+ *
+ * Returns: (transfer none): #EamPkg if found or %NULL
  */
 EamPkg *
 eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
@@ -204,9 +205,7 @@ eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
   g_return_val_if_fail (appid != NULL, FALSE);
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
-  EamPkg *pkg = g_hash_table_lookup (priv->pkgtable, appid);
-
-  return (pkg) ? g_object_ref (pkg) : NULL;
+  return g_hash_table_lookup (priv->pkgtable, appid);
 }
 
 /**
@@ -256,12 +255,10 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
       continue;
 
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
-    EamPkg *pkg = eam_pkg_new_from_filename (info);
+    EamPkg *pkg = eam_pkg_new_from_filename (info, NULL);
     g_free (info);
-    if (pkg) {
+    if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
-      g_object_unref (pkg);
-    }
   }
   g_dir_close (dir);
 }
