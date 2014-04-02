@@ -5,6 +5,7 @@
 
 #include <glib-object.h>
 #include <glib.h>
+#include <json-glib/json-glib.h>
 
 #include "eam-version.h"
 
@@ -38,6 +39,7 @@ EamPkg         *eam_pkg_new_from_keyfile                         (GKeyFile *keyf
 EamPkg         *eam_pkg_new_from_filename                        (const gchar *filename,
                                                                   GError **error);
 
+EamPkg         *eam_pkg_new_from_json_object                     (JsonObject *json);
 
 G_END_DECLS
 

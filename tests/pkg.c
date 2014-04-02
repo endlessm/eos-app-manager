@@ -7,6 +7,7 @@
 
 #define bad_info_1 "[Bundle]"
 #define good_info "[Bundle]\nappId = app01\nappName= application one\ncodeVersion = 1\n"
+#define good_json "{ \"appId\": \"com.application.id1\", \"appName\": \"App Name 1\", \"codeVersion\": \"1.1\" }"
 
 static void
 test_pkg_basic (void)
@@ -29,6 +30,26 @@ test_pkg_basic (void)
 
   g_assert_cmpstr (pkg->version->version, ==, "1");
   eam_pkg_free (pkg);
+}
+
+static void
+test_pkg_json (void)
+{
+  JsonParser *parser = json_parser_new ();
+  g_assert (json_parser_load_from_data (parser, good_json, -1, NULL));
+
+  JsonNode *node = json_parser_get_root (parser);
+  g_assert_nonnull (node);
+
+  JsonObject *json = json_node_get_object (node);
+  g_assert_nonnull (json);
+
+  EamPkg *pkg = eam_pkg_new_from_json_object (json);
+  g_assert_nonnull (pkg);
+
+  g_assert_cmpstr (pkg->version->version, ==, "1.1");
+  eam_pkg_free (pkg);
+  g_object_unref (parser);
 }
 
 static void
@@ -108,6 +129,7 @@ main (int argc, char *argv[])
   g_test_init (&argc, &argv, NULL);
 
   g_test_add_func ("/pkg/basic", test_pkg_basic);
+  g_test_add_func ("/pkg/json", test_pkg_json);
   g_test_add_func ("/pkgdb/basic", test_pkgdb_basic);
   g_test_add_func ("/pkgdb/load", test_pkgdb_load);
   g_test_add_func ("/pkgdb/load_async", test_pkgdb_load_async);

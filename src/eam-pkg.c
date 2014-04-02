@@ -129,3 +129,46 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
 
   return pkg;
 }
+
+/**
+ * eam_pkg_new_from_json_object:
+ * @json: a #JsonObject struct
+ *
+ * Creates a new #EamPkg based on a JSON object
+ *
+ * Returns: a new #EamPkg, or %NULL if the JSON object is not valid.
+ */
+EamPkg *
+eam_pkg_new_from_json_object (JsonObject *json)
+{
+  g_return_val_if_fail (json, NULL);
+
+  const gchar *ver;
+  gchar *id, *name;
+  JsonNode *node;
+
+  id = name = NULL;
+
+  node = json_object_get_member (json, "appId");
+  if (!node)
+    goto bail;
+  id = json_node_dup_string (node);
+
+  node = json_object_get_member (json, "appName");
+  if (!node)
+    goto bail;
+  name = json_node_dup_string (node);
+
+  node = json_object_get_member (json, "codeVersion");
+  if (!node)
+    goto bail;
+  ver = json_node_get_string (node);
+
+  return create_pkg (id, name, ver);
+
+bail:
+  g_free (id);
+  g_free (name);
+
+  return NULL;
+}
