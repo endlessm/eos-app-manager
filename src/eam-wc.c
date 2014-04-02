@@ -156,7 +156,6 @@ splice_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto done;
 
-  g_debug ("finished!");
   g_task_return_int (task, size);
 
 done:
@@ -217,7 +216,6 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   priv->file = eam_wc_file_new ();
   goffset len = soup_request_get_content_length (request);
-  g_debug ("Downloading %ld bytes", len);
   g_object_set (priv->file, "size", len, NULL);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
