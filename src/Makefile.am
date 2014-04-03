@@ -15,6 +15,7 @@ source_c = \
 	eam-os.c \
 	eam-rest.c \
 	eam-updates.c \
+	eam-refresh.c \
 	$(NULL)
 
 source_h = \
@@ -29,6 +30,7 @@ source_h = \
 	eam-os.h \
 	eam-rest.h \
 	eam-updates.h \
+	eam-refresh.h \
 	$(NULL)
 
 BUILT_SOURCES = \
