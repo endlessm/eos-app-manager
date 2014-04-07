@@ -15,18 +15,6 @@ G_BEGIN_DECLS
 
 typedef struct _EamPkg EamPkg;
 
-/**
- * EamPkg:
- *
- * Boxed struct that represents a Package, installed or to update.
- */
-struct _EamPkg
-{
-  gchar *id;
-  gchar *name;
-  EamPkgVersion *version;
-};
-
 GType           eam_pkg_get_type                                 (void) G_GNUC_CONST;
 
 EamPkg         *eam_pkg_copy                                     (EamPkg *pkg);
@@ -40,6 +28,12 @@ EamPkg         *eam_pkg_new_from_filename                        (const gchar *f
                                                                   GError **error);
 
 EamPkg         *eam_pkg_new_from_json_object                     (JsonObject *json);
+
+const gchar    *eam_pkg_get_id                                   (const EamPkg *pkg);
+
+const gchar    *eam_pkg_get_name                                 (const EamPkg *pkg);
+
+EamPkgVersion  *eam_pkg_get_version                              (const EamPkg *pkg);
 
 G_END_DECLS
 

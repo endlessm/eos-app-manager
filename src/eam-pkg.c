@@ -6,6 +6,18 @@
 
 #include "eam-pkg.h"
 
+/**
+ * EamPkg:
+ *
+ * Boxed struct that represents a Package, installed or to update.
+ */
+struct _EamPkg
+{
+  gchar *id;
+  gchar *name;
+  EamPkgVersion *version;
+};
+
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
 void
@@ -168,4 +180,22 @@ bail:
   g_free (name);
 
   return NULL;
+}
+
+const gchar *
+eam_pkg_get_id (const EamPkg *pkg)
+{
+  return pkg->id;
+}
+
+const gchar *
+eam_pkg_get_name (const EamPkg *pkg)
+{
+  return pkg->name;
+}
+
+EamPkgVersion *
+eam_pkg_get_version (const EamPkg *pkg)
+{
+  return pkg->version;
 }

@@ -308,11 +308,12 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
   GList *l;
   for (l = priv->avails; l && l->data; l = l->next) {
     EamPkg *apkg = l->data;
-    const EamPkg *fpkg = eam_pkgdb_get (db, apkg->id);
+    const EamPkg *fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
     if (!fpkg) {
       priv->installs = g_list_prepend (priv->installs, apkg);
     } else {
-      if (eam_pkg_version_relate (apkg->version, EAM_RELATION_GT, fpkg->version))
+      if (eam_pkg_version_relate (eam_pkg_get_version (apkg), EAM_RELATION_GT,
+                                  eam_pkg_get_version (fpkg)))
         priv->updates = g_list_prepend (priv->updates, (gpointer) fpkg);
     }
   }

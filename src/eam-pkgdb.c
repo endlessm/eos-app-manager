@@ -161,14 +161,15 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
 
   /* appid and pkg->id should be the same */
-  if (g_strcmp0 (appid, pkg->id) != 0)
+  if (g_strcmp0 (appid, eam_pkg_get_id (pkg)) != 0)
     return FALSE;
 
   /* appid collision */
   if (g_hash_table_contains (priv->pkgtable, appid))
     return FALSE;
 
-  return g_hash_table_insert (priv->pkgtable, pkg->id, pkg);
+  return g_hash_table_insert (priv->pkgtable, (gpointer) eam_pkg_get_id (pkg),
+    pkg);
 }
 
 /**

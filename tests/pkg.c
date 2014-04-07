@@ -28,12 +28,13 @@ test_pkg_basic (void)
   g_assert_nonnull (pkg);
   g_key_file_free (keyfile);
 
-  g_assert_cmpstr (pkg->version->version, ==, "1");
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1");
 
   cpkg = eam_pkg_copy (pkg);
-  g_assert_cmpstr (pkg->id, ==, cpkg->id);
-  g_assert_cmpstr (pkg->name, ==, cpkg->name);
-  g_assert_cmpstr (pkg->version->version, ==, cpkg->version->version);
+  g_assert_cmpstr (eam_pkg_get_id (pkg), ==, eam_pkg_get_id (cpkg));
+  g_assert_cmpstr (eam_pkg_get_name (pkg), ==, eam_pkg_get_name (cpkg));
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==,
+                   eam_pkg_get_version (cpkg)->version);
 
   eam_pkg_free (cpkg);
   eam_pkg_free (pkg);
@@ -54,7 +55,7 @@ test_pkg_json (void)
   EamPkg *pkg = eam_pkg_new_from_json_object (json);
   g_assert_nonnull (pkg);
 
-  g_assert_cmpstr (pkg->version->version, ==, "1.1");
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1.1");
   eam_pkg_free (pkg);
   g_object_unref (parser);
 }
@@ -92,7 +93,7 @@ load_tests (EamPkgdb *db)
   const EamPkg *pkg = eam_pkgdb_get (db, "app01");
   g_assert_nonnull (pkg);
 
-  g_assert_cmpstr (pkg->version->version, ==, "1");
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1");
 }
 
 static void
