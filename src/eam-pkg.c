@@ -9,10 +9,8 @@
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
 void
-eam_pkg_free (gpointer data)
+eam_pkg_free (EamPkg *pkg)
 {
-  EamPkg *pkg = data;
-
   g_free (pkg->id);
   g_free (pkg->name);
 
@@ -22,11 +20,9 @@ eam_pkg_free (gpointer data)
   g_slice_free (EamPkg, pkg);
 }
 
-gpointer
-eam_pkg_copy (gpointer data)
+EamPkg *
+eam_pkg_copy (EamPkg *pkg)
 {
-  EamPkg *pkg = data;
-
   EamPkg *copy = g_slice_new (EamPkg);
   copy->id = g_strdup (pkg->id);
   copy->name = g_strdup (pkg->name);

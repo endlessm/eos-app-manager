@@ -45,7 +45,7 @@ eam_updates_finalize (GObject *obj)
     g_list_free (priv->updates);
 
   if (priv->avails)
-    g_list_free_full (priv->avails, eam_pkg_free);
+    g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
 
   G_OBJECT_CLASS (eam_updates_parent_class)->finalize (obj);
 }
@@ -228,7 +228,7 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
 
   if (priv->avails) {
-    g_list_free_full (priv->avails, eam_pkg_free);
+    g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
     priv->avails = NULL;
   }
 

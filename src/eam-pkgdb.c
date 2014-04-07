@@ -90,7 +90,7 @@ eam_pkgdb_init (EamPkgdb *db)
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (db);
 
   priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-    eam_pkg_free);
+     (GDestroyNotify) eam_pkg_free);
 }
 
 /**

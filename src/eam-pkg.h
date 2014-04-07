@@ -29,9 +29,9 @@ struct _EamPkg
 
 GType           eam_pkg_get_type                                 (void) G_GNUC_CONST;
 
-gpointer        eam_pkg_copy                                     (gpointer data);
+EamPkg         *eam_pkg_copy                                     (EamPkg *pkg);
 
-void            eam_pkg_free                                     (gpointer data);
+void            eam_pkg_free                                     (EamPkg *pkg);
 
 EamPkg         *eam_pkg_new_from_keyfile                         (GKeyFile *keyfile,
                                                                   GError **error);
