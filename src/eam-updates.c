@@ -36,16 +36,13 @@ eam_updates_finalize (GObject *obj)
 
   /* this list points to structures that belong to priv->avails, hence
    * we don't delete its content */
-  if (priv->installs)
-    g_list_free (priv->installs);
+  g_list_free (priv->installs);
 
   /* this list points to structures that belong to EamPkgdb, hence we
    * don't delete its content */
-  if (priv->updates)
-    g_list_free (priv->updates);
+  g_list_free (priv->updates);
 
-  if (priv->avails)
-    g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
 
   G_OBJECT_CLASS (eam_updates_parent_class)->finalize (obj);
 }
