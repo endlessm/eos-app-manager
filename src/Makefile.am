@@ -16,6 +16,7 @@ source_c = \
 	eam-rest.c \
 	eam-updates.c \
 	eam-refresh.c \
+	eam-spawner.c \
 	$(NULL)
 
 source_h = \
@@ -31,6 +32,7 @@ source_h = \
 	eam-rest.h \
 	eam-updates.h \
 	eam-refresh.h \
+	eam-spawner.h \
 	$(NULL)
 
 BUILT_SOURCES = \

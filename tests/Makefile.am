@@ -15,6 +15,11 @@ dist_test_data = \
 	data/link-db.json \
 	data/update-db.json \
 	data/available.json \
+	scriptdir/README \
+	scriptdir/script3 \
+	scriptdir/script2 \
+	scriptdir/script1 \
+	scriptdir/.hidden \
 	$(NULL)
 
 test_programs = \
@@ -23,4 +28,5 @@ test_programs = \
 	cfg \
 	rest \
 	updates \
+	spawner \
 	$(NULL)
