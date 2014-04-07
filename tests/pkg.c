@@ -12,7 +12,7 @@
 static void
 test_pkg_basic (void)
 {
-  EamPkg *pkg;
+  EamPkg *pkg, *cpkg;
   GKeyFile *keyfile;
 
   keyfile = g_key_file_new ();
@@ -29,6 +29,13 @@ test_pkg_basic (void)
   g_key_file_free (keyfile);
 
   g_assert_cmpstr (pkg->version->version, ==, "1");
+
+  cpkg = eam_pkg_copy (pkg);
+  g_assert_cmpstr (pkg->id, ==, cpkg->id);
+  g_assert_cmpstr (pkg->name, ==, cpkg->name);
+  g_assert_cmpstr (pkg->version->version, ==, cpkg->version->version);
+
+  eam_pkg_free (cpkg);
   eam_pkg_free (pkg);
 }
 

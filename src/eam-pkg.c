@@ -29,6 +29,7 @@ eam_pkg_copy (gpointer data)
 
   EamPkg *copy = g_slice_new (EamPkg);
   copy->id = g_strdup (pkg->id);
+  copy->name = g_strdup (pkg->name);
   copy->version = eam_pkg_version_copy (pkg->version);
 
   return copy;
