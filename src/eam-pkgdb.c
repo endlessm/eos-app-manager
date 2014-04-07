@@ -89,7 +89,7 @@ eam_pkgdb_init (EamPkgdb *db)
 {
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (db);
 
-  priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+  priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
      (GDestroyNotify) eam_pkg_free);
 }
 
@@ -160,11 +160,15 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
 
+  /* appid and pkg->id should be the same */
+  if (g_strcmp0 (appid, pkg->id) != 0)
+    return FALSE;
+
   /* appid collision */
   if (g_hash_table_contains (priv->pkgtable, appid))
     return FALSE;
 
-  return g_hash_table_insert (priv->pkgtable, g_strdup (appid), pkg);
+  return g_hash_table_insert (priv->pkgtable, pkg->id, pkg);
 }
 
 /**
