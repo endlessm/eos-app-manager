@@ -198,7 +198,7 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
  *
  * Returns: (transfer none): #EamPkg if found or %NULL
  */
-EamPkg *
+const EamPkg *
 eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
 {
   g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);

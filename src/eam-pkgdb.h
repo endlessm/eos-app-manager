@@ -49,7 +49,7 @@ gboolean        eam_pkgdb_add                                    (EamPkgdb *pkgd
 
 gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgdb, const gchar *appid);
 
-EamPkg         *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
+const EamPkg   *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
 
 gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgdb, const gchar *appid);
 

@@ -62,7 +62,8 @@ test_pkg_json (void)
 static void
 test_pkgdb_basic (void)
 {
-  EamPkg *pkg, *rpkg;
+  EamPkg *pkg;
+  const EamPkg *rpkg;
   EamPkgdb *db;
   GKeyFile *keyfile;
 
@@ -88,7 +89,7 @@ test_pkgdb_basic (void)
 static void
 load_tests (EamPkgdb *db)
 {
-  EamPkg *pkg = eam_pkgdb_get (db, "app01");
+  const EamPkg *pkg = eam_pkgdb_get (db, "app01");
   g_assert_nonnull (pkg);
 
   g_assert_cmpstr (pkg->version->version, ==, "1");
