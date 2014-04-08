@@ -128,3 +128,17 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 
   return ret;
 }
+
+void
+eam_config_dump (EamConfig *cfg)
+{
+  if (!cfg)
+    cfg = eam_config_get ();
+
+  g_print ("EAM Configuration:\n\n"
+           "\tAppDir = %s\n"
+           "\tServerAddress = %s\n"
+           "\tDownloadDir = %s\n"
+           "\tProtocolVersion = %s\n",
+           cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver);
+}
