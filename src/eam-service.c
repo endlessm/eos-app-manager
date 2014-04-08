@@ -115,7 +115,7 @@ refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
   GError *error = NULL;
   gboolean ret = eam_refresh_finish (EAM_REFRESH (source), res, &error);
   if (error) {
-    g_dbus_method_invocation_return_gerror (invocation, error);
+    g_dbus_method_invocation_take_error (invocation, error);
     goto out;
   }
 
