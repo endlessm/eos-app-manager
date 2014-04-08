@@ -92,7 +92,7 @@ main (int argc, gchar **argv)
   EamDbusServer *server = eam_dbus_server_new (db);
 
   if (eam_dbus_server_run (server))
-	  ret = EXIT_SUCCESS;
+    ret = EXIT_SUCCESS;
 
   g_object_unref (server);
   eam_config_free (NULL);
