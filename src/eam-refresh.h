@@ -45,7 +45,7 @@ GType           eam_refresh_get_type                               (void) G_GNUC
 EamRefresh     *eam_refresh_new                                    (EamPkgdb *db,
                                                                     EamUpdates *updates);
 
-void            eam_refresh_run                                    (EamRefresh *self,
+void            eam_refresh_run_async                              (EamRefresh *self,
                                                                     GCancellable *cancellable,
                                                                     GAsyncReadyCallback callback,
                                                                     gpointer data);

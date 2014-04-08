@@ -165,7 +165,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 }
 
 /**
- * eam_refresh_run:
+ * eam_refresh_run_async:
  * @self: a #EamRefresh intances.
  * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
  * @callback: (scope async): callback to call when the request is satisfied
@@ -179,7 +179,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
  * 4. filter the available package list
  **/
 void
-eam_refresh_run (EamRefresh *self, GCancellable *cancellable,
+eam_refresh_run_async (EamRefresh *self, GCancellable *cancellable,
    GAsyncReadyCallback callback, gpointer data)
 {
   g_return_if_fail (EAM_IS_REFRESH (self));

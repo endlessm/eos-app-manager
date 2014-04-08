@@ -132,7 +132,7 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   EamRefresh *refresh = eam_refresh_new (priv->db, get_eam_updates(service));
-  eam_refresh_run (refresh, priv->cancellable, refresh_cb, invocation);
+  eam_refresh_run_async (refresh, priv->cancellable, refresh_cb, invocation);
 }
 
 static void
