@@ -197,20 +197,16 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
       "application/x-shellscript"))
     goto next;
 
-  EamSpawner *self = g_task_get_source_object (task);
-  EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
-
   gchar *scriptname = g_strdup (g_file_info_get_name (info));
-  gchar *dir = g_file_get_path (priv->dir);
-  gchar *fname = g_build_filename (dir, scriptname, NULL);
+  GFile *child = g_file_enumerator_get_child (fenum, info);
+  gchar *fname = g_file_get_path (child);
+  g_object_unref (child);
 
   /* @TODO: connect stdout & stderr to a logging subsystem */
   GSubprocess *process = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &error,
      fname, NULL);
   g_object_set_data_full (G_OBJECT (process), "scriptname", scriptname,
     (GDestroyNotify) g_free);
-
-  g_free (dir);
   g_free (fname);
 
   if (error) {
