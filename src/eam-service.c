@@ -116,14 +116,11 @@ refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
   gboolean ret = eam_refresh_finish (EAM_REFRESH (source), res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (invocation, error);
-    goto out;
+    return;
   }
 
   GVariant *value = g_variant_new ("(b)", ret);
   g_dbus_method_invocation_return_value (invocation, value);
-
-out:
-  g_clear_object (&source); /* we don't need you anymore */
 }
 
 static void
@@ -133,6 +130,7 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 
   EamRefresh *refresh = eam_refresh_new (priv->db, get_eam_updates(service));
   eam_refresh_run_async (refresh, priv->cancellable, refresh_cb, invocation);
+  g_object_unref (refresh);
 }
 
 static void
