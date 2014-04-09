@@ -256,7 +256,7 @@ bail:
  *
  * @TODO: make this async
  *
- * Returns: %TRUE if updates were parser correctly.
+ * Returns: %TRUE if updates were parsed correctly.
  **/
 gboolean
 eam_updates_parse (EamUpdates *self, GError **error)
