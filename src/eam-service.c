@@ -16,6 +16,7 @@ struct _EamServicePrivate {
 
   EamPkgdb *db;
   EamUpdates *updates;
+  EamTransaction *trans;
 
   GCancellable *cancellable;
 };
@@ -111,16 +112,26 @@ get_eam_updates (EamService *service)
 static void
 refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
-  GDBusMethodInvocation *invocation = data;
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+  g_object_set_data (source, "invocation", NULL);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
   GError *error = NULL;
-  gboolean ret = eam_refresh_finish (EAM_REFRESH (source), res, &error);
+  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (invocation, error);
-    return;
+    goto out;
   }
 
   GVariant *value = g_variant_new ("(b)", ret);
   g_dbus_method_invocation_return_value (invocation, value);
+
+out:
+  g_clear_object (&priv->trans); /* we don't need you anymore */
 }
 
 static void
@@ -128,9 +139,9 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  EamRefresh *refresh = eam_refresh_new (priv->db, get_eam_updates(service));
-  eam_refresh_run_async (refresh, priv->cancellable, refresh_cb, invocation);
-  g_object_unref (refresh);
+  priv->trans = eam_refresh_new (priv->db, get_eam_updates(service));
+  g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
+  eam_transaction_run_async (priv->trans, priv->cancellable, refresh_cb, service);
 }
 
 static void

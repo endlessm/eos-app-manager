@@ -14,13 +14,24 @@ struct _EamRefreshPrivate
   EamUpdates *updates;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE (EamRefresh, eam_refresh, G_TYPE_OBJECT)
+static void transaction_iface_init (EamTransactionInterface *iface);
+
+G_DEFINE_TYPE_EXTENDED (EamRefresh, eam_refresh, G_TYPE_OBJECT, 0,
+  G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
+  G_ADD_PRIVATE (EamRefresh));
 
 enum
 {
   PROP_PKGDB = 1,
   PROP_UPDATES
 };
+
+static void
+transaction_iface_init (EamTransactionInterface *iface)
+{
+  iface->run_async = eam_refresh_run_async;
+  iface->finish = eam_refresh_finish;
+}
 
 static void
 eam_refresh_finalize (GObject *obj)
@@ -109,12 +120,13 @@ eam_refresh_init (EamRefresh *self)
  * @db: a #EamPkgdb instance.
  * @updates: a #EamUpdates intance.
  *
- * Returns: a new instance of #EamRefresh.
+ * Returns: a new instance of #EamRefresh with #EamTransaction interface.
  */
-EamRefresh *
+EamTransaction *
 eam_refresh_new (EamPkgdb *db, EamUpdates *updates)
 {
-  return g_object_new (EAM_TYPE_REFRESH, "pkgdb", db, "updates", updates, NULL);
+  return EAM_TRANSACTION (g_object_new (EAM_TYPE_REFRESH, "pkgdb", db,
+    "updates", updates, NULL));
 }
 
 static void
@@ -176,7 +188,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 
 /**
  * eam_refresh_run_async:
- * @self: a #EamRefresh intances.
+ * @trans: a #EamRefresh intance with #EamTransaction interface.
  * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
  * @callback: (scope async): callback to call when the request is satisfied
  * @data: (closure): the data to pass to callback function
@@ -189,13 +201,14 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
  * 4. filter the available package list
  **/
 void
-eam_refresh_run_async (EamRefresh *self, GCancellable *cancellable,
+eam_refresh_run_async (EamTransaction *trans, GCancellable *cancellable,
    GAsyncReadyCallback callback, gpointer data)
 {
-  g_return_if_fail (EAM_IS_REFRESH (self));
+  g_return_if_fail (EAM_IS_REFRESH (trans));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
+  EamRefresh *self = EAM_REFRESH (trans);
   EamRefreshPrivate *priv = eam_refresh_get_instance_private (self);
   g_assert (priv->db);
 
@@ -207,7 +220,7 @@ eam_refresh_run_async (EamRefresh *self, GCancellable *cancellable,
 
 /**
  * eam_refresh_finish:
- * @self:A #EamUpdates instance
+ * @trans:A #EamUpdates instance with #EamTransaction interface.
  * @result: a #GAsyncResult.
  * @error: a #GError location to store the error occurring, or %NULL to
  * ignore.
@@ -217,10 +230,10 @@ eam_refresh_run_async (EamRefresh *self, GCancellable *cancellable,
  * Returns: %TRUE if everything went well
  **/
 gboolean
-eam_refresh_finish (EamRefresh *self, GAsyncResult *res, GError **error)
+eam_refresh_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 {
-  g_return_val_if_fail (EAM_IS_REFRESH (self), FALSE);
-  g_return_val_if_fail (g_task_is_valid (res, self), FALSE);
+  g_return_val_if_fail (EAM_IS_REFRESH (trans), FALSE);
+  g_return_val_if_fail (g_task_is_valid (res, EAM_REFRESH (trans)), FALSE);
 
   return g_task_propagate_boolean (G_TASK (res), error);
 }

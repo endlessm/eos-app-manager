@@ -7,6 +7,7 @@
 
 #include "eam-pkgdb.h"
 #include "eam-updates.h"
+#include "eam-transaction.h"
 
 G_BEGIN_DECLS
 
@@ -42,15 +43,15 @@ struct _EamRefreshClass
 
 GType           eam_refresh_get_type                               (void) G_GNUC_CONST;
 
-EamRefresh     *eam_refresh_new                                    (EamPkgdb *db,
+EamTransaction *eam_refresh_new                                    (EamPkgdb *db,
                                                                     EamUpdates *updates);
 
-void            eam_refresh_run_async                              (EamRefresh *self,
+void            eam_refresh_run_async                              (EamTransaction *trans,
                                                                     GCancellable *cancellable,
                                                                     GAsyncReadyCallback callback,
                                                                     gpointer data);
 
-gboolean        eam_refresh_finish                                 (EamRefresh *self,
+gboolean        eam_refresh_finish                                 (EamTransaction *trans,
                                                                     GAsyncResult *res,
                                                                     GError **error);
 
