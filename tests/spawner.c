@@ -22,10 +22,11 @@ test_spawner_run (void)
   EamSpawner *spawner = eam_spawner_new (scriptdir);
 
   eam_spawner_run_async (spawner, NULL, run_cb, loop);
+  g_object_unref (spawner);
+
   g_main_loop_run (loop);
 
   g_main_loop_unref (loop);
-  g_object_unref (spawner);
 }
 
 int
