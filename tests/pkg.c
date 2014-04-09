@@ -52,7 +52,7 @@ test_pkg_json (void)
   JsonObject *json = json_node_get_object (node);
   g_assert_nonnull (json);
 
-  EamPkg *pkg = eam_pkg_new_from_json_object (json);
+  EamPkg *pkg = eam_pkg_new_from_json_object (json, NULL);
   g_assert_nonnull (pkg);
 
   g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1.1");

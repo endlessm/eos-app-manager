@@ -182,7 +182,7 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
   if (!pkg_json_is_valid (json))
     return;
 
-  EamPkg *pkg = eam_pkg_new_from_json_object (json);
+  EamPkg *pkg = eam_pkg_new_from_json_object (json, NULL);
   if (!pkg)
     return;
 

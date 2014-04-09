@@ -4,3 +4,4 @@
 src/main.c
 src/eam-wc-file.c
 src/eam-updates.c
+src/eam-pkg.c

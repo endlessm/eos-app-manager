@@ -4,6 +4,8 @@
 #include "config.h"
 #endif
 
+#include <glib/gi18n.h>
+
 #include "eam-pkg.h"
 
 /**
@@ -19,6 +21,11 @@ struct _EamPkg
 };
 
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
+
+G_DEFINE_QUARK (eam-pkg-error-quark, eam_pkg_error)
+
+static const gchar *KEYS[] = { "appId", "appName", "codeVersion" };
+enum { APP_ID, APP_NAME, CODE_VERSION };
 
 void
 eam_pkg_free (EamPkg *pkg)
@@ -69,15 +76,15 @@ eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
   if (!g_key_file_has_group (keyfile, group))
     goto bail;
 
-  id = g_key_file_get_string (keyfile, group, "appId", error);
+  id = g_key_file_get_string (keyfile, group, KEYS[APP_ID], error);
   if (!id)
     goto bail;
 
-  name = g_key_file_get_string (keyfile, group, "appName", error);
+  name = g_key_file_get_string (keyfile, group, KEYS[APP_NAME], error);
   if (!name)
     goto bail;
 
-  ver = g_key_file_get_string (keyfile, group, "codeVersion", error);
+  ver = g_key_file_get_string (keyfile, group, KEYS[CODE_VERSION], error);
   if (!ver)
     goto bail;
 
@@ -146,27 +153,30 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
  * Returns: a new #EamPkg, or %NULL if the JSON object is not valid.
  */
 EamPkg *
-eam_pkg_new_from_json_object (JsonObject *json)
+eam_pkg_new_from_json_object (JsonObject *json, GError **error)
 {
   g_return_val_if_fail (json, NULL);
 
-  const gchar *ver;
+  const gchar *ver, *key;
   gchar *id, *name;
   JsonNode *node;
 
   id = name = NULL;
 
-  node = json_object_get_member (json, "appId");
+  key = KEYS[APP_ID];
+  node = json_object_get_member (json, key);
   if (!node)
     goto bail;
   id = json_node_dup_string (node);
 
-  node = json_object_get_member (json, "appName");
+  key = KEYS[APP_NAME];
+  node = json_object_get_member (json, key);
   if (!node)
     goto bail;
   name = json_node_dup_string (node);
 
-  node = json_object_get_member (json, "codeVersion");
+  key = KEYS[CODE_VERSION];
+  node = json_object_get_member (json, key);
   if (!node)
     goto bail;
   ver = json_node_get_string (node);
@@ -176,6 +186,9 @@ eam_pkg_new_from_json_object (JsonObject *json)
 bail:
   g_free (id);
   g_free (name);
+
+  g_set_error (error, EAM_PKG_ERROR, EAM_PKG_ERROR_KEY_NOT_FOUND,
+    _("Key \"%s\" was not found"), key);
 
   return NULL;
 }
