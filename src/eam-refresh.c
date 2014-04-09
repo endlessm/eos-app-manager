@@ -132,20 +132,19 @@ fetch_updates_cb (GObject *source, GAsyncResult *res, gpointer data)
     g_clear_error (&error);
   }
 
-  if (g_task_return_error_if_cancelled (task)) {
-    g_object_unref (task);
-    return;
-  }
+  if (g_task_return_error_if_cancelled (task))
+    goto out;
 
   eam_updates_parse (priv->updates, &error);
   if (error) {
     /* we can't ignore this error */
     g_task_return_error (task, error);
-    g_object_unref (task);
-    return;
+    goto out;
   }
 
   g_task_return_boolean (task, TRUE);
+
+out:
   g_object_unref (task);
 }
 
@@ -165,6 +164,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
   if (error) {
     g_task_return_error (task, error);
+    g_object_unref (task);
     return;
   }
 
