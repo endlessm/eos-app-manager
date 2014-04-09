@@ -150,7 +150,7 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
     EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
 
     g_task_return_new_error (task, EAM_SPAWNER_ERROR,
-      EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("script \"%s\" exited with error code %d"),
+      EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
       priv->scriptname, g_subprocess_get_exit_status (process));
     g_object_unref (source);
     g_object_unref (task);
