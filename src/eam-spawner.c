@@ -13,7 +13,6 @@ typedef struct _EamSpawnerPrivate EamSpawnerPrivate;
 struct _EamSpawnerPrivate
 {
   GFile *dir;
-  char *scriptname;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamSpawner, eam_spawner, G_TYPE_OBJECT)
@@ -30,7 +29,6 @@ eam_spawner_finalize (GObject *obj)
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (EAM_SPAWNER (obj));
 
   g_object_unref (priv->dir);
-  g_free (priv->scriptname);
 
   G_OBJECT_CLASS (eam_spawner_parent_class)->finalize (obj);
 }
@@ -148,12 +146,12 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   if (!g_subprocess_get_successful (process)) {
-    EamSpawner *self = g_task_get_source_object (task);
-    EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
+    gchar *scriptname = g_object_get_data (source, "scriptname");
 
     g_task_return_new_error (task, EAM_SPAWNER_ERROR,
       EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
-      priv->scriptname, g_subprocess_get_exit_status (process));
+      scriptname, g_subprocess_get_exit_status (process));
+
     g_object_unref (source);
     g_object_unref (task);
     return;
@@ -206,17 +204,15 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
   EamSpawner *self = g_task_get_source_object (task);
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
 
-  {
-    g_free (priv->scriptname);
-    priv->scriptname = g_strdup (g_file_info_get_name (info));
-  }
-
+  gchar *scriptname = g_strdup (g_file_info_get_name (info));
   gchar *dir = g_file_get_path (priv->dir);
-  gchar *fname = g_build_filename (dir, priv->scriptname, NULL);
+  gchar *fname = g_build_filename (dir, scriptname, NULL);
 
   /* @TODO: connect stdout & stderr to a logging subsystem */
   GSubprocess *process = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &error,
      fname, NULL);
+  g_object_set_data_full (G_OBJECT (process), "scriptname", scriptname,
+    (GDestroyNotify) g_free);
 
   g_free (dir);
   g_free (fname);
