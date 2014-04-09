@@ -101,7 +101,7 @@ test_pkgdb_load (void)
 {
   const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
   EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
-  eam_pkgdb_load (db);
+  eam_pkgdb_load (db, NULL);
 
   load_tests (db);
 
@@ -111,7 +111,7 @@ test_pkgdb_load (void)
 static void
 load_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
-  eam_pkgdb_load_finish (EAM_PKGDB (source), res);
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, NULL);
   g_main_loop_quit (data);
 }
 

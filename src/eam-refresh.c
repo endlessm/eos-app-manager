@@ -155,8 +155,18 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
   GTask *task = data;
   EamRefresh *self = g_task_get_source_object (task);
   EamRefreshPrivate *priv = eam_refresh_get_instance_private (self);
+  GError *error = NULL;
 
-  eam_pkgdb_load_finish (EAM_PKGDB (source), res);
+  if (g_task_return_error_if_cancelled (task)) {
+    g_object_unref (task);
+    return;
+  }
+
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    g_task_return_error (task, error);
+    return;
+  }
 
   GCancellable *cancellable = g_task_get_cancellable (task);
 

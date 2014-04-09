@@ -95,7 +95,7 @@ test_updates_filter (void)
 
   const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
   EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
-  eam_pkgdb_load (db);
+  eam_pkgdb_load (db, NULL);
 
   eam_updates_filter (updates, db);
 
