@@ -144,9 +144,12 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
     return;
   }
 
-  if (!g_subprocess_get_successful (process)) {
-    gchar *scriptname = g_object_get_data (source, "scriptname");
+  GFileEnumerator *fenum = g_task_get_task_data (task);
 
+  if (!g_subprocess_get_successful (process)) {
+    g_file_enumerator_close_async (fenum, G_PRIORITY_DEFAULT, NULL, NULL, NULL);
+
+    gchar *scriptname = g_object_get_data (source, "scriptname");
     g_task_return_new_error (task, EAM_SPAWNER_ERROR,
       EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
       scriptname, g_subprocess_get_exit_status (process));
@@ -156,7 +159,6 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   /* Get more files */
-  GFileEnumerator *fenum = g_task_get_task_data (task);
   GCancellable *cancellable = g_task_get_cancellable (task);
   g_file_enumerator_next_files_async (fenum, 1, G_PRIORITY_DEFAULT, cancellable,
     got_file, task);
