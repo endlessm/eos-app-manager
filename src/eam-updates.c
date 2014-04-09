@@ -172,7 +172,7 @@ pkg_json_is_valid (JsonObject *json)
 static void
 foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
 {
-  EamUpdates *self = data;
+  GList **avails = data;
 
   if (!JSON_NODE_HOLDS_OBJECT (node))
     return;
@@ -185,8 +185,7 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
   if (!pkg)
     return;
 
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  priv->avails = g_list_prepend (priv->avails, pkg);
+  *avails = g_list_prepend (*avails, pkg);
 }
 
 /**
@@ -221,17 +220,14 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   if (!array)
     goto bail;
 
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-
-  if (priv->avails) {
-    g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
-    priv->avails = NULL;
-  }
-
-  json_array_foreach_element (array, foreach_json, self);
-
-  if (g_list_length (priv->avails) == 0)
+  GList *avails = NULL;
+  json_array_foreach_element (array, foreach_json, &avails);
+  if (!avails)
     goto bail;
+
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  priv->avails = avails;
 
   return TRUE;
 
