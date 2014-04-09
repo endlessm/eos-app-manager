@@ -199,7 +199,8 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
   if (!g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE))
     goto next;
 
-  if (g_strcmp0 ("application/x-shellscript", g_file_info_get_content_type (info)) != 0)
+  if (!g_content_type_is_a (g_file_info_get_content_type (info),
+      "application/x-shellscript"))
     goto next;
 
   EamSpawner *self = g_task_get_source_object (task);
