@@ -121,19 +121,17 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-
-  GTask *task = g_task_new (self, cancellable, callback, data);
-
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
   if (!uri) {
-    g_task_return_new_error (task, EAM_UPDATES_ERROR,
-      EAM_UPDATES_ERROR_PROTOCOL_ERROR, _("Not valid method or protocol version"));
-    g_object_unref (task);
+    g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
+      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_PROTOCOL_ERROR,
+      _("Not valid method or protocol version"));
     return;
   }
 
+  GTask *task = g_task_new (self, cancellable, callback, data);
   gchar *filename = build_updates_filename ();
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   eam_wc_request_async (priv->wc, uri, filename, cancellable, request_cb, task);
 
   g_free (filename);
@@ -156,7 +154,6 @@ eam_updates_fetch_finish (EamUpdates *self, GAsyncResult *result,
   GError **error)
 {
   g_return_val_if_fail (EAM_IS_UPDATES (self), -1);
-
   g_return_val_if_fail (g_task_is_valid (result, self), -1);
   return g_task_propagate_int (G_TASK (result), error);
 }
