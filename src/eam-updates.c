@@ -67,6 +67,8 @@ eam_updates_init (EamUpdates *self)
  * eam_updates_new:
  *
  * Create a new instance of #EamUpdates with the default appdir.
+ *
+ * Returns: a new #EamUpdates instance.
  */
 EamUpdates *
 eam_updates_new ()
