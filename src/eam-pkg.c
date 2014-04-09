@@ -61,29 +61,28 @@ create_pkg (gchar *id, gchar *name, const gchar *ver)
 static EamPkg *
 eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
 {
-  gchar *start_group, *ver, *id, *name;
+  gchar *ver, *id, *name;
+  const gchar *group = "Bundle";
 
   ver = id = name = NULL;
 
-  start_group = g_key_file_get_start_group (keyfile);
-  if (g_ascii_strcasecmp (start_group, "bundle"))
+  if (!g_key_file_has_group (keyfile, group))
     goto bail;
 
-  id = g_key_file_get_string (keyfile, start_group, "appId", error);
+  id = g_key_file_get_string (keyfile, group, "appId", error);
   if (!id)
     goto bail;
 
-  name = g_key_file_get_string (keyfile, start_group, "appName", error);
+  name = g_key_file_get_string (keyfile, group, "appName", error);
   if (!name)
     goto bail;
 
-  ver = g_key_file_get_string (keyfile, start_group, "codeVersion", error);
+  ver = g_key_file_get_string (keyfile, group, "codeVersion", error);
   if (!ver)
     goto bail;
 
   EamPkg *pkg = create_pkg (id, name, ver);
 
-  g_free (start_group);
   g_free (ver); /* we don't need it anymore */
 
   return pkg;
@@ -92,7 +91,6 @@ bail:
   g_free (id);
   g_free (ver);
   g_free (name);
-  g_free (start_group);
 
   return NULL;
 }
