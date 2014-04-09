@@ -43,8 +43,7 @@ eam_spawner_set_property (GObject *obj, guint propid, const GValue *value,
 
   switch (propid) {
   case PROP_DIR: {
-    const gchar *path = g_value_get_string (value);
-    priv->dir = g_file_new_for_path (path);
+    priv->dir = g_value_dup_object (value);
     break;
   }
   default:
@@ -61,8 +60,7 @@ eam_spawner_get_property (GObject *obj, guint propid, GValue *value,
 
   switch (propid) {
   case PROP_DIR: {
-    gchar *path = g_file_get_path (priv->dir);
-    g_value_take_string (value, path);
+    g_value_set_object (value, priv->dir);
     break;
   }
   default:
@@ -86,7 +84,7 @@ eam_spawner_class_init (EamSpawnerClass *klass)
    * The directory where the script to run are
    */
   g_object_class_install_property (object_class, PROP_DIR,
-    g_param_spec_string ("dir", "Directory", "Directory Path", NULL,
+    g_param_spec_object ("dir", "Directory", "Directory GFile", G_TYPE_FILE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |  G_PARAM_STATIC_STRINGS));
 }
 
@@ -97,13 +95,17 @@ eam_spawner_init (EamSpawner *self)
 
 /**
  * eam_spawner_new:
+ * @path: The path of the directory with the scripts to execute.
  *
  * Create a new instance of #EamSpawner with the default appdir.
  */
 EamSpawner *
-eam_spawner_new (const gchar *dir)
+eam_spawner_new (const gchar *path)
 {
-  return g_object_new (EAM_TYPE_SPAWNER, "dir", dir, NULL);
+  GFile *dir = g_file_new_for_path (path);
+  EamSpawner *ret = g_object_new (EAM_TYPE_SPAWNER, "dir", dir, NULL);
+  g_object_unref (dir);
+  return ret;
 }
 
 static void

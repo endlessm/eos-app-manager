@@ -52,7 +52,7 @@ struct _EamSpawnerClass
 
 GType           eam_spawner_get_type                             (void) G_GNUC_CONST;
 
-EamSpawner     *eam_spawner_new                                  (const gchar *dir);
+EamSpawner     *eam_spawner_new                                  (const gchar *path);
 
 void            eam_spawner_run_async                            (EamSpawner *self,
                                                                   GCancellable *cancellable,
