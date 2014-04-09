@@ -10,6 +10,11 @@ AM_CPPFLAGS = \
 
 dist_test_data = \
 	appdir/app01/.info \
+	appdir/com.application.id1/.info \
+	appdir/com.application.id2/.info \
+	data/link-db.json \
+	data/update-db.json \
+	data/available.json \
 	$(NULL)
 
 test_programs = \
@@ -17,4 +22,5 @@ test_programs = \
 	version \
 	cfg \
 	rest \
+	updates \
 	$(NULL)

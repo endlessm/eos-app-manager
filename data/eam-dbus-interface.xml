@@ -17,6 +17,11 @@
 
         Refreshes the package database.
     -->
-    <method name="Refresh" />
+    <method name="Refresh" >
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="b" direction="out">
+	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      </arg>
+    </method>
   </interface>
 </node>

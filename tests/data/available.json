@@ -1,0 +1,24 @@
+{
+    "avilable": [
+	{
+	    "appId": "com.application.id1",
+	    "appName": "App Name 1",
+	    "codeVersion": "1.1",
+	    "minOsVersion": "1eos1"
+	},
+
+	{
+	    "appId": "com.application.id2",
+	    "appName": "App Name 2",
+	    "codeVersion": "2.22",
+	    "minOsVersion": "1eos1"
+	},
+
+	{
+	    "appId": "com.application.id3",
+	    "appName": "App Name 3",
+	    "codeVersion": "3.333",
+	    "minOsVersion": "1eos1"
+	}
+    ]
+}
