@@ -5,6 +5,8 @@
 #endif
 
 #include "eam-service.h"
+#include "eam-updates.h"
+#include "eam-refresh.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -13,6 +15,9 @@ struct _EamServicePrivate {
   guint registration_id;
 
   EamPkgdb *db;
+  EamUpdates *updates;
+
+  GCancellable *cancellable;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
@@ -34,6 +39,8 @@ eam_service_dispose (GObject *obj)
   }
 
   g_clear_object (&priv->db);
+  g_clear_object (&priv->updates);
+  g_clear_object (&priv->cancellable);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
 }
@@ -75,6 +82,8 @@ eam_service_class_init (EamServiceClass *class)
 static void
 eam_service_init (EamService *service)
 {
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  priv->cancellable = g_cancellable_new ();
 }
 
 /**
@@ -89,13 +98,39 @@ eam_service_new (EamPkgdb *db)
   return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
 }
 
+static EamUpdates *
+get_eam_updates (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  if (!priv->updates)
+    priv->updates = eam_updates_new ();
+
+  return priv->updates;
+}
+
 static void
-eam_service_refresh (EamService *service)
+refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = data;
+  GError *error = NULL;
+  gboolean ret = eam_refresh_finish (EAM_REFRESH (source), res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (invocation, error);
+    return;
+  }
+
+  GVariant *value = g_variant_new ("(b)", ret);
+  g_dbus_method_invocation_return_value (invocation, value);
+}
+
+static void
+eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  g_assert (priv->db);
-  eam_pkgdb_load (priv->db);
+  EamRefresh *refresh = eam_refresh_new (priv->db, get_eam_updates(service));
+  eam_refresh_run_async (refresh, priv->cancellable, refresh_cb, invocation);
+  g_object_unref (refresh);
 }
 
 static void
@@ -109,8 +144,7 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     return;
 
   if (!g_strcmp0 (method, "Refresh")) {
-    eam_service_refresh (service);
-    g_dbus_method_invocation_return_value (invocation, NULL);
+    eam_service_refresh (service, invocation);
   }
 }
 

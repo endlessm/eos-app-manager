@@ -5,49 +5,49 @@
 
 #include <glib-object.h>
 #include <glib.h>
+#include <json-glib/json-glib.h>
+
+#include "eam-version.h"
 
 G_BEGIN_DECLS
 
+/**
+ * EamPkgError:
+ * @EAM_PKG_ERROR_KEY_NOT_FOUND: a requested key was not found.
+ *
+ * These constants identify all the available errors managed by
+ * the #EamPkg.
+ */
+typedef enum {
+  EAM_PKG_ERROR_KEY_NOT_FOUND = 1,
+} EamPkgError;
+
+#define EAM_PKG_ERROR eam_pkg_error_quark ()
+
 #define EAM_TYPE_PKG (eam_pkg_get_type())
 
-#define EAM_PKG(o) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((o), EAM_TYPE_PKG, EamPkg))
-
-#define EAM_PKG_CLASS(k) \
-  (G_TYPE_CHECK_CLASS_CAST((k), EAM_TYPE_PKG, EamPkgClass))
-
-#define EAM_IS_PKG(o) \
-  (G_TYPE_CHECK_INSTANCE_TYPE ((o), EAM_TYPE_PKG))
-
-#define EAM_IS_PKG_CLASS(k) \
-  (G_TYPE_CHECK_CLASS_TYPE ((k), EAM_TYPE_PKG))
-
-#define EAM_PKG_GET_CLASS(o) \
-  (G_TYPE_INSTANCE_GET_CLASS ((o), EAM_TYPE_PKG, EamPkgClass))
-
-typedef struct _EamPkgClass EamPkgClass;
 typedef struct _EamPkg EamPkg;
-
-/**
- * EamPkg:
- *
- * This class structure contains no public members.
- */
-struct _EamPkg
-{
-  GObject parent;
-};
-
-struct _EamPkgClass
-{
-  GObjectClass parent_class;
-};
 
 GType           eam_pkg_get_type                                 (void) G_GNUC_CONST;
 
-EamPkg         *eam_pkg_new_from_keyfile                         (GKeyFile *keyfile);
+EamPkg         *eam_pkg_copy                                     (EamPkg *pkg);
 
-EamPkg         *eam_pkg_new_from_filename                        (const gchar *filename);
+void            eam_pkg_free                                     (EamPkg *pkg);
+
+EamPkg         *eam_pkg_new_from_keyfile                         (GKeyFile *keyfile,
+                                                                  GError **error);
+
+EamPkg         *eam_pkg_new_from_filename                        (const gchar *filename,
+                                                                  GError **error);
+
+EamPkg         *eam_pkg_new_from_json_object                     (JsonObject *json,
+                                                                  GError **error);
+
+const gchar    *eam_pkg_get_id                                   (const EamPkg *pkg);
+
+const gchar    *eam_pkg_get_name                                 (const EamPkg *pkg);
+
+EamPkgVersion  *eam_pkg_get_version                              (const EamPkg *pkg);
 
 G_END_DECLS
 

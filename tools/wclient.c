@@ -74,10 +74,9 @@ main (gint argc, char **argv)
   EamWc *wc = eam_wc_new ();
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
 
-  g_object_set (wc, "filename", outfile, NULL);
-  g_free (outfile);
+  eam_wc_request_async (wc, arguments[0], outfile, cancellable, wc_cb, loop);
 
-  eam_wc_request_async (wc, arguments[0], cancellable, wc_cb, loop);
+  g_free (outfile);
   g_strfreev (arguments);
 
 #ifdef G_OS_UNIX

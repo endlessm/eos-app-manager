@@ -60,10 +60,6 @@ eam_wc_set_property (GObject *obj, guint propid, const GValue *value,
   case PROP_LOG_LEVEL:
     eam_wc_set_log_level (wc, g_value_get_uint (value));
     break;
-  case PROP_FILENAME:
-    g_free (priv->filename);
-    priv->filename = g_value_dup_string (value);
-    break;
   case PROP_USER_AGENT:
     g_object_set_property (G_OBJECT (priv->session), "user-agent", value);
     break;
@@ -118,8 +114,8 @@ eam_wc_class_init (EamWcClass *klass)
    * The directory where the web client will store the donwloaded files.
    */
   g_object_class_install_property (object_class, PROP_FILENAME,
-    g_param_spec_string ("filename", "File name", NULL,
-      NULL, G_PARAM_READWRITE |  G_PARAM_CONSTRUCT |  G_PARAM_STATIC_STRINGS));
+    g_param_spec_string ("filename", "File name", "The output file name",
+      NULL, G_PARAM_READABLE |  G_PARAM_STATIC_STRINGS));
 
   /**
    * EamWc::user-agent:
@@ -156,7 +152,6 @@ splice_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto done;
 
-  g_debug ("finished!");
   g_task_return_int (task, size);
 
 done:
@@ -217,7 +212,6 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   priv->file = eam_wc_file_new ();
   goffset len = soup_request_get_content_length (request);
-  g_debug ("Downloading %ld bytes", len);
   g_object_set (priv->file, "size", len, NULL);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
@@ -228,6 +222,7 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
  * eam_wc_request_async:
  * @self: a #EamWc instance
  * @uri: The URI of the resource to request
+ * @filename: The file name of the result file
  * @cancellable: (allow-none): a #GCancellable instance or %NULL to ignore
  * @callback: The callback when the result is ready
  * @data: User data set for the @callback
@@ -236,17 +231,18 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
  * asynchronous, thus the result will be returned within the @callback.
  */
 void
-eam_wc_request_async (EamWc *self, const char *uri, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data)
+eam_wc_request_async (EamWc *self, const char *uri, const char *filename,
+  GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
 {
-  eam_wc_request_with_headers_hash_async (self, uri, NULL, cancellable,
-    callback, data);
+  eam_wc_request_with_headers_hash_async (self, uri, filename, NULL,
+    cancellable, callback, data);
 }
 
 /**
  * eam_wc_request_with_headers_async:
  * @self: a #EamWc instance
  * @uri: The URI of the resource to request
+ * @filename: The file name of the result file
  * @cancellable: (allow-none): a #GCancellable instance or %NULL to ignore
  * @callback: The callback when the result is ready
  * @data: User data set for the @callback
@@ -256,8 +252,9 @@ eam_wc_request_async (EamWc *self, const char *uri, GCancellable *cancellable,
  * Request the fetching of a web resource given the @uri. This request is
  * asynchronous, thus the result will be returned within the @callback.
  */
-void eam_wc_request_with_headers_async (EamWc *self, const char *uri,
-  GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data, ...)
+void eam_wc_request_with_headers_async (EamWc *self, const gchar *uri,
+  const gchar *filename, GCancellable *cancellable,
+  GAsyncReadyCallback callback, gpointer data, ...)
 {
   va_list va_args;
   const gchar *header_name = NULL, *header_value = NULL;
@@ -279,20 +276,23 @@ void eam_wc_request_with_headers_async (EamWc *self, const char *uri,
 
   va_end (va_args);
 
-  eam_wc_request_with_headers_hash_async (self, uri, headers, cancellable,
-    callback, data);
+  eam_wc_request_with_headers_hash_async (self, uri, filename, headers,
+    cancellable, callback, data);
 
   if (headers)
     g_hash_table_unref (headers);
 }
 
 inline static void
-eam_wc_assure_filename (EamWc *self, const gchar *uri_path)
+eam_wc_assure_filename (EamWc *self, const gchar *filename,
+  const gchar *uri_path)
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (self);
 
-  if (priv->filename)
+  if (filename) {
+    priv->filename = g_strdup (filename);
     return;
+  }
 
   priv->filename = g_path_get_basename (uri_path);
   if (!g_strcmp0 (priv->filename, G_DIR_SEPARATOR_S) ||
@@ -306,6 +306,7 @@ eam_wc_assure_filename (EamWc *self, const gchar *uri_path)
  * eam_wc_request_with_headers_hash_async:
  * @self: a #EamWc instance
  * @uri: The URI of the resource to request
+ * @filename: The file name of the result file
  * @headers: (allow-none) (element-type utf8 utf8): a set of additional HTTP
  * headers for this request or %NULL to ignore
  * @cancellable: (allow-none): a #GCancellable instance or %NULL to ignore
@@ -316,12 +317,13 @@ eam_wc_assure_filename (EamWc *self, const gchar *uri_path)
  * asynchronous, thus the result will be returned within the @callback.
  */
 void
-eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
-  GHashTable *headers, GCancellable *cancellable, GAsyncReadyCallback callback,
-  gpointer data)
+eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
+  const gchar *filename, GHashTable *headers, GCancellable *cancellable,
+  GAsyncReadyCallback callback, gpointer data)
 {
   g_return_if_fail (EAM_IS_WC (self));
   g_return_if_fail (uri);
+  g_return_if_fail (filename);
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
@@ -329,7 +331,7 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const char *uri,
   GTask *task = g_task_new (self, cancellable, callback, data);
 
   SoupURI *suri = soup_uri_new (uri);
-  eam_wc_assure_filename (self, soup_uri_get_path (suri));
+  eam_wc_assure_filename (self, filename, soup_uri_get_path (suri));
 
   GError *error = NULL;
   SoupRequest *request = soup_session_request_uri (priv->session, suri, &error);

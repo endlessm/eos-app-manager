@@ -4,7 +4,11 @@
 #include "config.h"
 #endif
 
+#include <glib/gi18n.h>
+
 #include <string.h>
+#include <errno.h>
+
 #include "eam-pkgdb.h"
 
 typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
@@ -89,8 +93,8 @@ eam_pkgdb_init (EamPkgdb *db)
 {
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (db);
 
-  priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-    g_object_unref);
+  priv->pkgtable = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+     (GDestroyNotify) eam_pkg_free);
 }
 
 /**
@@ -153,19 +157,23 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
 {
   g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
   g_return_val_if_fail (appid != NULL, FALSE);
-  g_return_val_if_fail (EAM_IS_PKG (pkg), FALSE);
+  g_return_val_if_fail (pkg, FALSE);
 
   if (!appid_is_legal (appid))
     return FALSE;
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
 
+  /* appid and pkg->id should be the same */
+  if (g_strcmp0 (appid, eam_pkg_get_id (pkg)) != 0)
+    return FALSE;
+
   /* appid collision */
   if (g_hash_table_contains (priv->pkgtable, appid))
     return FALSE;
 
-  return g_hash_table_insert (priv->pkgtable, g_strdup (appid),
-    g_object_ref (pkg));
+  return g_hash_table_insert (priv->pkgtable, (gpointer) eam_pkg_get_id (pkg),
+    pkg);
 }
 
 /**
@@ -193,20 +201,20 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
- * Gets a @pkg from the @pkgdb
+ * Gets a @pkg from the @pkgdb.
  *
- * Returns: (transfer full): #EamPkg if found or %NULL
+ * Do not modify the content of the @pkg.
+ *
+ * Returns: (transfer none): #EamPkg if found or %NULL
  */
-EamPkg *
+const EamPkg *
 eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
 {
   g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
   g_return_val_if_fail (appid != NULL, FALSE);
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
-  EamPkg *pkg = g_hash_table_lookup (priv->pkgtable, appid);
-
-  return (pkg) ? g_object_ref (pkg) : NULL;
+  return g_hash_table_lookup (priv->pkgtable, appid);
 }
 
 /**
@@ -232,10 +240,10 @@ eam_pkgdb_exists (EamPkgdb *pkgdb, const gchar *appid)
  *
  * Loads all the @pkg found in the appdir
  */
-void
-eam_pkgdb_load (EamPkgdb *pkgdb)
+gboolean
+eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
 {
-  g_return_if_fail (EAM_IS_PKGDB (pkgdb));
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
 
@@ -246,9 +254,9 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
    */
   g_hash_table_remove_all (priv->pkgtable);
 
-  GDir *dir = g_dir_open (priv->appdir, 0, NULL);
+  GDir *dir = g_dir_open (priv->appdir, 0, error);
   if (!dir)
-    return;
+    return FALSE;
 
   const gchar *appid;
   while ((appid = g_dir_read_name (dir))) {
@@ -256,14 +264,23 @@ eam_pkgdb_load (EamPkgdb *pkgdb)
       continue;
 
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
-    EamPkg *pkg = eam_pkg_new_from_filename (info);
+    EamPkg *pkg = eam_pkg_new_from_filename (info, NULL);
     g_free (info);
-    if (pkg) {
+    if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
-      g_object_unref (pkg);
-    }
+
+    errno = 0;
   }
   g_dir_close (dir);
+
+  if (errno) {
+    g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
+      _("Error when getting information for directory '%s': %s"), priv->appdir,
+      strerror(errno));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static void
@@ -273,8 +290,17 @@ load_pkgdb_thread (GTask *task, gpointer source, gpointer data,
   EamPkgdb *pkgdb = g_task_get_source_object (task);
   g_assert (pkgdb);
 
-  eam_pkgdb_load (pkgdb);
-  g_task_return_pointer (task, NULL, NULL);
+  if (g_task_return_error_if_cancelled (task))
+    return;
+
+  GError *error = NULL;
+  eam_pkgdb_load (pkgdb, &error);
+  if (error) {
+    g_task_return_error (task, error);
+    return;
+  }
+
+  g_task_return_boolean (task, TRUE);
 }
 
 /**
@@ -310,8 +336,8 @@ eam_pkgdb_load_async (EamPkgdb *pkgdb, GCancellable *cancellable,
  * Finishes an async packages load, see eam_pkgdb_load_async().
  */
 gboolean
-eam_pkgdb_load_finish (EamPkgdb *pkgdb, GAsyncResult *res)
+eam_pkgdb_load_finish (EamPkgdb *pkgdb, GAsyncResult *res, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (res, pkgdb), FALSE);
-  return TRUE;
+  return g_task_propagate_boolean (G_TASK (res), error);
 }

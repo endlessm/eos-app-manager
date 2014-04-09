@@ -6,56 +6,81 @@
 #include <eam-version.h>
 
 #define bad_info_1 "[Bundle]"
-#define good_info "[Bundle]\nversion = 1"
+#define good_info "[Bundle]\nappId = app01\nappName= application one\ncodeVersion = 1\n"
+#define good_json "{ \"appId\": \"com.application.id1\", \"appName\": \"App Name 1\", \"codeVersion\": \"1.1\" }"
 
 static void
 test_pkg_basic (void)
 {
-  EamPkg *pkg;
+  EamPkg *pkg, *cpkg;
   GKeyFile *keyfile;
-  EamPkgVersion *version;
-
-  g_assert_false (eam_pkg_new_from_keyfile (NULL));
 
   keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, bad_info_1, strlen (bad_info_1),
     G_KEY_FILE_NONE, NULL);
-  g_assert_null (eam_pkg_new_from_keyfile (keyfile));
+  g_assert_null (eam_pkg_new_from_keyfile (keyfile, NULL));
   g_key_file_free (keyfile);
 
   keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, good_info, strlen (good_info),
     G_KEY_FILE_NONE, NULL);
-  pkg = eam_pkg_new_from_keyfile (keyfile);
+  pkg = eam_pkg_new_from_keyfile (keyfile, NULL);
   g_assert_nonnull (pkg);
   g_key_file_free (keyfile);
 
-  g_object_get (pkg, "version", &version, NULL);
-  g_assert_cmpstr (version->version, ==, "1");
-  eam_pkg_version_free (version);
-  g_object_unref (pkg);
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1");
+
+  cpkg = eam_pkg_copy (pkg);
+  g_assert_cmpstr (eam_pkg_get_id (pkg), ==, eam_pkg_get_id (cpkg));
+  g_assert_cmpstr (eam_pkg_get_name (pkg), ==, eam_pkg_get_name (cpkg));
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==,
+                   eam_pkg_get_version (cpkg)->version);
+
+  eam_pkg_free (cpkg);
+  eam_pkg_free (pkg);
+}
+
+static void
+test_pkg_json (void)
+{
+  JsonParser *parser = json_parser_new ();
+  g_assert (json_parser_load_from_data (parser, good_json, -1, NULL));
+
+  JsonNode *node = json_parser_get_root (parser);
+  g_assert_nonnull (node);
+
+  JsonObject *json = json_node_get_object (node);
+  g_assert_nonnull (json);
+
+  EamPkg *pkg = eam_pkg_new_from_json_object (json, NULL);
+  g_assert_nonnull (pkg);
+
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1.1");
+  eam_pkg_free (pkg);
+  g_object_unref (parser);
 }
 
 static void
 test_pkgdb_basic (void)
 {
-  EamPkg *pkg, *rpkg;
+  EamPkg *pkg;
+  const EamPkg *rpkg;
   EamPkgdb *db;
   GKeyFile *keyfile;
 
   keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, good_info, strlen (good_info),
     G_KEY_FILE_NONE, NULL);
-  pkg = eam_pkg_new_from_keyfile (keyfile);
+  pkg = eam_pkg_new_from_keyfile (keyfile, NULL);
   g_assert_nonnull (pkg);
   g_key_file_free (keyfile);
 
   db = eam_pkgdb_new ();
+
   g_assert (eam_pkgdb_add (db, "app01", pkg));
   rpkg = eam_pkgdb_get (db, "app01");
   g_assert (pkg == rpkg);
-  g_object_unref (rpkg);
-  g_object_unref (pkg);
+
   g_assert (eam_pkgdb_del (db, "app01"));
   rpkg = eam_pkgdb_get (db, "app01");
   g_assert_null (rpkg);
@@ -65,14 +90,10 @@ test_pkgdb_basic (void)
 static void
 load_tests (EamPkgdb *db)
 {
-  EamPkg *pkg = eam_pkgdb_get (db, "app01");
+  const EamPkg *pkg = eam_pkgdb_get (db, "app01");
   g_assert_nonnull (pkg);
 
-  EamPkgVersion *version;
-  g_object_get (pkg, "version", &version, NULL);
-  g_assert_cmpstr (version->version, ==, "1");
-  eam_pkg_version_free (version);
-  g_object_unref (pkg);
+  g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==, "1");
 }
 
 static void
@@ -80,7 +101,7 @@ test_pkgdb_load (void)
 {
   const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
   EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
-  eam_pkgdb_load (db);
+  eam_pkgdb_load (db, NULL);
 
   load_tests (db);
 
@@ -90,7 +111,7 @@ test_pkgdb_load (void)
 static void
 load_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
-  eam_pkgdb_load_finish (EAM_PKGDB (source), res);
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, NULL);
   g_main_loop_quit (data);
 }
 
@@ -117,6 +138,7 @@ main (int argc, char *argv[])
   g_test_init (&argc, &argv, NULL);
 
   g_test_add_func ("/pkg/basic", test_pkg_basic);
+  g_test_add_func ("/pkg/json", test_pkg_json);
   g_test_add_func ("/pkgdb/basic", test_pkgdb_basic);
   g_test_add_func ("/pkgdb/load", test_pkgdb_load);
   g_test_add_func ("/pkgdb/load_async", test_pkgdb_load_async);
