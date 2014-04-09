@@ -4,6 +4,8 @@
 #include "config.h"
 #endif
 
+#include <glib/gi18n.h>
+
 #include "eam-service.h"
 #include "eam-updates.h"
 #include "eam-refresh.h"
@@ -22,6 +24,8 @@ struct _EamServicePrivate {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
+
+G_DEFINE_QUARK (eam-service-error-quark, eam_service_error)
 
 enum
 {
@@ -138,6 +142,12 @@ static void
 eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
 
   priv->trans = eam_refresh_new (priv->db, get_eam_updates(service));
   g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);

@@ -7,3 +7,4 @@ src/eam-updates.c
 src/eam-pkg.c
 src/eam-pkgdb.c
 src/eam-spawner.c
+src/eam-service.c
