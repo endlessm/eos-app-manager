@@ -222,8 +222,6 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
 
   GList *avails = NULL;
   json_array_foreach_element (array, foreach_json, &avails);
-  if (!avails)
-    goto bail;
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
