@@ -318,8 +318,8 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
  *
  * Don't modify this list!
  *
- * Returns: (transfer none): return a #GList with the installable
- * packages.
+ * Returns: (transfer none) (element-type EamPkg): return a #GList
+ * with the installable packages.
  **/
 GList *
 eam_updates_get_installables (EamUpdates *self)
@@ -336,8 +336,8 @@ eam_updates_get_installables (EamUpdates *self)
  *
  * Don't modify this list!
  *
- * Returns: (transfer none): returns a #GList with the upgradable
- * packages.
+ * Returns: (transfer none) (element-type EamPkg): returns a #GList
+ * with the upgradable packages.
  **/
 GList *
 eam_updates_get_upgradables (EamUpdates *self)
