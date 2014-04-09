@@ -140,7 +140,6 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_subprocess_wait_finish (process, res, &error);
   if (error) {
     g_task_return_error (task, error);
-    g_object_unref (source);
     g_object_unref (task);
     return;
   }
@@ -152,7 +151,6 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
       EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
       scriptname, g_subprocess_get_exit_status (process));
 
-    g_object_unref (source);
     g_object_unref (task);
     return;
   }
@@ -162,8 +160,6 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
   GCancellable *cancellable = g_task_get_cancellable (task);
   g_file_enumerator_next_files_async (fenum, 1, G_PRIORITY_DEFAULT, cancellable,
     got_file, task);
-
-  g_object_unref (source);
 }
 
 static void
@@ -224,6 +220,7 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
 
   g_list_free_full (infos, g_object_unref);
   g_subprocess_wait_async (process, cancellable, subprocess_cb, task);
+  g_object_unref (process);
 
   return;
 
