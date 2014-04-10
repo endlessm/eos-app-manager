@@ -322,7 +322,6 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
 {
   g_return_if_fail (EAM_IS_WC (self));
   g_return_if_fail (uri);
-  g_return_if_fail (filename);
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
