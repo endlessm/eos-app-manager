@@ -1,0 +1,4 @@
+[Bundle]
+appId = com.application.id2
+appName = application two
+codeVersion = 0.1.4

@@ -49,11 +49,12 @@ gboolean        eam_pkgdb_add                                    (EamPkgdb *pkgd
 
 gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgdb, const gchar *appid);
 
-EamPkg         *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
+const EamPkg   *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
 
 gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgdb, const gchar *appid);
 
-void            eam_pkgdb_load                                   (EamPkgdb *pkgdb);
+gboolean        eam_pkgdb_load                                   (EamPkgdb *pkgdb,
+                                                                  GError **error);
 
 void            eam_pkgdb_load_async                             (EamPkgdb *pkgdb,
 								  GCancellable *cancellable,
@@ -61,8 +62,8 @@ void            eam_pkgdb_load_async                             (EamPkgdb *pkgd
 								  gpointer data);
 
 gboolean        eam_pkgdb_load_finish                            (EamPkgdb *pkgdb,
-								  GAsyncResult *res);
-
+                                                                  GAsyncResult *res,
+                                                                  GError **error);
 
 G_END_DECLS
 

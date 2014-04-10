@@ -59,20 +59,23 @@ GQuark          eam_wc_error_quark                               (void) G_GNUC_C
 EamWc          *eam_wc_new                                       (void);
 
 void            eam_wc_request_async                             (EamWc *self,
-								  const char *uri,
+								  const gchar *uri,
+                                                                  const gchar *filename,
 								  GCancellable *cancellable,
 								  GAsyncReadyCallback callback,
 								  gpointer data);
 
 void            eam_wc_request_with_headers_hash_async           (EamWc *self,
-								  const char *uri,
+								  const gchar *uri,
+                                                                  const gchar *filename,
 								  GHashTable *headers,
 								  GCancellable *cancellable,
 								  GAsyncReadyCallback callback,
 								  gpointer data);
 
 void            eam_wc_request_with_headers_async                (EamWc *self,
-								  const char *uri,
+								  const gchar *uri,
+                                                                  const gchar *filename,
 								  GCancellable *cancellable,
 								  GAsyncReadyCallback callback,
 								  gpointer user_data,

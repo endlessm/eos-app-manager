@@ -14,6 +14,10 @@ source_c = \
 	eam-wc-file.c \
 	eam-os.c \
 	eam-rest.c \
+	eam-updates.c \
+	eam-refresh.c \
+	eam-spawner.c \
+	eam-transaction.c \
 	$(NULL)
 
 source_h = \
@@ -27,6 +31,10 @@ source_h = \
 	eam-wc-file.h \
 	eam-os.h \
 	eam-rest.h \
+	eam-updates.h \
+	eam-refresh.h \
+	eam-spawner.h \
+	eam-transaction.h \
 	$(NULL)
 
 BUILT_SOURCES = \

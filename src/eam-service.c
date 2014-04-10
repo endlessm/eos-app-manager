@@ -4,7 +4,11 @@
 #include "config.h"
 #endif
 
+#include <glib/gi18n.h>
+
 #include "eam-service.h"
+#include "eam-updates.h"
+#include "eam-refresh.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -13,9 +17,15 @@ struct _EamServicePrivate {
   guint registration_id;
 
   EamPkgdb *db;
+  EamUpdates *updates;
+  EamTransaction *trans;
+
+  GCancellable *cancellable;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
+
+G_DEFINE_QUARK (eam-service-error-quark, eam_service_error)
 
 enum
 {
@@ -34,6 +44,8 @@ eam_service_dispose (GObject *obj)
   }
 
   g_clear_object (&priv->db);
+  g_clear_object (&priv->updates);
+  g_clear_object (&priv->cancellable);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
 }
@@ -75,6 +87,8 @@ eam_service_class_init (EamServiceClass *class)
 static void
 eam_service_init (EamService *service)
 {
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  priv->cancellable = g_cancellable_new ();
 }
 
 /**
@@ -89,13 +103,55 @@ eam_service_new (EamPkgdb *db)
   return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
 }
 
+static EamUpdates *
+get_eam_updates (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  if (!priv->updates)
+    priv->updates = eam_updates_new ();
+
+  return priv->updates;
+}
+
 static void
-eam_service_refresh (EamService *service)
+refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+  g_object_set_data (source, "invocation", NULL);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
+  GError *error = NULL;
+  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (invocation, error);
+    goto out;
+  }
+
+  GVariant *value = g_variant_new ("(b)", ret);
+  g_dbus_method_invocation_return_value (invocation, value);
+
+out:
+  g_clear_object (&priv->trans); /* we don't need you anymore */
+}
+
+static void
+eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  g_assert (priv->db);
-  eam_pkgdb_load (priv->db);
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  priv->trans = eam_refresh_new (priv->db, get_eam_updates(service));
+  g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
+  eam_transaction_run_async (priv->trans, priv->cancellable, refresh_cb, service);
 }
 
 static void
@@ -109,8 +165,7 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     return;
 
   if (!g_strcmp0 (method, "Refresh")) {
-    eam_service_refresh (service);
-    g_dbus_method_invocation_return_value (invocation, NULL);
+    eam_service_refresh (service, invocation);
   }
 }
 

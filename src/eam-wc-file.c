@@ -150,7 +150,6 @@ query_fs_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   /* let's be cautious: request twice the size or 20K, please */
   gsize reqsiz = (priv->size) ? priv->size * 2 : 20 * 1024;
-  g_debug ("Requesting %li bytes from %li bytes of free space", reqsiz, free);
 
   if (free < reqsiz) {
     g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
