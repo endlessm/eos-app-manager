@@ -121,6 +121,14 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
+  /* is it enough? */
+  if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
+    g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
+      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_NO_NETWORK,
+      _("Networking is not available"));
+    return;
+  }
+
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
   if (!uri) {
     g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
