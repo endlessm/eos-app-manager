@@ -20,6 +20,8 @@ struct _EamServicePrivate {
   EamUpdates *updates;
   EamTransaction *trans;
 
+  gboolean reloaddb;
+
   GCancellable *cancellable;
 };
 
@@ -89,6 +91,7 @@ eam_service_init (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   priv->cancellable = g_cancellable_new ();
+  priv->reloaddb = TRUE; /* initial state */
 }
 
 /**
@@ -111,6 +114,73 @@ get_eam_updates (EamService *service)
     priv->updates = eam_updates_new ();
 
   return priv->updates;
+}
+
+static void
+run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
+  GAsyncReadyCallback callback)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (priv->trans);
+
+  g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
+  eam_transaction_run_async (priv->trans, priv->cancellable, callback, service);
+}
+
+static void
+reset_transaction (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  if (!priv->trans)
+    return;
+
+  g_clear_object (&priv->trans);
+}
+
+struct _load_pkgdb_clos {
+  EamService *service;
+  GDBusMethodInvocation *invocation;
+  GAsyncReadyCallback callback;
+};
+
+static void
+load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  struct _load_pkgdb_clos *clos = data;
+
+  GError *error = NULL;
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (clos->invocation, error);
+    reset_transaction (clos->service);
+    goto out;
+  }
+
+  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
+  priv->reloaddb = FALSE;
+  run_eam_transaction (clos->service, clos->invocation, clos->callback);
+
+out:
+  g_slice_free (struct _load_pkgdb_clos, clos);
+}
+
+static void
+run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation *invocation,
+  GAsyncReadyCallback callback)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->reloaddb) {
+    struct _load_pkgdb_clos *clos = g_slice_new (struct _load_pkgdb_clos);
+    clos->service = service;
+    clos->invocation = invocation;
+    clos->callback = callback;
+
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
+    return;
+  }
+
+  run_eam_transaction (service, invocation, callback);
 }
 
 static void
@@ -150,8 +220,7 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
   }
 
   priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
-  g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
-  eam_transaction_run_async (priv->trans, priv->cancellable, refresh_cb, service);
+  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
 }
 
 static void
