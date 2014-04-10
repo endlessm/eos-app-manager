@@ -280,6 +280,7 @@ eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
 
   GTask *task = g_task_new (self, cancellable, callback, data);
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
+  g_assert (priv->strm);
 
   g_output_stream_splice_async (priv->strm, source,
     G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
