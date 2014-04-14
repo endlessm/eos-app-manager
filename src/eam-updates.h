@@ -89,6 +89,9 @@ GList          *eam_updates_get_installables                         (EamUpdates
 
 GList          *eam_updates_get_upgradables                          (EamUpdates *self);
 
+const EamPkg   *eam_updates_pkg_is_installable                       (EamUpdates *self,
+                                                                      const gchar *appid);
+
 GQuark          eam_updates_error_quark                              (void) G_GNUC_CONST;
 
 G_END_DECLS

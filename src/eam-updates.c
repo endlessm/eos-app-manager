@@ -358,3 +358,31 @@ eam_updates_get_upgradables (EamUpdates *self)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   return priv->updates;
 }
+
+
+/**
+ * eam_updates_pkg_is_installable:
+ * @self: an #EamUpdates instance
+ * @appid: the application ID to search
+ *
+ * Searches in the installable application list the specified app ID.
+ *
+ * Returns: The #EamPkg found, or %NULL if not found
+ **/
+const EamPkg *
+eam_updates_pkg_is_installable (EamUpdates *self, const gchar *appid)
+{
+  g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
+  g_return_val_if_fail (appid, FALSE);
+
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  GList *l;
+
+  for (l = priv->installs; l; l = l->next) {
+    EamPkg *pkg = l->data;
+    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0)
+      return pkg;
+  }
+
+  return NULL;
+}
