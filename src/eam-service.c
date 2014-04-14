@@ -110,8 +110,11 @@ static EamUpdates *
 get_eam_updates (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-  if (!priv->updates)
+  if (!priv->updates) {
     priv->updates = eam_updates_new ();
+    /* let's read what we have, without refreshing the database */
+    eam_updates_parse (priv->updates, NULL); /* don't care errors for now */
+  }
 
   return priv->updates;
 }
