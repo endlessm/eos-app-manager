@@ -258,6 +258,7 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
   if (!dir)
     return FALSE;
 
+  int saved_errno = 0;
   const gchar *appid;
   while ((appid = g_dir_read_name (dir))) {
     if (!appid_is_legal (appid))
@@ -269,14 +270,16 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
     if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
 
-    errno = 0;
+    if (errno)
+      saved_errno = errno;
   }
   g_dir_close (dir);
 
-  if (errno) {
-    g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
-      _("Error when getting information for directory '%s': %s"), priv->appdir,
-      strerror(errno));
+  if (saved_errno) {
+    g_set_error (error, G_IO_ERROR, g_io_error_from_errno (saved_errno),
+                 _("Error when getting information for directory '%s': %s"),
+                 priv->appdir,
+                 strerror (saved_errno));
     return FALSE;
   }
 
