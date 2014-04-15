@@ -46,15 +46,6 @@ GType           eam_refresh_get_type                               (void) G_GNUC
 EamTransaction *eam_refresh_new                                    (EamPkgdb *db,
                                                                     EamUpdates *updates);
 
-void            eam_refresh_run_async                              (EamTransaction *trans,
-                                                                    GCancellable *cancellable,
-                                                                    GAsyncReadyCallback callback,
-                                                                    gpointer data);
-
-gboolean        eam_refresh_finish                                 (EamTransaction *trans,
-                                                                    GAsyncResult *res,
-                                                                    GError **error);
-
 G_END_DECLS
 
 #endif /* EAM_REFRESH_H */
