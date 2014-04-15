@@ -24,17 +24,23 @@ build_uri_v1 (EamRestMethod method, gchar *saddr, va_list args)
     const gchar *appid = va_arg (args, const gchar *);
     if (appid)
       return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid);
+
+    break;
   }
   case EAM_REST_API_V1_GET_APP_UPDATE_LINK:{
     const gchar *appid = va_arg (args, const gchar *);
     const gchar *appver = va_arg (args, const gchar *);
     if (appid && appver)
       return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid, appver);
+
+    break;
   }
   case EAM_REST_API_V1_GET_APP_UPDATE_BLOB:{
     const gchar *hash = va_arg (args, const gchar *);
     if (hash)
       return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, hash);
+
+    break;
   }
   default:
     break;
