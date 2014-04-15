@@ -20,7 +20,7 @@ eam_config_get (void)
 
 void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
-  gchar *saddr, gchar *protver)
+  gchar *saddr, gchar *protver, gchar *scriptdir)
 {
   if (appdir) {
     g_free (cfg->appdir);
@@ -41,6 +41,11 @@ eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
     g_free (cfg->protver);
     cfg->protver = protver;
   }
+
+  if (scriptdir) {
+    g_free (cfg->scriptdir);
+    cfg->scriptdir = scriptdir;
+  }
 }
 
 void
@@ -60,6 +65,8 @@ eam_config_free (EamConfig *cfg)
   cfg->protver = NULL;
   g_free (cfg->dldir);
   cfg->dldir = NULL;
+  g_free (cfg->scriptdir);
+  cfg->scriptdir = NULL;
 }
 
 static inline gchar *
@@ -103,7 +110,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 
   gboolean ret = FALSE;
   gboolean own = FALSE;
-  gchar *grp, *appdir, *saddr, *dldir, *protver;
+  gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir;
 
   if (!keyfile) {
     if (!(keyfile = load_default ()))
@@ -116,8 +123,9 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   saddr = get_str (keyfile, grp, "serveraddress");
   dldir = get_str (keyfile, grp, "downloaddir");
   protver = get_str (keyfile, grp, "protocolversion");
+  scriptdir = get_str (keyfile, grp, "scriptdir");
 
-  eam_config_set (cfg, appdir, dldir, saddr, protver);
+  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir);
 
   ret = TRUE;
 
@@ -139,6 +147,7 @@ eam_config_dump (EamConfig *cfg)
            "\tAppDir = %s\n"
            "\tServerAddress = %s\n"
            "\tDownloadDir = %s\n"
-           "\tProtocolVersion = %s\n",
-           cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver);
+           "\tProtocolVersion = %s\n"
+           "\tScriptDir = %s\n",
+           cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir);
 }
