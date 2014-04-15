@@ -16,7 +16,7 @@ struct _EamRefreshPrivate
 
 static void transaction_iface_init (EamTransactionInterface *iface);
 
-G_DEFINE_TYPE_EXTENDED (EamRefresh, eam_refresh, G_TYPE_OBJECT, 0,
+G_DEFINE_TYPE_WITH_CODE (EamRefresh, eam_refresh, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
   G_ADD_PRIVATE (EamRefresh));
 
