@@ -9,6 +9,7 @@
   "downloaddir=/var/tmp\n" \
   "serveraddress = http://localhost\n"
 
+/* @TODO: use a #GTestCase for this fixture */
 static void
 load_config (const gchar *protver)
 {
