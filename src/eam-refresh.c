@@ -49,6 +49,8 @@ fetch_updates_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  eam_updates_filter (priv->updates, priv->db);
+
   g_task_return_boolean (task, TRUE);
 
 out:
