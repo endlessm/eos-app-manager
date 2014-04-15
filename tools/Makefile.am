@@ -10,3 +10,5 @@ bin_SCRIPTS = \
 	dbus-client.sh \
 	deb2bundle.sh \
 	$(NULL)
+
+EXTRA_DIST = dbus-client-.sh deb2bundle.sh
