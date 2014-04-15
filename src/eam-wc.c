@@ -18,6 +18,7 @@ struct _EamWcPrivate
   SoupLoggerLogLevel level;
   gchar *filename;
   EamWcFile *file;
+  gboolean return_instrm;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
@@ -27,7 +28,8 @@ G_DEFINE_QUARK (eam-wc-error-quark, eam_wc_error)
 enum {
   PROP_LOG_LEVEL = 1,
   PROP_USER_AGENT,
-  PROP_FILENAME
+  PROP_FILENAME,
+  PROP_RETURN_INSTRM,
 };
 
 static void
@@ -206,10 +208,16 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
     return;
   }
 
-  g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
-
   EamWc *wc = g_task_get_source_object (task);
   EamWcPrivate *priv = eam_wc_get_instance_private (wc);
+
+  if (priv->return_instrm) {
+    g_task_return_pointer (task, instream, (GDestroyNotify) g_object_unref);
+    g_object_unref (task);
+    return;
+  }
+
+  g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
 
   priv->file = eam_wc_file_new ();
   goffset len = soup_request_get_content_length (request);
@@ -290,6 +298,9 @@ eam_wc_assure_filename (EamWc *self, const gchar *filename,
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (self);
 
+  if (priv->return_instrm)
+    return;
+
   if (filename) {
     priv->filename = g_strdup (filename);
     return;
@@ -362,6 +373,7 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
     }
   }
 
+  g_message ("requesting %s", uri);
   GTask *task = g_task_new (self, cancellable, callback, data);
   soup_request_send_async (request, cancellable, request_cb, task);
   g_object_unref (request);
@@ -389,6 +401,77 @@ eam_wc_request_finish (EamWc *self, GAsyncResult *result, GError **error)
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   eam_wc_reset (self);
   return g_task_propagate_int (G_TASK (result), error);
+}
+
+/**
+ * eam_wc_request_with_instream_headers_async:
+ * @self: a #EamWc instance
+ * @uri: The URI of the resource to request
+ * @cancellable: (allow-none): a #GCancellable instance or %NULL to ignore
+ * @callback: The callback when the result is ready
+ * @data: User data set for the @callback
+ * @...: List of tuples of header name and header value, terminated by
+ * %NULL.
+ *
+ * Request the fetching of a web resource given the @uri. This request
+ * is asynchronous, thus the resulting GInputStream will be returned
+ * within the @callback.
+ */
+void eam_wc_request_instream_with_headers_async (EamWc *self, const gchar *uri,
+  GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data, ...)
+{
+  g_return_if_fail (EAM_IS_WC (self));
+
+  EamWcPrivate *priv = eam_wc_get_instance_private (self);
+  priv->return_instrm = TRUE;
+
+  va_list va_args;
+  const gchar *header_name = NULL, *header_value = NULL;
+  GHashTable *headers = NULL;
+
+  va_start (va_args, data);
+
+  header_name = va_arg (va_args, const gchar *);
+  while (header_name) {
+    header_value = va_arg (va_args, const gchar *);
+    if (header_value) {
+      if (headers == NULL) {
+        headers = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+      }
+      g_hash_table_insert (headers, g_strdup (header_name), g_strdup (header_value));
+    }
+    header_name = va_arg (va_args, const gchar *);
+  }
+
+  va_end (va_args);
+
+  eam_wc_request_with_headers_hash_async (self, uri, NULL, headers, cancellable,
+    callback, data);
+
+  if (headers)
+    g_hash_table_unref (headers);
+}
+
+/**
+ * eam_wc_request_instream_finish:
+ * @self: a #EamWc instance
+ * @result: The result of the request
+ * @error: return location for a #GError, or %NULL
+ *
+ * Use this only if you have the return-instream property ON.
+ *
+ * This be considered a "hack-mode": instead of saving the
+ * donwloaded content in a file, the result of the operation is
+ * return the opened input stream from libsoup.
+ *
+ * Returns: (transfer full):  the libsoup's #GInputStream
+ **/
+GInputStream *
+eam_wc_request_instream_finish (EamWc *self, GAsyncResult *result,
+  GError **error)
+{
+  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
+  return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 /**
