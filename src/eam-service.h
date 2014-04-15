@@ -14,6 +14,7 @@ G_BEGIN_DECLS
  * EamServiceError:
  * @EAM_SERIVCE_ERROR_BUSY: The serivice is currently busy with other task.
  * @EAM_SERVICE_ERROR_PKG_UNKNOWN: Requested package is unknown.
+ * @EAM_SERVICE_ERROR_UNIMPLEMENTED: Asked for an unimplemented feature.
  *
  * These constants identify all the available errors managed by
  * the Endless Application Manager Service.
@@ -21,6 +22,7 @@ G_BEGIN_DECLS
 typedef enum {
   EAM_SERVICE_ERROR_BUSY = 1,
   EAM_SERVICE_ERROR_PKG_UNKNOWN,
+  EAM_SERVICE_ERROR_UNIMPLEMENTED,
 } EamServiceError;
 
 #define EAM_SERVICE_ERROR eam_service_error_quark ()

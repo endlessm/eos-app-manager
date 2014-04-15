@@ -9,6 +9,7 @@
 #include "eam-service.h"
 #include "eam-updates.h"
 #include "eam-refresh.h"
+#include "eam-install.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -229,6 +230,34 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 }
 
 static void
+eam_service_install (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  if (eam_pkgdb_get (priv->db, appid)) {
+    /* update */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_UNIMPLEMENTED, _("Method '%s' not implemented yet"),
+      "Update");
+  } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
+    /* install the latest version (which is NULL) */
+    priv->trans = eam_install_new (appid, NULL);
+    run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
+  } else {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
+      appid);
+  }
+}
+
+static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
   GDBusMethodInvocation *invocation, gpointer data)
@@ -240,6 +269,10 @@ handle_method_call (GDBusConnection *connection, const char *sender,
 
   if (!g_strcmp0 (method, "Refresh")) {
     eam_service_refresh (service, invocation);
+  } else if (!g_strcmp0 (method, "Install")) {
+    const gchar *appid = NULL;
+    g_variant_get (params, "(&s)", &appid);
+    eam_service_install (service, appid, invocation);
   }
 }
 
