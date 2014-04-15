@@ -4,7 +4,6 @@
 #include "config.h"
 #endif
 
-#include <errno.h>
 #include <libsoup/soup.h>
 #include <glib/gi18n.h>
 
