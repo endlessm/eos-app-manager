@@ -209,12 +209,15 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
 
   if (JSON_NODE_HOLDS_ARRAY (root))
     array = json_node_get_array (root);
-  else if (JSON_NODE_HOLDS_OBJECT (root)) {
-    JsonObject *json = json_node_get_object (root);
-    GList *values = json_object_get_values (json);
-    if (JSON_NODE_HOLDS_ARRAY (values->data))
-      array = json_node_get_array (values->data);
-    g_list_free (values);
+
+  if (JSON_NODE_HOLDS_OBJECT (root)) {
+    JsonObject *obj = json_node_get_object (root);
+
+    if (json_object_has_member (obj, "available")) {
+      JsonNode *tmp = json_object_get_member (obj, "available");
+      if (JSON_NODE_HOLDS_ARRAY (tmp))
+        array = json_node_get_array (tmp);
+    }
   }
 
   if (!array)
