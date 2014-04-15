@@ -54,6 +54,8 @@ gboolean        eam_pkg_version_relate                           (const EamPkgVe
                                                                   EamRelation rel,
                                                                   const EamPkgVersion *b);
 
+gchar          *eam_pkg_version_as_string                        (const EamPkgVersion *version);
+
 G_END_DECLS
 
 #endif /* EAM_VERSION_H */
