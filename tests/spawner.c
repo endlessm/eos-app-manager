@@ -19,7 +19,7 @@ test_spawner_run (void)
 {
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "scriptdir", NULL);
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-  EamSpawner *spawner = eam_spawner_new (scriptdir);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL);
 
   eam_spawner_run_async (spawner, NULL, run_cb, loop);
   g_object_unref (spawner);
