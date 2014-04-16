@@ -13,6 +13,7 @@ typedef struct _EamSpawnerPrivate EamSpawnerPrivate;
 struct _EamSpawnerPrivate
 {
   GFile *dir;
+  GStrv params;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamSpawner, eam_spawner, G_TYPE_OBJECT)
@@ -21,6 +22,7 @@ G_DEFINE_QUARK (eam-spawner-error-quark, eam_spawner_error)
 
 enum {
   PROP_DIR = 1,
+  PROP_PARAMS = 2,
 };
 
 static void
@@ -29,6 +31,7 @@ eam_spawner_finalize (GObject *obj)
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (EAM_SPAWNER (obj));
 
   g_object_unref (priv->dir);
+  g_strfreev (priv->params);
 
   G_OBJECT_CLASS (eam_spawner_parent_class)->finalize (obj);
 }
@@ -42,6 +45,10 @@ eam_spawner_set_property (GObject *obj, guint propid, const GValue *value,
   switch (propid) {
   case PROP_DIR: {
     priv->dir = g_value_dup_object (value);
+    break;
+  }
+  case PROP_PARAMS: {
+    priv->params = g_strdupv (g_value_get_boxed (value));
     break;
   }
   default:
@@ -59,6 +66,10 @@ eam_spawner_get_property (GObject *obj, guint propid, GValue *value,
   switch (propid) {
   case PROP_DIR: {
     g_value_set_object (value, priv->dir);
+    break;
+  }
+  case PROP_PARAMS: {
+    g_value_set_boxed (value, priv->params);
     break;
   }
   default:
@@ -84,6 +95,15 @@ eam_spawner_class_init (EamSpawnerClass *klass)
   g_object_class_install_property (object_class, PROP_DIR,
     g_param_spec_object ("dir", "Directory", "Directory GFile", G_TYPE_FILE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |  G_PARAM_STATIC_STRINGS));
+
+   /**
+   * EamSpawner::params:
+   *
+   * The parameters to be passed to the scripts on the "dir" directory
+   */
+  g_object_class_install_property (object_class, PROP_PARAMS,
+    g_param_spec_boxed ("params", _("Parameters"), _("List of parameters to be passed to the script"), G_TYPE_STRV,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |  G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -98,10 +118,10 @@ eam_spawner_init (EamSpawner *self)
  * Create a new instance of #EamSpawner with the default appdir.
  */
 EamSpawner *
-eam_spawner_new (const gchar *path)
+eam_spawner_new (const gchar *path, const gchar * const *params)
 {
   GFile *dir = g_file_new_for_path (path);
-  EamSpawner *ret = g_object_new (EAM_TYPE_SPAWNER, "dir", dir, NULL);
+  EamSpawner *ret = g_object_new (EAM_TYPE_SPAWNER, "dir", dir, "params", params, NULL);
   g_object_unref (dir);
   return ret;
 }
@@ -204,12 +224,25 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
   gchar *fname = g_file_get_path (child);
   g_object_unref (child);
 
+  EamSpawner *self = g_task_get_source_object (task);
+  EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
+  GStrv **argv = g_new (gchar*, priv->params ? g_strv_length (priv->params) + 2 : 2);
+  argv[0] = g_strdup (fname);
+  g_free (fname);
+
+  int i = 0;
+  while (priv->params && priv->params[i])
+  {
+    argv[i+1] = g_strdup (priv->params[i]);
+    ++i;
+  }
+  argv[i+1] = NULL;
+
   /* @TODO: connect stdout & stderr to a logging subsystem */
-  GSubprocess *process = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &error,
-     fname, NULL);
+  GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv, G_SUBPROCESS_FLAGS_NONE, &error);
   g_object_set_data_full (G_OBJECT (process), "scriptname", scriptname,
     (GDestroyNotify) g_free);
-  g_free (fname);
+  g_strfreev (argv);
 
   if (error) {
     g_task_return_error (task, error);
