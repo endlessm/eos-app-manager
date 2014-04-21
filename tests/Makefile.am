@@ -29,4 +29,5 @@ test_programs = \
 	rest \
 	updates \
 	spawner \
+	scripts-install \
 	$(NULL)
