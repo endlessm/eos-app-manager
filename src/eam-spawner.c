@@ -226,17 +226,14 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
 
   EamSpawner *self = g_task_get_source_object (task);
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
-  GStrv **argv = g_new (gchar*, priv->params ? g_strv_length (priv->params) + 2 : 2);
-  argv[0] = g_strdup (fname);
-  g_free (fname);
+  GStrv argv = g_new0 (gchar*, priv->params ? g_strv_length (priv->params) + 2 : 2);
+  argv[0] = fname;
 
   int i = 0;
-  while (priv->params && priv->params[i])
-  {
+  while (priv->params && priv->params[i]) {
     argv[i+1] = g_strdup (priv->params[i]);
     ++i;
   }
-  argv[i+1] = NULL;
 
   /* @TODO: connect stdout & stderr to a logging subsystem */
   GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv, G_SUBPROCESS_FLAGS_NONE, &error);
