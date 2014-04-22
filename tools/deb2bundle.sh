@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright 2014 Endless Mobile, Inc.
 #
@@ -8,58 +8,59 @@
 #
 # $ deb2bundle.sh package.deb
 
-failure_exit() 
-{
-    echo $1 
-    exit 1
+extract_meta() {
+  \dpkg-deb -f $DEBIAN_PKG $1
 }
 
-RM=$(which rm) || failure_exit "Can't find rm"
-MKTEMP=$(which mktemp) || failure_exit "Can't find mktemp"
-DPKGDEB=$(which dpkg-deb) || failure_exit "Can't find dpkg-deb"
-TAR=$(which tar) || failure_exit "Can't find tar"
-TR=$(which tr) || failure_exit "Can't find tr"
-
-DEB=$1
-if [ ! -f $DEB ]; then
-    failure_exit "Missing debian package"
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <debian package>"
+  exit 1
 fi
 
-WDIR=$(${MKTEMP} -d)
-if [ ! -d $WDIR ]; then
-    failure_exit "Could not create working directory" 
+DEBIAN_PKG=$1
+if [ ! -f $DEBIAN_PKG ]; then
+  echo "File ($1) not found"
+  exit 1
 fi
 
-# get the tarball name
-PACKAGE=$(${DPKGDEB} --show --showformat "\${Package}" ${DEB})
+PACKAGE=$(dpkg-deb -f $DEBIAN_PKG Package)
 if [ -z $PACKAGE ]; then
-    failure_exit "Can't query debian package"
+  echo "$1 is not a Debian package"
+  exit 1
 fi
 
-ARCHIVE=$(${DPKGDEB} --show --showformat "\${Package}.tar.gz" ${DEB})
+WORKING_DIR=$(mktemp -d)
+echo "Using $WORKING_DIR as temp dir"
 
-# extract
-mkdir ${WDIR}/${PACKAGE} || failure_exit -1
-${DPKGDEB} --fsys-tarfile ${DEB} | \
-    ${TAR} --directory ${WDIR}/${PACKAGE} --extract || failure_exit -1
+VERSION=$(extract_meta Version)
+DESCRIPTION=$(extract_meta Description | tr '\n' '.')
+HOMEPAGE=$(extract_meta Homepage)
+ARCH=$(extract_meta Architecture)
 
-# craft info file
-VERSION=$(${DPKGDEB} --show --showformat "\${Version}" ${DEB})
-HOMEPAGE=$(${DPKGDEB} --show --showformat "\${Homepage}" ${DEB})
-ARCH=$(${DPKGDEB} --show --showformat "\${Architecture}" ${DEB})
-DESC=$(${DPKGDEB} --show --showformat "\${Description}" ${DEB} | ${TR} '\n' '.')
+if [[ "${PACKAGE}" =~ ^eos-* ]]; then
+  PACKAGE="com.endlessm.${PACKAGE##eos-}"
+  echo "WARN: Package name changed to $PACKAGE"
+fi
 
-cat > ${WDIR}/.info <<EOF
+PKG_EXTRACTION_DIR=$WORKING_DIR/$PACKAGE
+\mkdir $PKG_EXTRACTION_DIR
+
+ARCHIVE="${PACKAGE}_${VERSION}_${ARCH}"
+echo "$ARCHIVE"
+echo "  $HOMEPAGE"
+echo "  $DESCRIPTION"
+
+\dpkg --extract $DEBIAN_PKG $PKG_EXTRACTION_DIR
+
+\cat > $PKG_EXTRACTION_DIR/.info <<EOF
 [Bundle]
 appid=${PACKAGE}
 version=${VERSION}
 homepage=${HOMEPAGE}
 architecture=${ARCH}
-description=${DESC}
+description=${DESCRIPTION}
 EOF
 
-# output
-${TAR} --directory ${WDIR} --create --gzip --file ./${ARCHIVE} ${PACKAGE}
+\tar --directory $WORKING_DIR --create --gzip --file ./$ARCHIVE\.bundle $PACKAGE
 
-# clean
-${RM} -rf ${WDIR}
+\rm -rf $WORKING_DIR
