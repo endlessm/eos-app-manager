@@ -30,7 +30,6 @@
 #  * PREFIX
 #  * TMP
 
-
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 # Include configuration variables
@@ -38,6 +37,8 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 # # Include utilities
 . ${SCRIPT_DIR}/../utils.sh
+
+debug "Running '${BASH_SOURCE[0]}'"
 
 ROOT_UID=0
 if [ "$UID" -ne "$ROOT_UID" ]

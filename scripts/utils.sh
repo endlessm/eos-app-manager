@@ -8,11 +8,16 @@
 
 exit_error() {
     message=$1
-    echo "Error: ${message}"
+    printf "Error: ${message}\n"
     exit 255
 }
 
 warning(){
     message=$1
-    echo "Debug: ${message}"
+    printf "Warning: ${message}\n"
+}
+
+debug(){
+    message=$1
+    printf "Debug: ${message}\n"
 }

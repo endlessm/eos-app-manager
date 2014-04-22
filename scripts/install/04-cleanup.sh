@@ -20,6 +20,8 @@
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../utils.sh
 
+debug "Running '${BASH_SOURCE[0]}'"
+
 RM=$(which rm) || exit_error "Can't find rm"
 
 ARGS=2
