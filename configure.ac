@@ -36,8 +36,7 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  ])
 
 # GResource
-glib_compile_resources=`pkg-config --variable=glib_compile_resources gio-2.0`
-AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [$glib_compile_resources], [no])
+AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources], [no])
 if test x$GLIB_COMPILE_RESOURCES = xno; then
    AC_MSG_ERROR(["Could not find a glib-compile-resources in your PATH"])
 fi
