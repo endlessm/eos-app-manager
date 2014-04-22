@@ -15,21 +15,23 @@
 #  * OS_DESKTOP_ICONS_DIR
 #  * OS_DESKTOP_FILES_DIR
 
-# Include the variables.
-. ../install-config.sh
+SCRIPT_DIR=${BASH_SOURCE[0]%/*}
+
+# Include configuration variables
+. ${SCRIPT_DIR}/../install-config.sh
 
 # Include utilities
-. ../utils.sh
-
-GLIB_COMPILE_SCHEMAS=$(which glib-compile-schemas) || exit_error "Can't find glib-compile-schemas"
-GTK_UPDATE_ICON_CACHE=$(which gtk-update-icon-cache) || exit_error "Can't find gtk-update-icon-cache"
-UPDATE_DESKTOP_DATABASE=$(which update-desktop-database) || exit_error "Can't find update-desktop-database"
+. ${SCRIPT_DIR}/../utils.sh
 
 ROOT_UID=0
 if [ "$UID" -ne "$ROOT_UID" ]
 then
   exit_error "Must be root to run the desktop metadata updates."
 fi
+
+GLIB_COMPILE_SCHEMAS=$(which glib-compile-schemas) || exit_error "Can't find glib-compile-schemas"
+GTK_UPDATE_ICON_CACHE=$(which gtk-update-icon-cache) || exit_error "Can't find gtk-update-icon-cache"
+UPDATE_DESKTOP_DATABASE=$(which update-desktop-database) || exit_error "Can't find update-desktop-database"
 
 # Compile the settings XML schema files.
 $GLIB_COMPILE_SCHEMAS $OS_GSETTINGS_DIR
