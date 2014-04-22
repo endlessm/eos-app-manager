@@ -11,15 +11,13 @@
 failure_exit() 
 {
     echo $1 
-    exit 255
+    exit 1
 }
 
-TMPDIR=/var/tmp
-
-DPKGDEB=$(which dpkg-deb) || failure_exit "Can't find dpkg-deb"
-MKTEMP=$(which mktemp) || failure_exit "Can't find mktemp"
-TAR=$(which tar) || failure_exit "Can't find tar"
 RM=$(which rm) || failure_exit "Can't find rm"
+MKTEMP=$(which mktemp) || failure_exit "Can't find mktemp"
+DPKGDEB=$(which dpkg-deb) || failure_exit "Can't find dpkg-deb"
+TAR=$(which tar) || failure_exit "Can't find tar"
 TR=$(which tr) || failure_exit "Can't find tr"
 
 DEB=$1
