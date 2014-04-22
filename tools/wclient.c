@@ -17,7 +17,7 @@ wc_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GError *error = NULL;
   gssize size = eam_wc_request_finish (EAM_WC (source), result, &error);
-  g_print ("%s (%ld bytes)\n", size > 0 ? "Success!" : "Failure", size);
+  g_print ("%s (%" G_GSSIZE_FORMAT " bytes)\n", size > 0 ? "Success!" : "Failure", size);
   if (error) {
     g_printerr ("Error: %s\n", error->message);
     g_error_free (error);
