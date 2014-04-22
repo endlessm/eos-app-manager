@@ -25,19 +25,17 @@
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../utils.sh
 
-# ROOT_UID=0
-# if [ "$UID" -ne "$ROOT_UID" ]
-# then
-#   exit_error "Must be root to delete the application files."
-# fi
+ROOT_UID=0
+if [ "$UID" -ne "$ROOT_UID" ]; then
+  exit_error "Must be root to delete the application files."
+fi
 
 RM=$(which rm) || exit_error "Can't find rm"
 
 ARGS=2
 if [ $# -lt "$ARGS" ]
 then
-  echo "Usage: `basename $0` <app_id> <bundle_path>"
-  exit $E_BADARGS
+  exit_error "Usage: `basename $0` <app_id> <bundle_path>"
 fi
 
 APP_ID=$1
@@ -63,12 +61,12 @@ BUNDLE_FILE=$2
 BUNDLE_DIR=${BUNDLE_FILE%/*}
 SHA256_FILE="${BUNDLE_DIR}/${APP_ID}.sha256"
 
-$RM $SHA256_FILE
+$RM --force $SHA256_FILE
 if [ "$?" -ne 0 ]; then
   warning "Failed to remove the sha256file '${SHA256_FILE}'"
 fi
 
-$RM $BUNDLE_FILE
+$RM --force $BUNDLE_FILE
 if [ "$?" -ne 0 ]; then
   warning "Failed to remove the bundle file '${BUNDLE_FILE}'"
 fi
