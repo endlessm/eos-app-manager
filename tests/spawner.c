@@ -10,6 +10,7 @@ run_cb (GObject *source, GAsyncResult *res, gpointer data)
   if (error) {
     g_print ("Error: %s\n", error->message);
     g_clear_error (&error);
+    g_test_fail ();
   }
   g_main_loop_quit (data);
 }
