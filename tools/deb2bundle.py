@@ -3,8 +3,10 @@
 import sys
 import argparse
 import os.path
+from shutil import rmtree
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
+from tempfile import mkdtemp
 
 VERSION="0.1"
 
@@ -62,14 +64,16 @@ class BundleConverter(object):
         self.args = args
 
     def _extract_bundle_data(self, deb_package):
-        field_values = {}
+        field_values = AttributeDict()
 
+        print "-" * 40
         for info_key in PACKAGE_METADATA.keys():
             field_name = PACKAGE_METADATA[info_key]
 
-            field_values[field_name] = system_exec("dpkg-deb -f %s %s" % (deb_package, field_name), show_output=False).output
+            field_values[info_key] = system_exec("dpkg-deb -f %s %s" % (deb_package, field_name), show_output=False).output
 
-            print field_name, "\t", field_values[field_name]
+            print info_key, "\t", field_values[info_key]
+        print "-" * 40
 
         return field_values
 
@@ -78,7 +82,31 @@ class BundleConverter(object):
             print >>sys.stderr, 'File not found:',  self.args.deb_package
             exit(1)
 
+        # Get bundle metadata
         bundle_info = self._extract_bundle_data(self.args.deb_package)
+
+        # Fix eos-* named packages
+        if bundle_info['appid'].startswith('eos-'):
+            bundle_info['appid'] = "com.endlessm.%s" % bundle_info['appid'].replace('eos-','', 1)
+            print "WARN: New package name is", bundle_info['appid']
+
+        # Cretate a temp dir
+        working_dir = mkdtemp(prefix='deb2bundle_')
+
+        # Create package-named dir
+        extraction_dir = os.path.join(working_dir, bundle_info.appid)
+        os.mkdir(extraction_dir)
+        print "Using", extraction_dir, "as staging area"
+
+        print "Extracting..."
+        system_exec("dpkg --extract %s %s" % (self.args.deb_package, extraction_dir))
+
+
+        # Delete our temp dir
+        print "Cleaning up"
+        rmtree(working_dir)
+
+        print "Done"
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Converts Debian packages into application bundles')
