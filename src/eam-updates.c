@@ -214,23 +214,10 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
   g_return_val_if_fail (root, FALSE);
 
-  JsonArray *array = NULL;
-
-  if (JSON_NODE_HOLDS_ARRAY (root))
-    array = json_node_get_array (root);
-
-  if (JSON_NODE_HOLDS_OBJECT (root)) {
-    JsonObject *obj = json_node_get_object (root);
-
-    if (json_object_has_member (obj, "available")) {
-      JsonNode *tmp = json_object_get_member (obj, "available");
-      if (JSON_NODE_HOLDS_ARRAY (tmp))
-        array = json_node_get_array (tmp);
-    }
-  }
-
-  if (!array)
+  if (!JSON_NODE_HOLDS_ARRAY (root))
     goto bail;
+
+  JsonArray *array = json_node_get_array (root);
 
   GList *avails = NULL;
   json_array_foreach_element (array, foreach_json, &avails);
@@ -257,13 +244,9 @@ bail:
  * Expected format:
  *
  * |[
- * {
- *   [
  *     { app 1 data },
  *     ...
  *     { app N data }
- *   ]
- * }
  * |]
  *
  * @TODO: make this async
