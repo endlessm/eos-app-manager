@@ -42,6 +42,12 @@ build_uri_v1 (EamRestMethod method, gchar *saddr, va_list args)
 
     break;
   }
+  case EAM_REST_API_V1_GET_APP_DOWNLOAD_LINK:{
+    const gchar *path = va_arg (args, const gchar *);
+    return g_strconcat (saddr, path, NULL);
+
+    break;
+  }
   default:
     break;
   }
