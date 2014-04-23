@@ -102,12 +102,14 @@ test_updates_filter (void)
   GList *list;
   EamPkg *pkg;
   list = eam_updates_get_upgradables (updates);
+  g_assert_nonnull (list);
   pkg = list->data;
   g_assert_nonnull (pkg);
   g_assert_cmpstr (eam_pkg_get_id (pkg), ==, "com.application.id2");
   g_assert_null (list->next);
 
   list = eam_updates_get_installables (updates);
+  g_assert_nonnull (list);
   pkg = list->data;
   g_assert_nonnull (pkg);
   g_assert_cmpstr (eam_pkg_get_id (pkg), ==, "com.application.id3");
