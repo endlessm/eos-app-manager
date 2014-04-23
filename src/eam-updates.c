@@ -223,6 +223,8 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   json_array_foreach_element (array, foreach_json, &avails);
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  /* @TODO: if we already have priv->avails compare with the new avails list,
+     and if it is different, raise "new updates" signal */
   g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
   priv->avails = avails;
 
