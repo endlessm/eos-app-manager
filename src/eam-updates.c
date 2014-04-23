@@ -140,7 +140,8 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   GTask *task = g_task_new (self, cancellable, callback, data);
   gchar *filename = build_updates_filename ();
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  eam_wc_request_async (priv->wc, uri, filename, cancellable, request_cb, task);
+  eam_wc_request_with_headers_async (priv->wc, uri, filename, cancellable,
+    request_cb, task, "Accept", "application/json", NULL);
 
   g_free (filename);
   g_free (uri);
