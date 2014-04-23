@@ -1,2 +1,4 @@
 *.bundle
 *.deb
+*.tgz
+*.tar.gz
