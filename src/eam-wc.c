@@ -22,6 +22,8 @@ struct _EamWcPrivate
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
 
+G_DEFINE_QUARK (eam-wc-error-quark, eam_wc_error)
+
 enum {
   PROP_LOG_LEVEL = 1,
   PROP_USER_AGENT,
@@ -326,6 +328,13 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
   g_return_if_fail (callback);
 
   SoupURI *suri = soup_uri_new (uri);
+  if (!suri) {
+    g_task_report_new_error (self, callback, data,
+       eam_wc_request_with_headers_hash_async, EAM_WC_ERROR,
+       EAM_WC_ERROR_PROTOCOL_ERROR, "Invalid URI: %s", uri);
+    return;
+  }
+
   eam_wc_assure_filename (self, filename, soup_uri_get_path (suri));
 
   GError *error = NULL;
