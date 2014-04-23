@@ -171,11 +171,28 @@ static inline gboolean
 pkg_json_is_valid (JsonObject *json)
 {
   JsonNode *node = json_object_get_member (json, "minOsVersion");
-  if (!node)
-    return TRUE; /* if it doesn't have version, let's assume it's ours. */
+  if (node) {
+    EamPkgVersion *posver = eam_pkg_version_new_from_string (
+      json_node_get_string (node));
+    EamPkgVersion *osver = eam_pkg_version_new_from_string (
+      eam_os_get_version ());
 
-  const gchar *osver = json_node_get_string (node);
-  return g_strcmp0 (osver, eam_os_get_version ()) == 0;
+    gboolean rel = eam_pkg_version_relate (posver, EAM_RELATION_GE, osver);
+    eam_pkg_version_free (posver);
+    eam_pkg_version_free (osver);
+
+    if (!rel)
+      return FALSE;
+  }
+
+  node = json_object_get_member (json, "personality");
+  if (node) {
+    const gchar *personality = json_node_get_string (node);
+    return g_strcmp0 (personality, eam_os_get_personality ()) == 0;
+  }
+
+  return TRUE; /* if it doesn't have version nor personality, let's
+                * assume it's ours. */
 }
 
 static void
