@@ -61,6 +61,10 @@ class Color:
     RED = "\033[1;31m"
     END = "\033[0m"
 
+def get_color_str(text, color):
+    return color + str(text) + Color.END
+
+# Converter for Debian packages to bundles
 class BundleConverter(object):
     def __init__(self, args):
         self.args = args
@@ -68,14 +72,14 @@ class BundleConverter(object):
     def _extract_bundle_data(self, deb_package):
         field_values = AttributeDict()
 
-        print "-" * 40
+        print get_color_str("-" * 40, Color.GREEN)
         for info_key in BUNDLE_METADATA.keys():
             field_name = BUNDLE_METADATA[info_key]
 
             field_values[info_key] = system_exec("dpkg-deb -f %s %s" % (deb_package, field_name), show_output=False).output
 
             print info_key, "\t", field_values[info_key]
-        print "-" * 40
+        print get_color_str("-" * 40, Color.GREEN)
 
         return field_values
 
@@ -90,7 +94,7 @@ class BundleConverter(object):
         # Fix eos-* named packages
         if bundle_info['appid'].startswith('eos-'):
             bundle_info['appid'] = "com.endlessm.%s" % bundle_info['appid'].replace('eos-','', 1)
-            print "WARN: New package name is", bundle_info['appid']
+            print get_color_str("WARN: New package name is %s" % bundle_info.appid, Color.YELLOW)
 
         # Cretate a temp dir
         working_dir = mkdtemp(prefix='deb2bundle_')
@@ -98,9 +102,10 @@ class BundleConverter(object):
         # Create package-named dir
         extraction_dir = path.join(working_dir, bundle_info.appid)
         mkdir(extraction_dir)
-        print "Using", extraction_dir, "as staging area"
+        print "Using", get_color_str(extraction_dir, Color.GREEN), "as staging area"
 
         print "Extracting..."
+        # TODO: Convert this to native python
         system_exec("dpkg --extract %s %s" % (self.args.deb_package, extraction_dir))
 
         print "Moving /usr/* one level up"
@@ -109,7 +114,10 @@ class BundleConverter(object):
             move(path.join(user_dir, item), extraction_dir)
         rmdir(user_dir)
 
-        print "Creating metadata file..."
+        target_path = "%s_%s_%s.bundle" % (bundle_info.appid, bundle_info.version, bundle_info.architecture)
+        print "Compressing data to %s" % get_color_str(target_path, Color.GREEN)
+
+        print "  - Writing metadata..."
         metadata_path = path.join(extraction_dir, '.info')
         with open(metadata_path, 'w') as metadata:
             metadata.write(BUNDLE_METADATA_HEADER)
@@ -117,12 +125,10 @@ class BundleConverter(object):
             for item in bundle_info.keys():
                 metadata.write("%s=%s\n" % (item, bundle_info[item]))
 
-        target_path = "%s_%s_%s.bundle" % (bundle_info.appid, bundle_info.version, bundle_info.architecture)
-        print "Compressing data to %s" % target_path
+        print "  - Writing files..."
         with tarfile.open(target_path, 'w:gz', format=tarfile.GNU_FORMAT) as bundle:
             bundle.add(extraction_dir, arcname=bundle_info.appid)
 
-        # Delete our temp dir
         print "Cleaning up..."
         rmtree(working_dir)
 
