@@ -52,6 +52,9 @@ echo "  $DESCRIPTION"
 
 \dpkg --extract $DEBIAN_PKG $PKG_EXTRACTION_DIR
 
+\mv $PKG_EXTRACTION_DIR/usr/* $PKG_EXTRACTION_DIR
+\rm -rf $PKG_EXTRACTION_DIR/usr
+
 \cat > $PKG_EXTRACTION_DIR/.info <<EOF
 [Bundle]
 appid=${PACKAGE}
