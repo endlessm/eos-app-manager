@@ -5,10 +5,10 @@
 #include "eam-config.h"
 
 static const gchar *METHODS_V1_FORMAT[] = {
-  "%s/api/v1/updates/:%s",         /* ALL_UPDATES     */
-  "%s/api/v1/updates/:%s/:%s",     /* APP_UPDATE      */
-  "%s/api/v1/updates/:%s/:%s/:%s", /* APP_UPDATE_LINK */
-  "%s/api/v1/updates/blob/%s",     /* APP_UPDATE_BLOB */
+  "%s/api/v1/updates/%s",       /* ALL_UPDATES     */
+  "%s/api/v1/updates/%s/%s",    /* APP_UPDATE      */
+  "%s/api/v1/updates/%s/%s/%s", /* APP_UPDATE_LINK */
+  "%s/api/v1/updates/blob/%s",  /* APP_UPDATE_BLOB */
 };
 
 static gchar *

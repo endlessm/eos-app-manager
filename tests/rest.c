@@ -31,15 +31,15 @@ test_restv1_basic (void)
   load_config ("v1");
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
-  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/:1eos1");
+  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/1eos1");
   g_free (uri);
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATES, "com.application.id1", NULL);
-  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/:1eos1/:com.application.id1");
+  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/1eos1/com.application.id1");
   g_free (uri);
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK, "com.application.id2", "2.22", NULL);
-  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/:1eos1/:com.application.id2/:2.22");
+  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/1eos1/com.application.id2/2.22");
   g_free (uri);
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_BLOB, "bbccddee-2.22-full", NULL);
