@@ -4,13 +4,26 @@ GDBUS=`which gdbus`
 PARAMS="--system --dest com.Endless.AppManager --object-path /com/Endless/AppManager"
 
 call() {
-    method=$1
-    ${GDBUS} call ${PARAMS} --method com.Endless.AppManager.${method}
+    method=$1; shift
+    ${GDBUS} call ${PARAMS} --method com.Endless.AppManager.${method} $*
 }
 
 introspect() {
     ${GDBUS} introspect ${PARAMS}
 }
 
-introspect
-call "Refresh"
+if [ $# -lt 1 ]; then
+    echo "Usage : $0 command [appID]"
+    exit
+fi
+
+case "$1" in
+    introspect) introspect
+	;;
+    refresh) call "Refresh"
+	;;
+    install) call "Install" "$2"
+	;;
+    *) echo "invalid command \"$1\""
+	;;
+esac
