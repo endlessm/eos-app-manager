@@ -102,14 +102,12 @@ replace_cb (GObject *source, GAsyncResult *result, gpointer data)
   GFileOutputStream *strm = g_file_replace_finish (G_FILE (source), result, &error);
   if (!strm) {
     g_task_return_error (task, error);
-    g_object_unref (task);
-    return;
+    goto bail;
   }
 
   if (g_task_return_error_if_cancelled (task)) {
-    g_object_unref (task);
     g_object_unref (strm);
-    return;
+    goto bail;
   }
 
   EamWcFile *file = g_task_get_source_object (task);
@@ -119,6 +117,8 @@ replace_cb (GObject *source, GAsyncResult *result, gpointer data)
   priv->strm = G_OUTPUT_STREAM (strm);
 
   g_task_return_boolean (task, TRUE);
+
+bail:
   g_object_unref (task);
 }
 
