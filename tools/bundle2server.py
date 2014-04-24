@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import sys
 import argparse
 from os import path
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
 
 VERSION="0.1"
+UPLOAD_PATH="/upload/create"
 
 def system_exec(command, directory=None, show_output=True, ignore_error=False):
     if not directory:
@@ -69,12 +71,17 @@ class BundlePublisher(object):
 
         return field_values
 
-    def publish(self):
-#       if not path.isfile(self.args.deb_package):
-#            sys.stderr.write("File not found: " + self.args.deb_package + "\n")
-#            exit(1)
+    def publish(self, bundle):
+        print("Uploading: %s" % get_color_str(bundle, Color.GREEN))
 
-        # TODO: Convert this to native python
+    def publish_all(self):
+        for bundle in self.args.app_bundle:
+            if not path.isfile(bundle):
+                sys.stderr.write("File not found: " + bundle + "\n")
+                exit(1)
+
+            self.publish(bundle)
+
         # system_exec("dpkg")
 
         print("Done")
@@ -98,4 +105,7 @@ if __name__ == '__main__':
             version='%(prog)s v' + VERSION)
 
     args = AttributeDict(vars(parser.parse_args()))
-    BundlePublisher(args).publish()
+
+    print("Using endpoint: %s" % get_color_str("%s%s" % (args.server, UPLOAD_PATH), Color.GREEN))
+
+    BundlePublisher(args).publish_all()
