@@ -184,8 +184,8 @@ file_open_cb (GObject *source, GAsyncResult *result, gpointer data)
   return;
 
 bail:
-    g_object_unref (task);
-    return;
+  g_object_unref (task);
+  return;
 }
 
 static void
