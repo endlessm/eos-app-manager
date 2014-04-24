@@ -91,9 +91,10 @@ class BundleConverter(object):
         # Get bundle metadata
         bundle_info = self._extract_bundle_data(self.args.deb_package)
 
+        original_pkg_name = bundle_info.appid
         # Fix eos-* named packages
-        if bundle_info['appid'].startswith('eos-'):
-            bundle_info['appid'] = "com.endlessm.%s" % bundle_info['appid'].replace('eos-','', 1)
+        if bundle_info.appid.startswith('eos-'):
+            bundle_info.appid = "com.endlessm.%s" % bundle_info.appid.replace('eos-','', 1)
             print get_color_str("WARN: New package name is %s" % bundle_info.appid, Color.YELLOW)
 
         # Cretate a temp dir
