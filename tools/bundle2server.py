@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import tarfile
 from os import path
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
@@ -57,8 +58,29 @@ class BundlePublisher(object):
     def __init__(self, args):
         self.args = args
 
-    def _extract_bundle_data(self, deb_package):
+    def _extract_bundle_data(self, bundle):
         field_values = AttributeDict()
+
+        def info_file_filter(members):
+            for tarinfo in members:
+                if path.basename(tarinfo.name) == '.info':
+                    return tarinfo
+
+            sys.stderr.write(get_color_str("WARN: Info not found in " + bundle + ". Skipping bundle.\n", Color.YELLOW))
+            return
+
+        info = None
+        with tarfile.open(bundle, 'r:gz', format=tarfile.GNU_FORMAT) as bundle_tar:
+            info_file = info_file_filter(bundle_tar)
+            if not info_file:
+                return
+
+            info = bundle_tar.extractfile(member=info_file).read().decode('UTF-8')
+
+        info = info.strip().split('\n')
+        print(info)
+
+        return
 
         print(get_color_str("-" * 40, Color.GREEN))
         for info_key in BUNDLE_METADATA.keys():
@@ -72,7 +94,9 @@ class BundlePublisher(object):
         return field_values
 
     def publish(self, bundle):
-        print("Uploading: %s" % get_color_str(bundle, Color.GREEN))
+        print("Using: %s" % get_color_str(bundle, Color.GREEN))
+
+        self._extract_bundle_data(bundle)
 
     def publish_all(self):
         for bundle in self.args.app_bundle:
