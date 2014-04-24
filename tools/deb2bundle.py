@@ -124,7 +124,7 @@ class BundleConverter(object):
 
     def convert(self):
         if not path.isfile(self.args.deb_package):
-            sys.stderr.write("File not found:",  self.args.deb_package)
+            sys.stderr.write("File not found: " + self.args.deb_package + "\n")
             exit(1)
 
         # Get bundle metadata
