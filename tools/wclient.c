@@ -115,6 +115,7 @@ main (gint argc, char **argv)
     eam_wc_request_instream_with_headers_async (wc, arguments[0], cancellable,
       json_cb, loop, NULL);
 
+  g_object_unref (wc);
   g_free (outfile);
   g_strfreev (arguments);
 
@@ -126,7 +127,6 @@ main (gint argc, char **argv)
 
   g_main_loop_run (loop);
 
-  g_object_unref (wc);
   g_main_loop_unref (loop);
 
   return EXIT_SUCCESS;
