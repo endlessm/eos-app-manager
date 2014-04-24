@@ -43,9 +43,9 @@ def system_exec(command, directory=None, show_output=True, ignore_error=False):
         return ReturnInfo(process.returncode, output, error)
 
     except Exception as err:
-        sys.stderr.write(Color.RED + "Could not execute", command)
-        sys.stderr.write(err, Color.END)
-        sys.stderr.write("Terminating early")
+        sys.stderr.write(Color.RED + "Could not execute " + command + "\n")
+        sys.stderr.write(str(err) + Color.END + "\n")
+        sys.stderr.write("Terminating early" + "\n")
         exit(1)
 
 # Allows for invoking attributes as methods/functions
