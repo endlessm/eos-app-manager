@@ -87,8 +87,8 @@ class BundleConverter(object):
     def _fix_path(self, filename, bundle_info):
         with fileinput.FileInput(filename,inplace=True) as launcher_file:
             for line in launcher_file:
-                line = line.replace("/usr", "/endless")
-                line = line.replace(bundle_info.orig_pkg_name, bundle_info.appid)
+                line = line.replace("/usr/", "/endless/%s/" % bundle_info.appid )
+                #line = line.replace(bundle_info.orig_pkg_name, bundle_info.appid)
                 print(line, end='')
 
 
@@ -173,6 +173,7 @@ class BundleConverter(object):
             bin_path = path.join(extraction_dir, 'bin')
             for launcher in listdir(bin_path):
                 print("  Fixing launcher: %s" % launcher)
+                self._fix_launcher_paths(launcher, bin_path, bundle_info)
                 self._add_desktop_file(launcher, applications_dir, bundle_info)
 
         # Use full package name if regular run and simple .tgz if debugging
