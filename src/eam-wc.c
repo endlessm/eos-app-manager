@@ -198,14 +198,12 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
   GInputStream *instream = soup_request_send_finish (request, result, &error);
   if (error) {
     g_task_return_error (task, error);
-    g_object_unref (task);
-    return;
+    goto bail;
   }
 
   if (g_task_return_error_if_cancelled (task)) {
-    g_object_unref (task);
     g_object_unref (instream);
-    return;
+    goto bail;
   }
 
   EamWc *wc = g_task_get_source_object (task);
@@ -213,8 +211,7 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   if (priv->return_instrm) {
     g_task_return_pointer (task, instream, (GDestroyNotify) g_object_unref);
-    g_object_unref (task);
-    return;
+    goto bail;
   }
 
   g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
@@ -225,6 +222,12 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   eam_wc_file_open_async (priv->file, priv->filename, cancellable, file_open_cb, data);
+
+  return;
+
+bail:
+  g_object_unref (task);
+  return;
 }
 
 /**
