@@ -22,6 +22,8 @@ struct _EamWcPrivate
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
 
+G_DEFINE_QUARK (eam-wc-error-quark, eam_wc_error)
+
 enum {
   PROP_LOG_LEVEL = 1,
   PROP_USER_AGENT,
@@ -322,24 +324,27 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
 {
   g_return_if_fail (EAM_IS_WC (self));
   g_return_if_fail (uri);
-  g_return_if_fail (filename);
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
-  EamWcPrivate *priv = eam_wc_get_instance_private (self);
-  GTask *task = g_task_new (self, cancellable, callback, data);
-
   SoupURI *suri = soup_uri_new (uri);
+  if (!suri) {
+    g_task_report_new_error (self, callback, data,
+       eam_wc_request_with_headers_hash_async, EAM_WC_ERROR,
+       EAM_WC_ERROR_PROTOCOL_ERROR, "Invalid URI: %s", uri);
+    return;
+  }
+
   eam_wc_assure_filename (self, filename, soup_uri_get_path (suri));
 
   GError *error = NULL;
+  EamWcPrivate *priv = eam_wc_get_instance_private (self);
   SoupRequest *request = soup_session_request_uri (priv->session, suri, &error);
   soup_uri_free (suri);
 
   if (!request) {
-    soup_uri_free (suri);
-    g_task_return_error (task, error);
-    g_object_unref (task);
+    g_task_report_error (self, callback, data,
+      eam_wc_request_with_headers_hash_async, error);
     return;
   }
 
@@ -357,6 +362,7 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
     }
   }
 
+  GTask *task = g_task_new (self, cancellable, callback, data);
   soup_request_send_async (request, cancellable, request_cb, task);
   g_object_unref (request);
 }

@@ -35,10 +35,9 @@ fetch_updates_cb (GObject *source, GAsyncResult *res, gpointer data)
   GError *error = NULL;
 
   eam_updates_fetch_finish (EAM_UPDATES (source), res, &error);
-  /* @TODO: what to do if fetch fails? */
   if (error) {
-    /* for now, just ignore the error */
-    g_clear_error (&error);
+    g_task_return_error (task, error);
+    goto out;
   }
 
   if (g_task_return_error_if_cancelled (task))
@@ -46,7 +45,6 @@ fetch_updates_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   eam_updates_parse (priv->updates, &error);
   if (error) {
-    /* we can't ignore this error */
     g_task_return_error (task, error);
     goto out;
   }

@@ -149,7 +149,7 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
     return;
   }
 
-  priv->trans = eam_refresh_new (priv->db, get_eam_updates(service));
+  priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
   g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
   eam_transaction_run_async (priv->trans, priv->cancellable, refresh_cb, service);
 }

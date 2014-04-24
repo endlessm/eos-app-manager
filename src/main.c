@@ -10,6 +10,7 @@
 #include "eam-dbus-server.h"
 
 static const gchar *opt_cfgfile;
+static gboolean opt_dumpcfg;
 
 static gboolean
 parse_options (int *argc, gchar ***argv)
@@ -17,6 +18,7 @@ parse_options (int *argc, gchar ***argv)
   GError *err = NULL;
   GOptionEntry entries[] = {
     { "config", 'c', 0, G_OPTION_ARG_FILENAME, &opt_cfgfile, N_ ("Configuration file"), NULL },
+    { "dump", 'd', 0, G_OPTION_ARG_NONE, &opt_dumpcfg, N_ ("Dump configuration"), NULL },
     { NULL },
   };
 
@@ -81,11 +83,16 @@ main (int argc, gchar **argv)
   if (!load_config ())
     return EXIT_FAILURE;
 
+  if (opt_dumpcfg) {
+    eam_config_dump (NULL);
+    return EXIT_SUCCESS;
+  }
+
   EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_get()->appdir);
   EamDbusServer *server = eam_dbus_server_new (db);
 
   if (eam_dbus_server_run (server))
-	  ret = EXIT_SUCCESS;
+    ret = EXIT_SUCCESS;
 
   g_object_unref (server);
   eam_config_free (NULL);

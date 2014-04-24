@@ -30,6 +30,8 @@ void            eam_config_set                                    (EamConfig *cf
                                                                    gchar *saddr,
                                                                    gchar *protver);
 
+void            eam_config_dump                                   (EamConfig *cfg);
+
 G_END_DECLS
 
 #endif /* EAM_CONFIG_H */

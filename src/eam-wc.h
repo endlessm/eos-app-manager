@@ -7,6 +7,19 @@
 
 G_BEGIN_DECLS
 
+/**
+ * EamWcError:
+ * @EAM_WC_ERROR_PROTOCOL_ERROR: Invalid URI.
+
+ * These constants identify all the available errors managed by
+ * the Endless Application Manager Wc.
+ */
+typedef enum {
+  EAM_WC_ERROR_PROTOCOL_ERROR = 1,
+ } EamWcError;
+
+#define EAM_WC_ERROR eam_wc_error_quark ()
+
 #define EAM_TYPE_WC (eam_wc_get_type ())
 
 #define EAM_WC(obj) \

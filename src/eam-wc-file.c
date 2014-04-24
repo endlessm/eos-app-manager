@@ -108,6 +108,7 @@ replace_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   if (g_task_return_error_if_cancelled (task)) {
     g_object_unref (task);
+    g_object_unref (strm);
     return;
   }
 
@@ -129,8 +130,6 @@ query_fs_cb (GObject *source, GAsyncResult *result, gpointer data)
   GError *error = NULL;
   GFileInfo *info = g_file_query_filesystem_info_finish (parent, result, &error);
 
-  g_object_unref (parent);
-
   if (error) {
     g_task_return_error (task, error);
     g_object_unref (task);
@@ -138,11 +137,13 @@ query_fs_cb (GObject *source, GAsyncResult *result, gpointer data)
   }
 
   if (g_task_return_error_if_cancelled (task)) {
+    g_object_unref (info);
     g_object_unref (task);
     return;
   }
 
-  guint64 free = g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_FILESYSTEM_FREE);
+  guint64 free = g_file_info_get_attribute_uint64 (info,
+    G_FILE_ATTRIBUTE_FILESYSTEM_FREE);
   g_object_unref (info);
 
   EamWcFile *self = g_task_get_source_object (task);
@@ -190,8 +191,6 @@ eam_wc_file_open_async (EamWcFile *self, const char *path,
   g_return_if_fail (callback);
 
   EamWcFilePrivate *priv = eam_wc_file_get_instance_private (self);
-  GTask *task = g_task_new (self, cancellable, callback, data);
-
   priv->file = g_file_new_for_path (path);
 
   /* 1.create the parent directory */
@@ -200,18 +199,21 @@ eam_wc_file_open_async (EamWcFile *self, const char *path,
     GError *error = NULL;
     g_file_make_directory_with_parents (parent, cancellable, &error);
     if (error && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_EXISTS)) {
-      g_task_return_error (task, error);
-      g_object_unref (task);
-      return;
+      g_task_report_error (self, callback, data, eam_wc_file_open_async, error);
+      goto out;
     }
     if (error)
       g_error_free (error);
   }
 
   /* 1. check if there's "enough" space */
+  GTask *task = g_task_new (self, cancellable, callback, data);
   g_file_query_filesystem_info_async (parent,
     G_FILE_ATTRIBUTE_FILESYSTEM_FREE, G_PRIORITY_DEFAULT, cancellable,
     query_fs_cb, task);
+
+out:
+  g_object_unref (parent);
 }
 
 /**
