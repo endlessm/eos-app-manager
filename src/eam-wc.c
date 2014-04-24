@@ -17,7 +17,6 @@ struct _EamWcPrivate
   SoupSession *session;
   SoupLoggerLogLevel level;
   gchar *filename;
-  EamWcFile *file;
   gboolean return_instrm;
 };
 
@@ -37,7 +36,6 @@ eam_wc_reset (EamWc *self)
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (self);
 
-  g_clear_object (&priv->file);
   g_free (priv->filename);
 }
 
@@ -216,12 +214,13 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
 
-  priv->file = eam_wc_file_new ();
+  EamWcFile *file = eam_wc_file_new ();
   goffset len = soup_request_get_content_length (request);
-  g_object_set (priv->file, "size", len, NULL);
+  g_object_set (file, "size", len, NULL);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_wc_file_open_async (priv->file, priv->filename, cancellable, file_open_cb, data);
+  eam_wc_file_open_async (file, priv->filename, cancellable, file_open_cb, data);
+  g_object_unref (file);
 
   return;
 
