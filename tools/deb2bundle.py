@@ -114,7 +114,12 @@ class BundleConverter(object):
             move(path.join(user_dir, item), extraction_dir)
         rmdir(user_dir)
 
-        target_path = "%s_%s_%s.bundle" % (bundle_info.appid, bundle_info.version, bundle_info.architecture)
+        # Use full package name if regular run and simple .tgz if debugging
+        if not self.args.debug:
+            target_path = "%s_%s_%s.bundle" % (bundle_info.appid, bundle_info.version, bundle_info.architecture)
+        else:
+            target_path = "%s.tgz" % (bundle_info.appid)
+
         print "Compressing data to %s" % get_color_str(target_path, Color.GREEN)
 
         print "  - Writing metadata..."
