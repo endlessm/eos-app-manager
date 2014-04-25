@@ -52,6 +52,7 @@ data/Makefile
 src/Makefile
 tools/Makefile
 tests/Makefile
+scripts/Makefile
 po/Makefile.in
 ],
 [])

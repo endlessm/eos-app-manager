@@ -1,4 +1,4 @@
-SUBDIRS = data src tools tests po
+SUBDIRS = data src tools tests scripts po
 
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 
