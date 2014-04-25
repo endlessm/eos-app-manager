@@ -145,6 +145,10 @@ splice_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto done;
 
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  GInputStream *instream = g_task_get_task_data (task);
+  g_input_stream_close (instream, cancellable, NULL);
+
   g_task_return_int (task, size);
 
 done:
