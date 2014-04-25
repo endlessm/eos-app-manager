@@ -14,7 +14,7 @@ VERSION="0.1"
 
 BUNDLE_METADATA_HEADER = "[Bundle]\n"
 BUNDLE_METADATA = OrderedDict([
-    ('appid', 'Package'),
+    ('app_id', 'Package'),
     ('version', 'Version'),
     ('homepage', 'Homepage'),
     ('architecture', 'Architecture'),
@@ -87,8 +87,7 @@ class BundleConverter(object):
     def _fix_path(self, filename, bundle_info):
         with fileinput.FileInput(filename,inplace=True) as launcher_file:
             for line in launcher_file:
-                line = line.replace("/usr/", "/endless/%s/" % bundle_info.appid )
-                #line = line.replace(bundle_info.orig_pkg_name, bundle_info.appid)
+                line = line.replace("/usr/", "/endless/%s/" % bundle_info.app_id )
                 print(line, end='')
 
 
@@ -102,9 +101,9 @@ class BundleConverter(object):
         launcher_name = launcher + ".desktop"
         desktop_launcher = path.join(applications_dir, launcher_name)
 
-        pkg_name = bundle_info.orig_pkg_name.replace('eos-','')
+        pkg_name = bundle_info.app_name.replace('eos-','')
 
-        exec_line = path.join("/endless", bundle_info.appid, 'bin', path.basename(launcher))
+        exec_line = path.join("/endless", bundle_info.app_id, 'bin', path.basename(launcher))
         icon = "eos-app-%s" % pkg_name
 
         makedirs(applications_dir)
@@ -130,17 +129,17 @@ class BundleConverter(object):
         # Get bundle metadata
         bundle_info = self._extract_bundle_data(self.args.deb_package)
 
-        bundle_info.orig_pkg_name = bundle_info.appid
+        bundle_info.app_name = bundle_info.app_id
         # Fix eos-* named packages
-        if bundle_info.appid.startswith('eos-'):
-            bundle_info.appid = "com.endlessm.%s" % bundle_info.appid.replace('eos-','', 1)
-            print(get_color_str("WARN: New package name is %s" % bundle_info.appid, Color.YELLOW))
+        if bundle_info.app_id.startswith('eos-'):
+            bundle_info.app_id = "com.endlessm.%s" % bundle_info.app_id.replace('eos-','', 1)
+            print(get_color_str("WARN: New package name is %s" % bundle_info.app_id, Color.YELLOW))
 
         # Cretate a temp dir
         working_dir = mkdtemp(prefix='deb2bundle_')
 
         # Create package-named dir
-        extraction_dir = path.join(working_dir, bundle_info.appid)
+        extraction_dir = path.join(working_dir, bundle_info.app_id)
         mkdir(extraction_dir)
         print("Using", get_color_str(extraction_dir, Color.GREEN), "as staging area")
 
@@ -178,9 +177,9 @@ class BundleConverter(object):
 
         # Use full package name if regular run and simple .tgz if debugging
         if not self.args.debug:
-            target_path = "%s_%s_%s.bundle" % (bundle_info.appid, bundle_info.version, bundle_info.architecture)
+            target_path = "%s_%s_%s.bundle" % (bundle_info.app_id, bundle_info.version, bundle_info.architecture)
         else:
-            target_path = "%s.tgz" % (bundle_info.appid)
+            target_path = "%s.tgz" % (bundle_info.app_id)
 
         print("Compressing data to %s" % get_color_str(target_path, Color.GREEN))
 
@@ -194,7 +193,7 @@ class BundleConverter(object):
 
         print("  - Writing files...")
         with tarfile.open(target_path, 'w:gz', format=tarfile.GNU_FORMAT) as bundle:
-            bundle.add(extraction_dir, arcname=bundle_info.appid)
+            bundle.add(extraction_dir, arcname=bundle_info.app_id)
 
         print("Cleaning up...")
         rmtree(working_dir)
