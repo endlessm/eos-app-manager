@@ -4,13 +4,23 @@ import sys
 import argparse
 import tarfile
 import re
+import json
 from os import path
 from urllib import request
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
 
 VERSION="0.1"
-UPLOAD_PATH="/api/v1"
+UPLOAD_PATH="/upload"
+
+BUNDLE_FIELD_CONVERSION = {
+    "app_id": "appId",
+    "app_name": "appName",
+    "version": "codeVersion",
+    "min_os_Version": "minOsVersion",
+    "from_version": "fromVersion",
+    "personality": "personality",
+    }
 
 def system_exec(command, directory=None, show_output=True, ignore_error=False):
     if not directory:
@@ -99,15 +109,23 @@ class BundlePublisher(object):
 
         return field_values
 
-    def _publish_bundle(self, bundle, bundle_info, username, password):
+    def _publish_bundle(self, bundle, metadata, username, password):
         authhandler = request.HTTPDigestAuthHandler()
         authhandler.add_password("AppUpdates", self.args.endpoint, username, password)
         opener = request.build_opener(authhandler)
         request.install_opener(opener)
 
-        post_request = request.Request(self.args.endpoint)
+        csrf_request = request.Request(self.args.endpoint)
+        page_content = request.urlopen(csrf_request).read().decode('UTF-8')
+        csrf_token = re.search("\"authenticity_token\".* value=\"(.*)\"", page_content).group(1)
+
+        print("Got authenticity_token: %s" % csrf_token)
+        metadata.authenticity_token = csrf_token
+
+        post_request = request.Request(self.args.endpoint, data=json.dumps(metadata).encode('UTF-8'))
         post_request.add_header('Accept', 'application/json')
-        #post_request.add_header('Content-Type', 'application/json')
+        post_request.add_header('Content-Type', 'application/json')
+        post_request.add_header('X-CSRF-Token', csrf_token)
 
         page_content = request.urlopen(post_request)
         print(page_content.read().decode('utf-8'))
@@ -116,7 +134,15 @@ class BundlePublisher(object):
         print("Using: %s" % get_color_str(bundle, Color.GREEN))
 
         bundle_info = self._extract_bundle_data(bundle)
-        self._publish_bundle(bundle, bundle_info, 'uploader', self.args.uploader_password)
+
+        print("Converting bundle fields to server fields...")
+        metadata = AttributeDict()
+        for bundle_field in BUNDLE_FIELD_CONVERSION:
+            if bundle_field in bundle_info:
+                metadata[BUNDLE_FIELD_CONVERSION[bundle_field]] = bundle_info[bundle_field]
+                print("  %s\t%s" % (BUNDLE_FIELD_CONVERSION[bundle_field], metadata[BUNDLE_FIELD_CONVERSION[bundle_field]]))
+
+        self._publish_bundle(bundle, metadata, self.args.user, self.args.password)
 
     def publish_all(self):
         for bundle in self.args.app_bundle:
@@ -126,8 +152,6 @@ class BundlePublisher(object):
 
             self.publish(bundle)
 
-        # system_exec("dpkg")
-
         print("Done")
 
 if __name__ == '__main__':
@@ -136,8 +160,13 @@ if __name__ == '__main__':
     parser.add_argument('server', \
             help='Debian package to be converted')
 
-    parser.add_argument('uploader_password', \
-            help='Password for the upploader account')
+    parser.add_argument('password', \
+            help='Password for uploading files')
+
+    parser.add_argument('-u', '--user', \
+            nargs='?',
+            default='uploader',
+            help='Username for uploading files')
 
     parser.add_argument('app_bundle', \
             nargs='+', \
