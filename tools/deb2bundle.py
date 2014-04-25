@@ -12,7 +12,7 @@ from tempfile import mkdtemp
 
 VERSION="0.1"
 
-BUNDLE_METADATA_HEADER = "[Bundle]"
+BUNDLE_METADATA_HEADER = "[Bundle]\n"
 BUNDLE_METADATA = OrderedDict([
     ('appid', 'Package'),
     ('version', 'Version'),
