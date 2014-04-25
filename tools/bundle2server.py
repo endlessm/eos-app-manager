@@ -3,12 +3,14 @@
 import sys
 import argparse
 import tarfile
+import re
 from os import path
+from urllib import request
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
 
 VERSION="0.1"
-UPLOAD_PATH="/upload/create"
+UPLOAD_PATH="/api/v1"
 
 def system_exec(command, directory=None, show_output=True, ignore_error=False):
     if not directory:
@@ -78,25 +80,43 @@ class BundlePublisher(object):
             info = bundle_tar.extractfile(member=info_file).read().decode('UTF-8')
 
         info = info.strip().split('\n')
-        print(info)
-
-        return
 
         print(get_color_str("-" * 40, Color.GREEN))
-        for info_key in BUNDLE_METADATA.keys():
-            field_name = BUNDLE_METADATA[info_key]
+        for info_item in info:
+            # Ignore long-description field
+            if info_item.startswith(' '):
+                continue
 
-            field_values[info_key] = system_exec("dpkg-deb -f %s %s" % (deb_package, field_name), show_output=False).output.decode(encoding='UTF-8')
+            # Strip header(s)
+            if re.match('\[.*\]', info_item):
+                continue
 
-            print(info_key, "\t", field_values[info_key])
+            key, value = info_item.split('=')
+            field_values[key] = value
+            print("  %s\t%s" % (key, field_values[key]))
+
         print(get_color_str("-" * 40, Color.GREEN))
 
         return field_values
 
+    def _publish_bundle(self, bundle, bundle_info, username, password):
+        authhandler = request.HTTPDigestAuthHandler()
+        authhandler.add_password("AppUpdates", self.args.endpoint, username, password)
+        opener = request.build_opener(authhandler)
+        request.install_opener(opener)
+
+        post_request = request.Request(self.args.endpoint)
+        post_request.add_header('Accept', 'application/json')
+        #post_request.add_header('Content-Type', 'application/json')
+
+        page_content = request.urlopen(post_request)
+        print(page_content.read().decode('utf-8'))
+
     def publish(self, bundle):
         print("Using: %s" % get_color_str(bundle, Color.GREEN))
 
-        self._extract_bundle_data(bundle)
+        bundle_info = self._extract_bundle_data(bundle)
+        self._publish_bundle(bundle, bundle_info, 'uploader', self.args.uploader_password)
 
     def publish_all(self):
         for bundle in self.args.app_bundle:
@@ -116,6 +136,9 @@ if __name__ == '__main__':
     parser.add_argument('server', \
             help='Debian package to be converted')
 
+    parser.add_argument('uploader_password', \
+            help='Password for the upploader account')
+
     parser.add_argument('app_bundle', \
             nargs='+', \
             help='Debian package to be converted')
@@ -130,6 +153,7 @@ if __name__ == '__main__':
 
     args = AttributeDict(vars(parser.parse_args()))
 
-    print("Using endpoint: %s" % get_color_str("%s%s" % (args.server, UPLOAD_PATH), Color.GREEN))
+    args.endpoint = "http://%s%s" % (args.server, UPLOAD_PATH)
+    print("Using endpoint: %s" % get_color_str(args.endpoint, Color.GREEN))
 
     BundlePublisher(args).publish_all()
