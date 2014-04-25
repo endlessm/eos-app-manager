@@ -16,6 +16,13 @@ struct _EamSpawnerPrivate
   GStrv params;
 };
 
+typedef struct _TaskData TaskData;
+
+struct _TaskData
+{
+  GList *file_names;
+};
+
 G_DEFINE_TYPE_WITH_PRIVATE (EamSpawner, eam_spawner, G_TYPE_OBJECT)
 
 G_DEFINE_QUARK (eam-spawner-error-quark, eam_spawner_error)
@@ -126,6 +133,82 @@ eam_spawner_new (const gchar *path, const gchar * const *params)
   return ret;
 }
 
+static void subprocess_run_async (GTask *task);
+
+static void
+subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GTask *task = data;
+  GError *error = NULL;
+  GSubprocess *process = G_SUBPROCESS (source);
+
+  g_subprocess_wait_finish (process, res, &error);
+  if (error) {
+    g_task_return_error (task, error);
+    goto bail;
+  }
+
+  if (!g_subprocess_get_successful (process)) {
+    gchar *scriptname = g_object_get_data (source, "scriptname");
+    g_task_return_new_error (task, EAM_SPAWNER_ERROR,
+      EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
+      scriptname, g_subprocess_get_exit_status (process));
+    goto bail;
+  }
+
+  subprocess_run_async (task);
+  return;
+
+bail:
+  g_object_unref (task);
+}
+
+static void
+subprocess_run_async (GTask *task)
+{
+  TaskData *task_data = g_task_get_task_data (task);
+  GError *error = NULL;
+
+  if (!task_data->file_names) {
+    g_task_return_boolean (task, TRUE);
+    goto bail;
+  }
+
+  gchar *file_name = task_data->file_names->data;
+  task_data->file_names = g_list_delete_link (task_data->file_names, task_data->file_names);
+
+  EamSpawner *self = g_task_get_source_object (task);
+  EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
+  GStrv argv = g_new0 (gchar*, priv->params ? g_strv_length (priv->params) + 2 : 2);
+  argv[0] = file_name;
+
+  int i = 0;
+  while (priv->params && priv->params[i]) {
+    argv[i+1] = g_strdup (priv->params[i]);
+    ++i;
+  }
+
+  /* @TODO: connect stdout & stderr to a logging subsystem */
+  GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv, G_SUBPROCESS_FLAGS_NONE, &error);
+  g_object_set_data_full (G_OBJECT (process), "scriptname", g_path_get_basename (file_name),
+    (GDestroyNotify) g_free);
+  g_strfreev (argv);
+
+  if (error) {
+    g_task_return_error (task, error);
+    goto bail;
+  }
+
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  g_subprocess_wait_async (process, cancellable, subprocess_cb, task);
+  g_object_unref (process);
+
+  return;
+
+bail:
+  g_object_unref (task);
+}
+
 static void
 enum_close_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
@@ -138,50 +221,17 @@ enum_close_cb (GObject *source, GAsyncResult *res, gpointer data)
     g_task_return_error (task, error);
     goto bail;
   }
-
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  g_task_return_boolean (task, TRUE);
+  TaskData *task_data = g_task_get_task_data (task);
+  task_data->file_names = g_list_sort (task_data->file_names, (GCompareFunc) g_strcmp0);
+
+  subprocess_run_async (task);
+  return;
 
 bail:
   g_object_unref (task);
-}
-
-static void got_file (GObject *source, GAsyncResult *res, gpointer data);
-
-static void
-subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-  GSubprocess *process = G_SUBPROCESS (source);
-
-  g_subprocess_wait_finish (process, res, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    g_object_unref (task);
-    return;
-  }
-
-  GFileEnumerator *fenum = g_task_get_task_data (task);
-
-  if (!g_subprocess_get_successful (process)) {
-    g_file_enumerator_close_async (fenum, G_PRIORITY_DEFAULT, NULL, NULL, NULL);
-
-    gchar *scriptname = g_object_get_data (source, "scriptname");
-    g_task_return_new_error (task, EAM_SPAWNER_ERROR,
-      EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
-      scriptname, g_subprocess_get_exit_status (process));
-
-    g_object_unref (task);
-    return;
-  }
-
-  /* Get more files */
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  g_file_enumerator_next_files_async (fenum, 1, G_PRIORITY_DEFAULT, cancellable,
-    got_file, task);
 }
 
 static void
@@ -219,38 +269,12 @@ got_file (GObject *source, GAsyncResult *res, gpointer data)
       "application/x-shellscript"))
     goto next;
 
-  gchar *scriptname = g_strdup (g_file_info_get_name (info));
   GFile *child = g_file_enumerator_get_child (fenum, info);
-  gchar *fname = g_file_get_path (child);
+  gchar *file_name = g_file_get_path (child);
   g_object_unref (child);
 
-  EamSpawner *self = g_task_get_source_object (task);
-  EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
-  GStrv argv = g_new0 (gchar*, priv->params ? g_strv_length (priv->params) + 2 : 2);
-  argv[0] = fname;
-
-  int i = 0;
-  while (priv->params && priv->params[i]) {
-    argv[i+1] = g_strdup (priv->params[i]);
-    ++i;
-  }
-
-  /* @TODO: connect stdout & stderr to a logging subsystem */
-  GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv, G_SUBPROCESS_FLAGS_NONE, &error);
-  g_object_set_data_full (G_OBJECT (process), "scriptname", scriptname,
-    (GDestroyNotify) g_free);
-  g_strfreev (argv);
-
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  g_list_free_full (infos, g_object_unref);
-  g_subprocess_wait_async (process, cancellable, subprocess_cb, task);
-  g_object_unref (process);
-
-  return;
+  TaskData *task_data = g_task_get_task_data (task);
+  task_data->file_names = g_list_prepend (task_data->file_names, file_name);
 
 next:
   g_list_free_full (infos, g_object_unref);
@@ -264,6 +288,15 @@ next:
 bail:
   g_list_free_full (infos, g_object_unref);
   g_object_unref (task);
+}
+
+static void
+task_data_free (gpointer data)
+{
+  TaskData *task_data = data;
+
+  g_list_free_full (task_data->file_names, g_free);
+  g_slice_free (TaskData, task_data);
 }
 
 static void
@@ -283,11 +316,13 @@ got_enum (GObject *source, GAsyncResult *res, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  g_task_set_task_data (task, fenum, g_object_unref);
+  TaskData *task_data = g_slice_new0 (TaskData);
+  g_task_set_task_data (task, task_data, task_data_free);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   g_file_enumerator_next_files_async (fenum, 1, G_PRIORITY_DEFAULT,
      cancellable, got_file, data);
+  g_object_unref (fenum);
 
   return;
 
