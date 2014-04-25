@@ -239,23 +239,25 @@ static void
 splice_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
+  GOutputStream *strm = G_OUTPUT_STREAM (source);
 
   GError *error = NULL;
-  gssize size = g_output_stream_splice_finish (G_OUTPUT_STREAM (source), result, &error);
+  gssize bytes = g_output_stream_splice_finish (strm, result, &error);
   if (error) {
+    /* shall we close the stream here ? */
     g_task_return_error (task, error);
     goto done;
   }
 
-  g_task_return_int (task, size);
+  /* we don't care for result here */
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  g_output_stream_close_async (strm, G_PRIORITY_DEFAULT, cancellable, NULL,
+    task);
+
+  g_task_return_int (task, bytes);
 
 done:
-  {
-    EamWcFile *self = g_task_get_source_object (task);
-    eam_wc_file_reset (self); /* let's close everything */
-
-    g_object_unref (task);
-  }
+  g_object_unref (task);
 }
 
 
@@ -283,7 +285,7 @@ eam_wc_file_splice_async (EamWcFile *self, GInputStream *source,
   g_assert (priv->strm);
 
   g_output_stream_splice_async (priv->strm, source,
-    G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+    G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
     G_PRIORITY_DEFAULT, cancellable, splice_cb, task);
 }
 
