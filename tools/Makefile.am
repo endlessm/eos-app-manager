@@ -8,7 +8,7 @@ wclient_SOURCE = wclient.c
 
 bin_SCRIPTS = \
 	dbus-client.sh \
-	deb2bundle.sh \
+	deb2bundle.py \
 	$(NULL)
 
-EXTRA_DIST = dbus-client.sh deb2bundle.sh
+EXTRA_DIST = dbus-client.sh deb2bundle.py
