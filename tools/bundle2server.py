@@ -4,14 +4,17 @@ import sys
 import argparse
 import tarfile
 import re
-import json
+import requests     #This requires python3-requests package
+
 from os import path
+from requests.auth import HTTPDigestAuth
 from urllib import request
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
 
 VERSION="0.1"
 UPLOAD_PATH="/upload"
+UPLOAD_FORM_PATH="%s/new" % UPLOAD_PATH
 
 BUNDLE_FIELD_CONVERSION = {
     "app_id": "appId",
@@ -110,25 +113,62 @@ class BundlePublisher(object):
         return field_values
 
     def _publish_bundle(self, bundle, metadata, username, password):
-        authhandler = request.HTTPDigestAuthHandler()
-        authhandler.add_password("AppUpdates", self.args.endpoint, username, password)
-        opener = request.build_opener(authhandler)
-        request.install_opener(opener)
+        print("Publishing bundle...")
 
-        csrf_request = request.Request(self.args.endpoint)
-        page_content = request.urlopen(csrf_request).read().decode('UTF-8')
-        csrf_token = re.search("\"authenticity_token\".* value=\"(.*)\"", page_content).group(1)
+        if self.args.debug:
+            # Log requests
+            import logging
+            import http.client
+            http.client.HTTPConnection.debuglevel = 1
 
-        print("Got authenticity_token: %s" % csrf_token)
+            logging.basicConfig()
+            logging.getLogger().setLevel(logging.DEBUG)
+            requests_log = logging.getLogger("requests.packages.urllib3")
+            requests_log.setLevel(logging.DEBUG)
+            requests_log.propagate = True
+
+
+        session = requests.session()
+        auth = HTTPDigestAuth(self.args.user, self.args.password)
+        response = session.get(self.args.endpoint_form, auth=auth)
+        page_content = response.content.decode('UTF-8')
+
+        csrf_token = re.search("meta content=\"([a-zA-Z\/0-9\=\+]*)\" name=\"csrf-token\"", page_content).group(1)
+
+        if self.args.debug:
+            print("Using session cookie: %s" % get_color_str(session.cookies['_eos-app-updates_session'], Color.BLUE))
+            print("Got authenticity_token: %s" % get_color_str(csrf_token, Color.BLUE))
+
         metadata.authenticity_token = csrf_token
 
-        post_request = request.Request(self.args.endpoint, data=json.dumps(metadata).encode('UTF-8'))
-        post_request.add_header('Accept', 'application/json')
-        post_request.add_header('Content-Type', 'application/json')
-        post_request.add_header('X-CSRF-Token', csrf_token)
+        headers = {}
+        headers['X-CSRF-Token'] = csrf_token
+        headers['Referer'] = self.args.endpoint_form
 
-        page_content = request.urlopen(post_request)
-        print(page_content.read().decode('utf-8'))
+        data = {}
+        data['utf8'] = 'true'
+
+        metadata_hash = {}
+        for key in metadata.keys():
+            data["app_update_bundle[%s]" % key] = metadata[key]
+
+        files={'app_update_bundle[full_bundle]': open(bundle, 'rb')}
+
+        response = session.post(self.args.endpoint, headers=headers, data=data, files=files, auth=auth)
+        page_content = response.text
+
+        #print(page_content)
+
+        if response.status_code != 200:
+            raise "Failed to upload bundle %s(%s)" % (metadata.app_name, response.status_code)
+
+        errors = re.findall("\"form-group has-error\".*\<span .*\>(.*)\<\/span\>", page_content)
+        if errors:
+            for error in errors:
+                print(get_color_str("  Validation error! %s" % error, Color.RED))
+                #raise "Failed to upload bundle %s" % metadata.app_name
+        else:
+            print(get_color_str("Bundle %s uploaded!" % bundle, Color.GREEN))
 
     def publish(self, bundle):
         print("Using: %s" % get_color_str(bundle, Color.GREEN))
@@ -144,8 +184,12 @@ class BundlePublisher(object):
 
         self._publish_bundle(bundle, metadata, self.args.user, self.args.password)
 
+
     def publish_all(self):
         for bundle in self.args.app_bundle:
+            print()
+            print(get_color_str("-" * 80, Color.GREEN))
+
             if not path.isfile(bundle):
                 sys.stderr.write("File not found: " + bundle + "\n")
                 exit(1)
@@ -183,6 +227,7 @@ if __name__ == '__main__':
     args = AttributeDict(vars(parser.parse_args()))
 
     args.endpoint = "http://%s%s" % (args.server, UPLOAD_PATH)
+    args.endpoint_form = "http://%s%s" % (args.server, UPLOAD_FORM_PATH)
     print("Using endpoint: %s" % get_color_str(args.endpoint, Color.GREEN))
 
     BundlePublisher(args).publish_all()
