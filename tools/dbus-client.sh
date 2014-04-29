@@ -1,7 +1,7 @@
 #!/bin/sh
 
 GDBUS=`which gdbus`
-PARAMS="--session --dest com.Endless.AppManager --object-path /com/Endless/AppManager"
+PARAMS="--system --dest com.Endless.AppManager --object-path /com/Endless/AppManager"
 
 call() {
     method=$1

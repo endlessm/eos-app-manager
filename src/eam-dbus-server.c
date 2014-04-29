@@ -200,7 +200,7 @@ eam_dbus_server_run (EamDbusServer *server)
   if (g_main_loop_is_running (priv->mainloop))
     return FALSE;
 
-  priv->busowner = g_bus_own_name (G_BUS_TYPE_SESSION, "com.Endless.AppManager",
+  priv->busowner = g_bus_own_name (G_BUS_TYPE_SYSTEM, "com.Endless.AppManager",
     G_BUS_NAME_OWNER_FLAGS_REPLACE | G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT,
     on_bus_acquired, on_name_acquired, on_name_lost,
     g_object_ref (server), (GDestroyNotify) g_object_unref);
