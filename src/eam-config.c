@@ -80,7 +80,7 @@ get_str (GKeyFile *keyfile, gchar *grp, gchar *key)
     return NULL;
   }
 
-  return value;
+  return g_strstrip (value);
 }
 
 static GKeyFile *
