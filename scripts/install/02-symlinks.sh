@@ -56,12 +56,6 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 debug "Running '${BASH_SOURCE[0]}'"
 
-ROOT_UID=0
-if [ "$UID" -ne "$ROOT_UID" ]
-then
-  exit_error "Must be root to create the symlinks."
-fi
-
 LN=$(which ln)   || exit_error "Can't find ln"
 
 ARGS=1
