@@ -15,6 +15,8 @@ dist_test_data = \
 	data/link-db.json \
 	data/update-db.json \
 	data/available.json \
+	data/test-app.tar.gz \
+	data/test-app.sha256 \
 	scriptdir/README \
 	scriptdir/script3 \
 	scriptdir/script2 \
