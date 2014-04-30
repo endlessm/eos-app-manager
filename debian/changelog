@@ -1,0 +1,5 @@
+eos-app-manager (0.1-1) eos; urgency=medium
+
+  * Initial release.
+
+ -- Víctor Jáquez <vjaquez@mir.local.igalia.com>  Wed, 30 Apr 2014 17:03:38 +0200

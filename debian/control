@@ -1,0 +1,20 @@
+Source: eos-app-manager
+Maintainer: Endless Mobile <maintainers@endlessm.com>
+Section: non-free/admin
+Priority: standard
+Standards-Version: 3.9.4
+Build-Depends: debhelper (>= 9),
+               dh-autoreconf (>= 7),
+               libglib2.0-dev (>= 2.40),
+               libglib2.0-bin,
+               libjson-glib-dev (>= 0.16.2),
+               libsoup2.4-dev (>= 2.44),
+               pkg-config (>= 0.24)
+Homepage: http://www.endlessm.com
+
+Package: eos-app-manager
+Section: non-free/admin
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Endless Application Manager
+ DBus service for installing, removing and updagrading Endless applications.
