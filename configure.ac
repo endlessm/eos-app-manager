@@ -1,4 +1,4 @@
-AC_INIT([EndlessOS Application Manager],[0.1],[missing bug tracker],[eos-appman])
+AC_INIT([EndlessOS Application Manager],[0.1],[missing bug tracker],[eos-app-manager])
 
 AC_PREREQ([2.59])
 
