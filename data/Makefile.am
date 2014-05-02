@@ -23,3 +23,8 @@ EXTRA_DIST = \
 	$(dbusservice_in_files) \
 	$(dbusconf_in_files) \
 	$(NULL)
+
+DISTCLEANFILES = \
+	$(dbusservice_DATA) \
+	$(dbusconf_DATA) \
+	$(NULL)
