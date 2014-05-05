@@ -24,7 +24,8 @@ G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
 G_DEFINE_QUARK (eam-pkg-error-quark, eam_pkg_error)
 
-static const gchar *KEYS[] = { "appId", "appName", "codeVersion" };
+static const gchar *KEYS[] = { "app_id", "app_name", "version" };
+static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion" };
 enum { APP_ID, APP_NAME, CODE_VERSION };
 
 void
@@ -163,19 +164,19 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
 
   id = name = NULL;
 
-  key = KEYS[APP_ID];
+  key = JSON_KEYS[APP_ID];
   node = json_object_get_member (json, key);
   if (!node)
     goto bail;
   id = json_node_dup_string (node);
 
-  key = KEYS[APP_NAME];
+  key = JSON_KEYS[APP_NAME];
   node = json_object_get_member (json, key);
   if (!node)
     goto bail;
   name = json_node_dup_string (node);
 
-  key = KEYS[CODE_VERSION];
+  key = JSON_KEYS[CODE_VERSION];
   node = json_object_get_member (json, key);
   if (!node)
     goto bail;

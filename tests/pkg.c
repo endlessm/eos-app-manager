@@ -6,7 +6,7 @@
 #include <eam-version.h>
 
 #define bad_info_1 "[Bundle]"
-#define good_info "[Bundle]\nappId = app01\nappName= application one\ncodeVersion = 1\n"
+#define good_info "[Bundle]\napp_id = app01\napp_name= application one\nversion = 1\n"
 #define good_json "{ \"appId\": \"com.application.id1\", \"appName\": \"App Name 1\", \"codeVersion\": \"1.1\" }"
 
 static void

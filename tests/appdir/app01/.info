@@ -1,4 +1,4 @@
 [Bundle]
-appId = app01
-appName = application one
-codeVersion = 1
+app_id = app01
+app_name = application one
+version = 1
