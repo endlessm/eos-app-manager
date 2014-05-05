@@ -261,6 +261,9 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
   int saved_errno = 0;
   const gchar *appid;
   while ((appid = g_dir_read_name (dir))) {
+    if (errno)
+      saved_errno = errno;
+
     if (!appid_is_legal (appid))
       continue;
 
@@ -269,9 +272,6 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
     g_free (info);
     if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
-
-    if (errno)
-      saved_errno = errno;
   }
   g_dir_close (dir);
 

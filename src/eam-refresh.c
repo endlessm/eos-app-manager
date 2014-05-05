@@ -49,39 +49,15 @@ fetch_updates_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  eam_updates_filter (priv->updates, priv->db);
+
   g_task_return_boolean (task, TRUE);
 
 out:
   g_object_unref (task);
 }
 
-static void
-load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  GTask *task = data;
-  EamRefresh *self = g_task_get_source_object (task);
-  EamRefreshPrivate *priv = eam_refresh_get_instance_private (self);
-  GError *error = NULL;
-
-  if (g_task_return_error_if_cancelled (task)) {
-    g_object_unref (task);
-    return;
-  }
-
-  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    g_object_unref (task);
-    return;
-  }
-
-  GCancellable *cancellable = g_task_get_cancellable (task);
-
-  /* @TODO: do this only if it is really needed */
-  eam_updates_fetch_async (priv->updates, cancellable, fetch_updates_cb, task);
-}
-
-/*
+/**
  * eam_refresh_run_async:
  * @trans: a #EamRefresh intance with #EamTransaction interface.
  * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
@@ -90,10 +66,9 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
  *
  * Lanch the refresh method
  *
- * 1. (re)load the package database (shall we?)
- * 2. fetch the available package list
- * 3. parse the available package list
- * 4. filter the available package list
+ * 1. fetch the available package list
+ * 2. parse the available package list
+ * 3. filter the available package list
  **/
 static void
 eam_refresh_run_async (EamTransaction *trans, GCancellable *cancellable,
@@ -108,9 +83,7 @@ eam_refresh_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_assert (priv->db);
 
   GTask *task = g_task_new (self, cancellable, callback, data);
-
-  /* @TODO: do this only if it's really needed */
-  eam_pkgdb_load_async (priv->db, cancellable, load_pkgdb_cb, task);
+  eam_updates_fetch_async (priv->updates, cancellable, fetch_updates_cb, task);
 }
 
 /*

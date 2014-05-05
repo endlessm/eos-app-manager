@@ -15,6 +15,7 @@ struct _EamConfig
   gchar *dldir;
   gchar *saddr;
   gchar *protver;
+  gchar *scriptdir;
 };
 
 EamConfig      *eam_config_get                                    (void);
@@ -28,7 +29,8 @@ void            eam_config_set                                    (EamConfig *cf
                                                                    gchar *appdir,
                                                                    gchar *dldir,
                                                                    gchar *saddr,
-                                                                   gchar *protver);
+                                                                   gchar *protver,
+                                                                   gchar *scriptdir);
 
 void            eam_config_dump                                   (EamConfig *cfg);
 

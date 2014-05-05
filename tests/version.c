@@ -239,6 +239,33 @@ test_version_parse (void)
   /* @FIXME: Complete. */
 }
 
+static void
+test_version_string (void)
+{
+  EamPkgVersion ver;
+  char *verstr;
+
+  ver = version (0, "2.4.3", NULL);
+  verstr = eam_pkg_version_as_string (&ver);
+  g_assert_cmpstr (verstr, ==, "2.4.3");
+  g_free (verstr);
+
+  ver = version (0, "2", "3");
+  verstr = eam_pkg_version_as_string (&ver);
+  g_assert_cmpstr (verstr, ==, "2-3");
+  g_free (verstr);
+
+  ver = version (20040321, NULL, NULL);
+  verstr = eam_pkg_version_as_string (&ver);
+  g_assert_cmpstr (verstr, ==, "20040321");
+  g_free (verstr);
+
+  ver = version (1, "2", "3");
+  verstr = eam_pkg_version_as_string (&ver);
+  g_assert_cmpstr (verstr, ==, "1:2-3");
+  g_free (verstr);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -247,6 +274,7 @@ main (int argc, char *argv[])
   g_test_add_func ("/version/compare", test_version_compare);
   g_test_add_func ("/version/relate", test_version_relate);
   g_test_add_func ("/version/parse", test_version_parse);
+  g_test_add_func ("/version/string", test_version_string);
 
   return g_test_run ();
 }

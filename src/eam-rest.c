@@ -5,10 +5,10 @@
 #include "eam-config.h"
 
 static const gchar *METHODS_V1_FORMAT[] = {
-  "%s/api/v1/updates/:%s",         /* ALL_UPDATES     */
-  "%s/api/v1/updates/:%s/:%s",     /* APP_UPDATE      */
-  "%s/api/v1/updates/:%s/:%s/:%s", /* APP_UPDATE_LINK */
-  "%s/api/v1/updates/blob/%s",     /* APP_UPDATE_BLOB */
+  "%s/api/v1/updates/%s",       /* ALL_UPDATES     */
+  "%s/api/v1/updates/%s/%s",    /* APP_UPDATE      */
+  "%s/api/v1/updates/%s/%s",    /* APP_UPDATE_LINK */
+  "%s/api/v1/updates/blob/%s",  /* APP_UPDATE_BLOB */
 };
 
 static gchar *
@@ -30,8 +30,16 @@ build_uri_v1 (EamRestMethod method, gchar *saddr, va_list args)
   case EAM_REST_API_V1_GET_APP_UPDATE_LINK:{
     const gchar *appid = va_arg (args, const gchar *);
     const gchar *appver = va_arg (args, const gchar *);
-    if (appid && appver)
-      return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid, appver);
+    gchar *ret = NULL;
+    if (appid) {
+       ret = g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid);
+       if (ret && appver) {
+         gchar *tmp = ret;
+         ret = g_strconcat (tmp, "/", appver, NULL);
+         g_free (tmp);
+       }
+       return ret;
+    }
 
     break;
   }
@@ -39,6 +47,12 @@ build_uri_v1 (EamRestMethod method, gchar *saddr, va_list args)
     const gchar *hash = va_arg (args, const gchar *);
     if (hash)
       return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, hash);
+
+    break;
+  }
+  case EAM_REST_API_V1_GET_APP_DOWNLOAD_LINK:{
+    const gchar *path = va_arg (args, const gchar *);
+    return g_strconcat (saddr, path, NULL);
 
     break;
   }

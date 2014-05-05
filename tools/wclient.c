@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <glib.h>
+#include <json-glib/json-glib.h>
 
 #ifdef G_OS_UNIX
 #include <glib-unix.h>
@@ -11,6 +12,7 @@
 
 static char **arguments;
 static char *outfile;
+static gboolean jsonparse;
 
 static void
 wc_cb (GObject *source, GAsyncResult *result, gpointer data)
@@ -24,6 +26,38 @@ wc_cb (GObject *source, GAsyncResult *result, gpointer data)
   }
 
   g_main_loop_quit (data);
+}
+
+static void
+parse_cb (GObject *source, GAsyncResult *result, gpointer data)
+{
+  GError *error = NULL;
+
+  json_parser_load_from_stream_finish (JSON_PARSER (source), result, &error);
+  if (error) {
+    g_printerr ("Error: %s\n", error->message);
+    g_error_free (error);
+  }
+
+  g_main_loop_quit (data);
+}
+
+static void
+json_cb (GObject *source, GAsyncResult *result, gpointer data)
+{
+  GError *error = NULL;
+  GInputStream *strm = eam_wc_request_instream_finish (EAM_WC (source), result, &error);
+  if (error) {
+    g_printerr ("Error: %s\n", error->message);
+    g_error_free (error);
+    g_main_loop_quit (data);
+    return;
+  }
+
+  JsonParser *parser = json_parser_new ();
+  json_parser_load_from_stream_async (parser, strm, NULL, parse_cb, data);
+  g_object_unref (parser);
+  g_object_unref (strm);
 }
 
 #ifdef G_OS_UNIX
@@ -41,6 +75,7 @@ parse_options (int *argc, gchar ***argv)
   GError *err = NULL;
   GOptionEntry entries[] = {
     { "output", 'o', 0, G_OPTION_ARG_FILENAME, &outfile, "Output file path", NULL },
+    { "json", 'j', 0, G_OPTION_ARG_NONE, &jsonparse, "Parse JSON file", NULL },
     { G_OPTION_REMAINING, '\0', 0, G_OPTION_ARG_FILENAME_ARRAY, &arguments, "", "URL …"},
     { NULL },
   };
@@ -74,8 +109,13 @@ main (gint argc, char **argv)
   EamWc *wc = eam_wc_new ();
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
 
-  eam_wc_request_async (wc, arguments[0], outfile, cancellable, wc_cb, loop);
+  if (!jsonparse)
+    eam_wc_request_async (wc, arguments[0], outfile, cancellable, wc_cb, loop);
+  else
+    eam_wc_request_instream_with_headers_async (wc, arguments[0], cancellable,
+      json_cb, loop, NULL);
 
+  g_object_unref (wc);
   g_free (outfile);
   g_strfreev (arguments);
 
@@ -87,7 +127,6 @@ main (gint argc, char **argv)
 
   g_main_loop_run (loop);
 
-  g_object_unref (wc);
   g_main_loop_unref (loop);
 
   return EXIT_SUCCESS;

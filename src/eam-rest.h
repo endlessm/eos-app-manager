@@ -12,6 +12,7 @@ typedef enum {
   EAM_REST_API_V1_GET_APP_UPDATES,
   EAM_REST_API_V1_GET_APP_UPDATE_LINK,
   EAM_REST_API_V1_GET_APP_UPDATE_BLOB,
+  EAM_REST_API_V1_GET_APP_DOWNLOAD_LINK,
 } EamRestMethod;
 
 gchar          *eam_rest_build_uri                               (EamRestMethod method,

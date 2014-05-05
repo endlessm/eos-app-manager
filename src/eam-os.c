@@ -15,7 +15,7 @@
 const gchar *
 eam_os_get_version ()
 {
-  return "1eos1";
+  return "1.2";
 }
 
 /**
@@ -30,5 +30,5 @@ eam_os_get_version ()
 const gchar *
 eam_os_get_personality ()
 {
-  return "Global";
+  return "Brazil";
 }

@@ -98,6 +98,18 @@ gssize          eam_wc_request_finish                            (EamWc *self,
 								  GAsyncResult *result,
 								  GError **error);
 
+void            eam_wc_request_instream_with_headers_async       (EamWc *self,
+                                                                  const gchar *uri,
+                                                                  GCancellable *cancellable,
+                                                                  GAsyncReadyCallback callback,
+                                                                  gpointer user_data,
+                                                                  ...) G_GNUC_NULL_TERMINATED;
+
+
+GInputStream   *eam_wc_request_instream_finish                   (EamWc *self,
+                                                                  GAsyncResult *result,
+                                                                  GError **error);
+
 void           eam_wc_set_log_level                              (EamWc *self,
 								  guint level);
 

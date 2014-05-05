@@ -140,7 +140,8 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   GTask *task = g_task_new (self, cancellable, callback, data);
   gchar *filename = build_updates_filename ();
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  eam_wc_request_async (priv->wc, uri, filename, cancellable, request_cb, task);
+  eam_wc_request_with_headers_async (priv->wc, uri, filename, cancellable,
+    request_cb, task, "Accept", "application/json", NULL);
 
   g_free (filename);
   g_free (uri);
@@ -170,11 +171,28 @@ static inline gboolean
 pkg_json_is_valid (JsonObject *json)
 {
   JsonNode *node = json_object_get_member (json, "minOsVersion");
-  if (!node)
-    return TRUE; /* if it doesn't have version, let's assume it's ours. */
+  if (node) {
+    EamPkgVersion *posver = eam_pkg_version_new_from_string (
+      json_node_get_string (node));
+    EamPkgVersion *osver = eam_pkg_version_new_from_string (
+      eam_os_get_version ());
 
-  const gchar *osver = json_node_get_string (node);
-  return g_strcmp0 (osver, eam_os_get_version ()) == 0;
+    gboolean rel = eam_pkg_version_relate (posver, EAM_RELATION_GE, osver);
+    eam_pkg_version_free (posver);
+    eam_pkg_version_free (osver);
+
+    if (!rel)
+      return FALSE;
+  }
+
+  node = json_object_get_member (json, "personality");
+  if (node) {
+    const gchar *personality = json_node_get_string (node);
+    return g_strcmp0 (personality, eam_os_get_personality ()) == 0;
+  }
+
+  return TRUE; /* if it doesn't have version nor personality, let's
+                * assume it's ours. */
 }
 
 static void
@@ -213,28 +231,17 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
   g_return_val_if_fail (root, FALSE);
 
-  JsonArray *array = NULL;
-
-  if (JSON_NODE_HOLDS_ARRAY (root))
-    array = json_node_get_array (root);
-
-  if (JSON_NODE_HOLDS_OBJECT (root)) {
-    JsonObject *obj = json_node_get_object (root);
-
-    if (json_object_has_member (obj, "available")) {
-      JsonNode *tmp = json_object_get_member (obj, "available");
-      if (JSON_NODE_HOLDS_ARRAY (tmp))
-        array = json_node_get_array (tmp);
-    }
-  }
-
-  if (!array)
+  if (!JSON_NODE_HOLDS_ARRAY (root))
     goto bail;
+
+  JsonArray *array = json_node_get_array (root);
 
   GList *avails = NULL;
   json_array_foreach_element (array, foreach_json, &avails);
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  /* @TODO: if we already have priv->avails compare with the new avails list,
+     and if it is different, raise "new updates" signal */
   g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
   priv->avails = avails;
 
@@ -256,13 +263,9 @@ bail:
  * Expected format:
  *
  * |[
- * {
- *   [
  *     { app 1 data },
  *     ...
  *     { app N data }
- *   ]
- * }
  * |]
  *
  * @TODO: make this async
@@ -357,4 +360,32 @@ eam_updates_get_upgradables (EamUpdates *self)
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   return priv->updates;
+}
+
+
+/**
+ * eam_updates_pkg_is_installable:
+ * @self: an #EamUpdates instance
+ * @appid: the application ID to search
+ *
+ * Searches in the installable application list the specified app ID.
+ *
+ * Returns: The #EamPkg found, or %NULL if not found
+ **/
+const EamPkg *
+eam_updates_pkg_is_installable (EamUpdates *self, const gchar *appid)
+{
+  g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
+  g_return_val_if_fail (appid, FALSE);
+
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  GList *l;
+
+  for (l = priv->installs; l; l = l->next) {
+    EamPkg *pkg = l->data;
+    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0)
+      return pkg;
+  }
+
+  return NULL;
 }

@@ -17,7 +17,7 @@ struct _EamWcPrivate
   SoupSession *session;
   SoupLoggerLogLevel level;
   gchar *filename;
-  EamWcFile *file;
+  gboolean return_instrm;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
@@ -27,17 +27,9 @@ G_DEFINE_QUARK (eam-wc-error-quark, eam_wc_error)
 enum {
   PROP_LOG_LEVEL = 1,
   PROP_USER_AGENT,
-  PROP_FILENAME
+  PROP_FILENAME,
+  PROP_RETURN_INSTRM,
 };
-
-static void
-eam_wc_reset (EamWc *self)
-{
-  EamWcPrivate *priv = eam_wc_get_instance_private (self);
-
-  g_clear_object (&priv->file);
-  g_free (priv->filename);
-}
 
 static void
 eam_wc_finalize (GObject *obj)
@@ -45,7 +37,7 @@ eam_wc_finalize (GObject *obj)
   EamWcPrivate *priv = eam_wc_get_instance_private (EAM_WC (obj));
 
   g_clear_object (&priv->session);
-  eam_wc_reset (EAM_WC (obj));
+  g_free (priv->filename);
 
   G_OBJECT_CLASS (eam_wc_parent_class)->finalize (obj);
 }
@@ -153,6 +145,10 @@ splice_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto done;
 
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  GInputStream *instream = g_task_get_task_data (task);
+  g_input_stream_close (instream, cancellable, NULL);
+
   g_task_return_int (task, size);
 
 done:
@@ -182,8 +178,8 @@ file_open_cb (GObject *source, GAsyncResult *result, gpointer data)
   return;
 
 bail:
-    g_object_unref (task);
-    return;
+  g_object_unref (task);
+  return;
 }
 
 static void
@@ -196,27 +192,37 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
   GInputStream *instream = soup_request_send_finish (request, result, &error);
   if (error) {
     g_task_return_error (task, error);
-    g_object_unref (task);
-    return;
+    goto bail;
   }
 
   if (g_task_return_error_if_cancelled (task)) {
-    g_object_unref (task);
     g_object_unref (instream);
-    return;
+    goto bail;
   }
-
-  g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
 
   EamWc *wc = g_task_get_source_object (task);
   EamWcPrivate *priv = eam_wc_get_instance_private (wc);
 
-  priv->file = eam_wc_file_new ();
+  if (priv->return_instrm) {
+    g_task_return_pointer (task, instream, (GDestroyNotify) g_object_unref);
+    goto bail;
+  }
+
+  g_task_set_task_data (task, instream, (GDestroyNotify) g_object_unref);
+
+  EamWcFile *file = eam_wc_file_new ();
   goffset len = soup_request_get_content_length (request);
-  g_object_set (priv->file, "size", len, NULL);
+  g_object_set (file, "size", len, NULL);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_wc_file_open_async (priv->file, priv->filename, cancellable, file_open_cb, data);
+  eam_wc_file_open_async (file, priv->filename, cancellable, file_open_cb, data);
+  g_object_unref (file);
+
+  return;
+
+bail:
+  g_object_unref (task);
+  return;
 }
 
 /**
@@ -290,6 +296,9 @@ eam_wc_assure_filename (EamWc *self, const gchar *filename,
 {
   EamWcPrivate *priv = eam_wc_get_instance_private (self);
 
+  if (priv->return_instrm)
+    return;
+
   if (filename) {
     priv->filename = g_strdup (filename);
     return;
@@ -362,6 +371,7 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
     }
   }
 
+  g_message ("requesting %s", uri);
   GTask *task = g_task_new (self, cancellable, callback, data);
   soup_request_send_async (request, cancellable, request_cb, task);
   g_object_unref (request);
@@ -387,8 +397,78 @@ gssize
 eam_wc_request_finish (EamWc *self, GAsyncResult *result, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
-  eam_wc_reset (self);
   return g_task_propagate_int (G_TASK (result), error);
+}
+
+/**
+ * eam_wc_request_with_instream_headers_async:
+ * @self: a #EamWc instance
+ * @uri: The URI of the resource to request
+ * @cancellable: (allow-none): a #GCancellable instance or %NULL to ignore
+ * @callback: The callback when the result is ready
+ * @data: User data set for the @callback
+ * @...: List of tuples of header name and header value, terminated by
+ * %NULL.
+ *
+ * Request the fetching of a web resource given the @uri. This request
+ * is asynchronous, thus the resulting GInputStream will be returned
+ * within the @callback.
+ */
+void eam_wc_request_instream_with_headers_async (EamWc *self, const gchar *uri,
+  GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data, ...)
+{
+  g_return_if_fail (EAM_IS_WC (self));
+
+  EamWcPrivate *priv = eam_wc_get_instance_private (self);
+  priv->return_instrm = TRUE;
+
+  va_list va_args;
+  const gchar *header_name = NULL, *header_value = NULL;
+  GHashTable *headers = NULL;
+
+  va_start (va_args, data);
+
+  header_name = va_arg (va_args, const gchar *);
+  while (header_name) {
+    header_value = va_arg (va_args, const gchar *);
+    if (header_value) {
+      if (headers == NULL) {
+        headers = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+      }
+      g_hash_table_insert (headers, g_strdup (header_name), g_strdup (header_value));
+    }
+    header_name = va_arg (va_args, const gchar *);
+  }
+
+  va_end (va_args);
+
+  eam_wc_request_with_headers_hash_async (self, uri, NULL, headers, cancellable,
+    callback, data);
+
+  if (headers)
+    g_hash_table_unref (headers);
+}
+
+/**
+ * eam_wc_request_instream_finish:
+ * @self: a #EamWc instance
+ * @result: The result of the request
+ * @error: return location for a #GError, or %NULL
+ *
+ * Use this only if you have the return-instream property ON.
+ *
+ * This be considered a "hack-mode": instead of saving the
+ * donwloaded content in a file, the result of the operation is
+ * return the opened input stream from libsoup.
+ *
+ * Returns: (transfer full):  the libsoup's #GInputStream
+ **/
+GInputStream *
+eam_wc_request_instream_finish (EamWc *self, GAsyncResult *result,
+  GError **error)
+{
+  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
+  return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 /**

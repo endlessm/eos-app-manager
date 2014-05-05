@@ -283,3 +283,43 @@ eam_pkg_version_relate (const EamPkgVersion *a, EamRelation rel, const EamPkgVer
 
   return FALSE;
 }
+
+/**
+ * eam_pkg_version_as_string:
+ * @version: a #EamPkgVersion instance
+ *
+ * Return the parsed version as a string again
+ *
+ * Returns: (transfer full): a new string with the version. Free after
+ * use.
+ **/
+gchar *
+eam_pkg_version_as_string (const EamPkgVersion *version)
+{
+  gchar *ret = NULL;
+
+  if (version->epoch)
+    ret = g_strdup_printf ("%d", version->epoch);
+
+  if (version->version) {
+    if (ret) {
+      gchar *tmp = g_strdup_printf ("%s:%s", ret, version->version);
+      g_free (ret);
+      ret = tmp;
+    } else {
+      ret = g_strdup (version->version);
+    }
+  }
+
+  if (version->revision) {
+    if (ret) {
+      gchar *tmp = g_strdup_printf ("%s-%s", ret, version->revision);
+      g_free (ret);
+      ret = tmp;
+    } else {
+      ret = g_strdup (version->revision);
+    }
+  }
+
+  return ret;
+}

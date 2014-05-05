@@ -336,7 +336,6 @@ eam_spawner_run_async (EamSpawner *self, GCancellable *cancellable,
 {
   g_return_if_fail (EAM_IS_SPAWNER (self));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
-  g_return_if_fail (callback);
 
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
   GTask *task = g_task_new (self, cancellable, callback, data);
