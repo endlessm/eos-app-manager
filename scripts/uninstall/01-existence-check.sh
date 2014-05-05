@@ -26,6 +26,7 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 # Include utilities
 . ${SCRIPT_DIR}/../utils.sh
 
+print_installation_config
 debug "Running '${BASH_SOURCE[0]}'"
 
 ARGS=1

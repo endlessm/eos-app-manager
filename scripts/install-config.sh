@@ -68,4 +68,3 @@ print_installation_config()
     echo "OS_DESKTOP_FILES_DIR=$OS_DESKTOP_FILES_DIR"
 }
 
-print_installation_config
