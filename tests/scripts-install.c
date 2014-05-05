@@ -194,6 +194,48 @@ test_scripts_install_rollback (void)
   clear_filesystem ();
 }
 
+
+static void
+install_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GError *error = NULL;
+  eam_spawner_run_finish (EAM_SPAWNER (source), res, &error);
+  if (error) {
+    g_print ("Error: %s\n", error->message);
+    g_clear_error (&error);
+
+    g_test_fail ();
+    g_main_loop_quit (data);
+
+    return;
+  }
+
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/uninstall", NULL);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+
+  eam_spawner_run_async (spawner, NULL, run_cb, data);
+  g_object_unref (spawner);
+}
+
+static void
+test_scripts_install_uninstall (void)
+{
+  setup_filesystem ();
+  setup_downloaded_files ();
+
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
+
+  GMainLoop *loop = g_main_loop_new (NULL, FALSE);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  eam_spawner_run_async (spawner, NULL, install_uninstall_cb, loop);
+  g_object_unref (spawner);
+
+  g_main_loop_run (loop);
+  g_main_loop_unref (loop);
+
+  clear_filesystem ();
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -210,6 +252,7 @@ main (int argc, char *argv[])
 
   g_test_add_func ("/scripts/install", test_scripts_install);
   g_test_add_func ("/scripts/install-rollback", test_scripts_install_rollback);
+  g_test_add_func ("/scripts/install-uninstall", test_scripts_install_uninstall);
 
   return g_test_run ();
 }
