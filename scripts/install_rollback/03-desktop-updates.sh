@@ -25,12 +25,6 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 debug "Running '${BASH_SOURCE[0]}'"
 
-ROOT_UID=0
-if [ "$UID" -ne "$ROOT_UID" ]
-then
-  exit_error "Must be root to run the desktop metadata updates."
-fi
-
 GLIB_COMPILE_SCHEMAS=$(which glib-compile-schemas) || exit_error "Can't find glib-compile-schemas"
 GTK_UPDATE_ICON_CACHE=$(which gtk-update-icon-cache) || exit_error "Can't find gtk-update-icon-cache"
 UPDATE_DESKTOP_DATABASE=$(which update-desktop-database) || exit_error "Can't find update-desktop-database"

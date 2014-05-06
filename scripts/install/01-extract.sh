@@ -38,13 +38,8 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 # # Include utilities
 . ${SCRIPT_DIR}/../utils.sh
 
+print_installation_config
 debug "Running '${BASH_SOURCE[0]}'"
-
-ROOT_UID=0
-if [ "$UID" -ne "$ROOT_UID" ]
-then
-  exit_error "Must be root to install the application."
-fi
 
 SHA256SUM=$(which sha256sum) || exit_error "Can't find sha256sum"
 TAR=$(which tar) || exit_error "Can't find tar"

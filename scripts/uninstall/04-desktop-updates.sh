@@ -2,12 +2,12 @@
 
 # Copyright 2014 Endless Mobile, Inc.
 #
-# This script refreshes the system metadata after installing
+# This script refreshes the system metadata after uninstalling
 # an application: compiles the settings XML schema files,
 # updates the icon theme cache and the cache database of
 # the MIME types handled by the .desktop files.
 #
-# Usage: ./03-desktop-updates.sh ...
+# Usage: ./04-desktop-updates.sh ...
 
 # This script uses the configuration variables defined in
 # configure.sh:
@@ -20,7 +20,7 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 # Include configuration variables
 . ${SCRIPT_DIR}/../install-config.sh
 
-# # Include utilities
+# Include utilities
 . ${SCRIPT_DIR}/../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"
