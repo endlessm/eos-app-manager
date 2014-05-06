@@ -5,12 +5,14 @@ import argparse
 import tarfile
 import re
 import requests     #This requires python3-requests package
+from html.parser import HTMLParser
 
 from os import path
 from requests.auth import HTTPDigestAuth
 from urllib import request
 from subprocess import Popen, PIPE
 from collections import namedtuple, OrderedDict
+
 
 VERSION="0.1"
 UPLOAD_PATH="/upload"
@@ -57,6 +59,30 @@ class AttributeDict(dict):
         return self[attr]
     def __setattr__(self, attr, value):
         self[attr] = value
+
+# Used to parse the html response and retrieve the CSRF token
+# There are other ways to parse the HTML but this one is built-in
+class CsrfParser(HTMLParser):
+    KEY = 0
+    VALUE = 1
+
+    def __init__(self, content):
+        HTMLParser.__init__(self)
+        self._csrf_token = None
+
+        self.feed(content)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'meta':
+            for attr in attrs:
+                attr_name, attr_value = attr
+                if attr[self.KEY] == 'name' and attr[self.VALUE] == 'csrf-token':
+                    self._csrf_token = [attr[self.VALUE] for attr in attrs if attr[self.KEY] == 'content'][0]
+                    return
+
+    @property
+    def csrf_token(self):
+        return self._csrf_token
 
 class Color:
     GREEN = "\033[1;32m"
@@ -131,9 +157,10 @@ class BundlePublisher(object):
         session = requests.session()
         auth = HTTPDigestAuth(self.args.user, self.args.password)
         response = session.get(self.args.endpoint_form, auth=auth)
-        page_content = response.content.decode('UTF-8')
+        page_content = response.text
 
-        csrf_token = re.search("meta content=\"([a-zA-Z\/0-9\=\+]*)\" name=\"csrf-token\"", page_content).group(1)
+        parser = CsrfParser(page_content)
+        csrf_token = parser.csrf_token
 
         if self.args.debug:
             print("Using session cookie: %s" % get_color_str(session.cookies['_eos-app-updates_session'], Color.BLUE))
