@@ -75,7 +75,6 @@ class CsrfParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag == 'meta':
             for attr in attrs:
-                attr_name, attr_value = attr
                 if attr[self.KEY] == 'name' and attr[self.VALUE] == 'csrf-token':
                     self._csrf_token = [attr[self.VALUE] for attr in attrs if attr[self.KEY] == 'content'][0]
                     return
@@ -83,6 +82,35 @@ class CsrfParser(HTMLParser):
     @property
     def csrf_token(self):
         return self._csrf_token
+
+class PublishErrorParser(HTMLParser):
+    KEY = 0
+    VALUE = 1
+
+    def __init__(self, content):
+        HTMLParser.__init__(self)
+        self._errors = []
+        self._recording = False
+
+        self.feed(content)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'span':
+            for attr in attrs:
+                if attr[self.KEY] == 'class' and re.search('help-block', attr[self.VALUE]):
+                    self._recording = True
+
+    def handle_endtag(self, tag):
+        if tag == 'span':
+            self._recording = False
+
+    def handle_data(self, data):
+        if self._recording:
+            self._errors.append(data)
+
+    @property
+    def errors(self):
+        return self._errors
 
 class Color:
     GREEN = "\033[1;32m"
@@ -159,8 +187,7 @@ class BundlePublisher(object):
         response = session.get(self.args.endpoint_form, auth=auth)
         page_content = response.text
 
-        parser = CsrfParser(page_content)
-        csrf_token = parser.csrf_token
+        csrf_token = CsrfParser(page_content).csrf_token
 
         if self.args.debug:
             print("Using session cookie: %s" % get_color_str(session.cookies['_eos-app-updates_session'], Color.BLUE))
@@ -184,16 +211,19 @@ class BundlePublisher(object):
         response = session.post(self.args.endpoint, headers=headers, data=data, files=files, auth=auth)
         page_content = response.text
 
-        #print(page_content)
+        # print(page_content)
 
         if response.status_code != 200:
             raise "Failed to upload bundle %s(%s)" % (metadata.app_name, response.status_code)
 
-        errors = re.findall("\"form-group has-error\".*\<span .*\>(.*)\<\/span\>", page_content)
-        if errors:
+        errors = PublishErrorParser(page_content).errors
+        if len(errors) > 0:
             for error in errors:
                 print(get_color_str("  Validation error! %s" % error, Color.RED))
-                #raise "Failed to upload bundle %s" % metadata.app_name
+                # XXX: We don't exit here since we might be uploading multiple bundles
+                #      Maybe we should at least exit the whole thing with an error if
+                #      something fails?
+                # raise "Failed to upload bundle %s" % metadata.app_name
         else:
             print(get_color_str("Bundle %s uploaded!" % bundle, Color.GREEN))
 
