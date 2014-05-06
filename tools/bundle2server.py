@@ -220,12 +220,10 @@ class BundlePublisher(object):
         if len(errors) > 0:
             for error in errors:
                 print(get_color_str("  Validation error! %s" % error, Color.RED))
-                # XXX: We don't exit here since we might be uploading multiple bundles
-                #      Maybe we should at least exit the whole thing with an error if
-                #      something fails?
-                # raise "Failed to upload bundle %s" % metadata.app_name
+                return False
         else:
             print(get_color_str("Bundle %s uploaded!" % bundle, Color.GREEN))
+            return True
 
     def publish(self, bundle):
         print("Using: %s" % get_color_str(bundle, Color.GREEN))
@@ -239,10 +237,12 @@ class BundlePublisher(object):
                 metadata[BUNDLE_FIELD_CONVERSION[bundle_field]] = bundle_info[bundle_field]
                 print("  %s\t%s" % (BUNDLE_FIELD_CONVERSION[bundle_field], metadata[BUNDLE_FIELD_CONVERSION[bundle_field]]))
 
-        self._publish_bundle(bundle, metadata, self.args.user, self.args.password)
+        return self._publish_bundle(bundle, metadata, self.args.user, self.args.password)
 
 
     def publish_all(self):
+        has_errors = False
+
         for bundle in self.args.app_bundle:
             print()
             print(get_color_str("-" * 80, Color.GREEN))
@@ -251,9 +251,13 @@ class BundlePublisher(object):
                 sys.stderr.write("File not found: " + bundle + "\n")
                 exit(1)
 
-            self.publish(bundle)
+            if not self.publish(bundle):
+                has_errors = True
 
         print("Done")
+
+        if has_errors:
+            exit(1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Publishes bundles to the server')
