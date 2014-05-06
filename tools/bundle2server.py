@@ -7,7 +7,7 @@ import re
 import requests     #This requires python3-requests package
 from html.parser import HTMLParser
 
-from os import path
+from os import path, getcwd
 from requests.auth import HTTPDigestAuth
 from urllib import request
 from subprocess import Popen, PIPE
