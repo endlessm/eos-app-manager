@@ -180,11 +180,36 @@ run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation 
 }
 
 static void
+end_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GDBusMethodInvocation *invocation = g_object_get_data (G_OBJECT (priv->trans),
+    "invocation");
+  g_assert (invocation);
+  g_object_set_data (G_OBJECT (priv->trans), "invocation", NULL);
+
+  GError *error = NULL;
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (invocation, error);
+    goto out;
+  }
+
+  priv->reloaddb = FALSE;
+
+  GVariant *value = g_variant_new ("(b)", TRUE);
+  g_dbus_method_invocation_return_value (invocation, value);
+
+out:
+  g_clear_object (&priv->trans);
+}
+
+static void
 refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
-  g_object_set_data (source, "invocation", NULL);
 
   EamService *service = EAM_SERVICE (data);
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -197,6 +222,13 @@ refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  if (ret && EAM_IS_INSTALL (priv->trans)) {
+      priv->reloaddb = TRUE; /* if we installed something we reload the database */
+      eam_pkgdb_load_async (priv->db, priv->cancellable, end_install_cb, service);
+      return;
+  }
+
+  g_object_set_data (source, "invocation", NULL);
   GVariant *value = g_variant_new ("(b)", ret);
   g_dbus_method_invocation_return_value (invocation, value);
 
