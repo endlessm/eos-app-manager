@@ -190,7 +190,7 @@ run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation 
 }
 
 static void
-refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
+refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
@@ -226,7 +226,7 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
   }
 
   priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
-  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
+  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_or_install_cb);
 }
 
 static void
@@ -249,7 +249,7 @@ eam_service_install (EamService *service, const gchar *appid,
   } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version (which is NULL) */
     priv->trans = eam_install_new (appid, NULL);
-    run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
+    run_eam_transaction_with_load_pkgdb (service, invocation, refresh_or_install_cb);
   } else {
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
       EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
