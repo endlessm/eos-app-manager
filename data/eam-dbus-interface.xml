@@ -36,5 +36,18 @@
 	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
+
+    <!--
+	ListAvailable:
+
+        Returns a list of all applications available (including those not yet
+        installed on user’s machine)
+    -->
+    <method name="ListAvailable" >
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="a(sss)" direction="out">
+	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      </arg>
+    </method>
   </interface>
 </node>
