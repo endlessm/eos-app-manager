@@ -252,6 +252,58 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 }
 
 static void
+run_service_install (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (eam_pkgdb_get (priv->db, appid)) {
+    /* update */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_UNIMPLEMENTED, _("Method '%s' not implemented yet"),
+      "Update");
+  } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
+    /* install the latest version (which is NULL) */
+    priv->trans = eam_install_new (appid, NULL);
+    g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
+    eam_transaction_run_async (priv->trans, priv->cancellable,
+      refresh_or_install_cb, service);
+  } else {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
+      appid);
+  }
+}
+
+struct _load_pkgdb_install_clos {
+  EamService *service;
+  GDBusMethodInvocation *invocation;
+  gchar *appid;
+};
+
+static void
+load_pkgdb_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  struct _load_pkgdb_install_clos *clos = data;
+  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
+
+  GError *error = NULL;
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    priv->trans = NULL; /* clear the dummy transaction */
+    g_dbus_method_invocation_take_error (clos->invocation, error);
+    goto out;
+  }
+
+  priv->reloaddb = FALSE;
+  run_service_install (clos->service, clos->appid, clos->invocation);
+
+out:
+  g_free (clos->appid);
+  g_slice_free (struct _load_pkgdb_install_clos, clos);
+}
+
+static void
 eam_service_install (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
@@ -263,22 +315,21 @@ eam_service_install (EamService *service, const gchar *appid,
     return;
   }
 
-  if (eam_pkgdb_get (priv->db, appid)) {
-    /* update */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_UNIMPLEMENTED, _("Method '%s' not implemented yet"),
-      "Update");
-  } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
-    /* install the latest version (which is NULL) */
-    priv->trans = eam_install_new (appid, NULL);
-    run_eam_transaction_with_load_pkgdb (service, invocation, refresh_or_install_cb);
-  } else {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
-      appid);
-  }
-}
+  if (priv->reloaddb) {
+    struct _load_pkgdb_install_clos *clos = g_slice_new (struct _load_pkgdb_install_clos);
+    clos->service = service;
+    clos->invocation = invocation;
+    clos->appid = g_strdup (appid);
 
+    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
+
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_install_cb,
+      clos);
+    return;
+  }
+
+  run_service_install (service, appid, invocation);
+}
 static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
