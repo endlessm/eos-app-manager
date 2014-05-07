@@ -10,6 +10,7 @@
 #include "eam-updates.h"
 #include "eam-refresh.h"
 #include "eam-install.h"
+#include "eam-list-avail.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -329,6 +330,62 @@ eam_service_install (EamService *service, const gchar *appid,
 
   run_service_install (service, appid, invocation);
 }
+
+static void
+append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
+{
+  const GList *l;
+  for (l = list; l; l = l->next) {
+    const EamPkg *pkg = l->data;
+    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (builder, "(sss)", eam_pkg_get_id (pkg),
+      eam_pkg_get_name (pkg), version);
+    g_free (version);
+  }
+}
+
+static void
+list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+  g_object_set_data (source, "invocation", NULL);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
+  eam_transaction_finish (priv->trans, res, NULL);
+
+  GVariantBuilder builder;
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_ARRAY);
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_installables (priv->updates));
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_upgradables (priv->updates));
+  GVariant *value = g_variant_builder_end (&builder);
+  GVariant *tuple = g_variant_new_tuple (&value, 1);
+  g_dbus_method_invocation_return_value (invocation, tuple);
+
+  g_clear_object (&priv->trans); /* we don't need you anymore */
+}
+
+static void
+eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db,
+    get_eam_updates (service));
+  run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
+}
+
 static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
@@ -345,6 +402,8 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     const gchar *appid = NULL;
     g_variant_get (params, "(&s)", &appid);
     eam_service_install (service, appid, invocation);
+  } else if (!g_strcmp0 (method, "ListAvailable")) {
+    eam_service_list_avail (service, invocation);
   }
 }
 
