@@ -271,10 +271,15 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
       continue;
 
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
-    EamPkg *pkg = eam_pkg_new_from_filename (info, NULL);
+    GError *perr = NULL;
+    EamPkg *pkg = eam_pkg_new_from_filename (info, &perr);
     g_free (info);
     if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
+    if (perr) {
+	g_message ("Error loading %s: %s", appid, perr->message);
+	g_clear_error (&perr);
+    }
   }
   g_dir_close (dir);
 
