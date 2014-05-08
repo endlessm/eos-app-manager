@@ -14,7 +14,9 @@ VERSION="0.1"
 
 BUNDLE_METADATA_HEADER = "[Bundle]\n"
 BUNDLE_METADATA = OrderedDict([
-    ('app_id', 'Package'),
+    ('app_id', 'Eos-Appid'),
+    ('app_name', 'Eos-Appname'),
+    ('min_os_version', 'Eos-Minosversion'),
     ('version', 'Version'),
     ('homepage', 'Homepage'),
     ('architecture', 'Architecture'),
@@ -79,7 +81,12 @@ class BundleConverter(object):
 
             field_values[info_key] = system_exec("dpkg-deb -f %s %s" % (deb_package, field_name), show_output=False).output.decode(encoding='UTF-8')
 
+            # Trim multi-line fields
+            if field_values[info_key]:
+                field_values[info_key] = field_values[info_key].splitlines()[0]
+
             print(info_key, "\t", field_values[info_key])
+
         print(get_color_str("-" * 40, Color.GREEN))
 
         return field_values
@@ -113,7 +120,7 @@ class BundleConverter(object):
             desktop_file.write("[Desktop Entry]\n")
             desktop_file.write("Version=%s\n" % bundle_info.version)
             desktop_file.write("Name=%s\n" % pkg_name.title())
-            desktop_file.write("Comment=%s\n" % pkg_name.title())
+            desktop_file.write("Comment=%s\n" % bundle_info.description)
             desktop_file.write("Type=Application\n")
             desktop_file.write("Exec=%s\n" % exec_line)
             desktop_file.write("Icon=%s\n" % icon)
@@ -129,7 +136,6 @@ class BundleConverter(object):
         # Get bundle metadata
         bundle_info = self._extract_bundle_data(self.args.deb_package)
 
-        bundle_info.app_name = bundle_info.app_id
         # Fix eos-* named packages
         if bundle_info.app_id.startswith('eos-'):
             bundle_info.app_id = "com.endlessm.%s" % bundle_info.app_id.replace('eos-','', 1)
