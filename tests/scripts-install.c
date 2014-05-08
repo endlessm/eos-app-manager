@@ -36,6 +36,22 @@ delete_file (const gchar *path)
   g_assert (path);
 
   GFile *file = g_file_new_for_path (path);
+
+  /* Check for symlinks first, to make an early decision if possible */
+  GFileInfo *file_info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
+                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, &error);
+  if (error) {
+    g_print ("Failure when cleaning the test: %s\n", error->message);
+    g_clear_error (&error);
+    goto bail;
+  }
+
+  gboolean file_is_symlink = g_file_info_get_is_symlink (file_info);
+  g_object_unref (file_info);
+  if (file_is_symlink)
+    goto delete;
+
+  /* Now we can iterate over the children with NO_FOLLOW_LINKS safely */
   GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
                                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                          NULL, &error);
