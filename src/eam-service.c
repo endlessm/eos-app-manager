@@ -114,8 +114,7 @@ get_eam_updates (EamService *service)
   if (!priv->updates) {
     priv->updates = eam_updates_new ();
     /* let's read what we have, without refreshing the database */
-    eam_updates_parse (priv->updates, NULL); /* don't care errors for now */
-    if (priv->db)
+    if (eam_updates_parse (priv->updates, NULL) && priv->db)
       eam_updates_filter (priv->updates, priv->db);
   }
 
