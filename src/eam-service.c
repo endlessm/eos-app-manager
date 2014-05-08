@@ -133,16 +133,6 @@ run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
   eam_transaction_run_async (priv->trans, priv->cancellable, callback, service);
 }
 
-static void
-reset_transaction (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  if (!priv->trans)
-    return;
-
-  g_clear_object (&priv->trans);
-}
-
 struct _load_pkgdb_clos {
   EamService *service;
   GDBusMethodInvocation *invocation;
@@ -153,16 +143,16 @@ static void
 load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   struct _load_pkgdb_clos *clos = data;
+  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
 
   GError *error = NULL;
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (clos->invocation, error);
-    reset_transaction (clos->service);
+    g_clear_object (&priv->trans);
     goto out;
   }
 
-  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
   priv->reloaddb = FALSE;
   run_eam_transaction (clos->service, clos->invocation, clos->callback);
 
