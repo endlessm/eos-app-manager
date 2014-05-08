@@ -22,7 +22,7 @@ BUNDLE_FIELD_CONVERSION = {
     "app_id": "appId",
     "app_name": "appName",
     "version": "codeVersion",
-    "min_os_Version": "minOsVersion",
+    "min_os_version": "minOsVersion",
     "from_version": "fromVersion",
     "personality": "personality",
     }
