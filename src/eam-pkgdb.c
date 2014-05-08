@@ -129,6 +129,9 @@ appid_is_legal (const char *appid)
   if (!appid || appid[0] == '\0')
     return FALSE;
 
+  if (g_strcmp0 (appid, "share") == 0)
+    return FALSE;
+
   if (!g_ascii_isalnum (appid[0]))
     return FALSE; /* must start with an alphanumeric character */
 
@@ -268,10 +271,15 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
       continue;
 
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
-    EamPkg *pkg = eam_pkg_new_from_filename (info, NULL);
+    GError *perr = NULL;
+    EamPkg *pkg = eam_pkg_new_from_filename (info, &perr);
     g_free (info);
     if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
+    if (perr) {
+	g_message ("Error loading %s: %s", appid, perr->message);
+	g_clear_error (&perr);
+    }
   }
   g_dir_close (dir);
 

@@ -85,9 +85,9 @@ gboolean        eam_updates_load                                     (EamUpdates
 void            eam_updates_filter                                   (EamUpdates *self,
                                                                       EamPkgdb *db);
 
-GList          *eam_updates_get_installables                         (EamUpdates *self);
+const GList    *eam_updates_get_installables                         (EamUpdates *self);
 
-GList          *eam_updates_get_upgradables                          (EamUpdates *self);
+const GList    *eam_updates_get_upgradables                          (EamUpdates *self);
 
 const EamPkg   *eam_updates_pkg_is_installable                       (EamUpdates *self,
                                                                       const gchar *appid);

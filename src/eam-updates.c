@@ -28,21 +28,31 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamUpdates, eam_updates, G_TYPE_OBJECT)
 G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
 static void
+eam_updates_reset_lists (EamUpdates *self)
+{
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+
+  /* this list points to structures that belong to priv->avails, hence
+   * we don't delete its content */
+  g_list_free (priv->installs);
+  priv->installs = NULL;
+
+  /* this list points to structures that belong to EamPkgdb, hence we
+   * don't delete its content */
+  g_list_free (priv->updates);
+  priv->updates = NULL;
+
+  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  priv->avails = NULL;
+}
+
+static void
 eam_updates_finalize (GObject *obj)
 {
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (EAM_UPDATES (obj));
 
   g_object_unref (priv->wc);
-
-  /* this list points to structures that belong to priv->avails, hence
-   * we don't delete its content */
-  g_list_free (priv->installs);
-
-  /* this list points to structures that belong to EamPkgdb, hence we
-   * don't delete its content */
-  g_list_free (priv->updates);
-
-  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  eam_updates_reset_lists (EAM_UPDATES (obj));
 
   G_OBJECT_CLASS (eam_updates_parent_class)->finalize (obj);
 }
@@ -242,7 +252,7 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   /* @TODO: if we already have priv->avails compare with the new avails list,
      and if it is different, raise "new updates" signal */
-  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  eam_updates_reset_lists (self);
   priv->avails = avails;
 
   return TRUE;
@@ -312,6 +322,11 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
 
+  g_list_free (priv->installs);
+  priv->installs = NULL;
+  g_list_free (priv->updates);
+  priv->updates = NULL;
+
   GList *l;
   for (l = priv->avails; l && l->data; l = l->next) {
     EamPkg *apkg = l->data;
@@ -335,7 +350,7 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
  * Returns: (transfer none) (element-type EamPkg): return a #GList
  * with the installable packages.
  **/
-GList *
+const GList *
 eam_updates_get_installables (EamUpdates *self)
 {
   g_return_val_if_fail (EAM_IS_UPDATES (self), NULL);
@@ -353,7 +368,7 @@ eam_updates_get_installables (EamUpdates *self)
  * Returns: (transfer none) (element-type EamPkg): returns a #GList
  * with the upgradable packages.
  **/
-GList *
+const GList *
 eam_updates_get_upgradables (EamUpdates *self)
 {
   g_return_val_if_fail (EAM_IS_UPDATES (self), NULL);
@@ -361,7 +376,6 @@ eam_updates_get_upgradables (EamUpdates *self)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   return priv->updates;
 }
-
 
 /**
  * eam_updates_pkg_is_installable:
