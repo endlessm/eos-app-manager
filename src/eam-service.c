@@ -10,6 +10,7 @@
 #include "eam-updates.h"
 #include "eam-refresh.h"
 #include "eam-install.h"
+#include "eam-list-avail.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -114,8 +115,7 @@ get_eam_updates (EamService *service)
   if (!priv->updates) {
     priv->updates = eam_updates_new ();
     /* let's read what we have, without refreshing the database */
-    eam_updates_parse (priv->updates, NULL); /* don't care errors for now */
-    if (priv->db)
+    if (eam_updates_parse (priv->updates, NULL) && priv->db)
       eam_updates_filter (priv->updates, priv->db);
   }
 
@@ -133,16 +133,6 @@ run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
   eam_transaction_run_async (priv->trans, priv->cancellable, callback, service);
 }
 
-static void
-reset_transaction (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  if (!priv->trans)
-    return;
-
-  g_clear_object (&priv->trans);
-}
-
 struct _load_pkgdb_clos {
   EamService *service;
   GDBusMethodInvocation *invocation;
@@ -153,16 +143,16 @@ static void
 load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   struct _load_pkgdb_clos *clos = data;
+  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
 
   GError *error = NULL;
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (clos->invocation, error);
-    reset_transaction (clos->service);
+    g_clear_object (&priv->trans);
     goto out;
   }
 
-  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
   priv->reloaddb = FALSE;
   run_eam_transaction (clos->service, clos->invocation, clos->callback);
 
@@ -190,11 +180,36 @@ run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation 
 }
 
 static void
-refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
+end_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GDBusMethodInvocation *invocation = g_object_get_data (G_OBJECT (priv->trans),
+    "invocation");
+  g_assert (invocation);
+  g_object_set_data (G_OBJECT (priv->trans), "invocation", NULL);
+
+  GError *error = NULL;
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (invocation, error);
+    goto out;
+  }
+
+  priv->reloaddb = FALSE;
+
+  GVariant *value = g_variant_new ("(b)", TRUE);
+  g_dbus_method_invocation_return_value (invocation, value);
+
+out:
+  g_clear_object (&priv->trans);
+}
+
+static void
+refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
-  g_object_set_data (source, "invocation", NULL);
 
   EamService *service = EAM_SERVICE (data);
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -207,6 +222,13 @@ refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  if (ret && EAM_IS_INSTALL (priv->trans)) {
+      priv->reloaddb = TRUE; /* if we installed something we reload the database */
+      eam_pkgdb_load_async (priv->db, priv->cancellable, end_install_cb, service);
+      return;
+  }
+
+  g_object_set_data (source, "invocation", NULL);
   GVariant *value = g_variant_new ("(b)", ret);
   g_dbus_method_invocation_return_value (invocation, value);
 
@@ -226,7 +248,59 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
   }
 
   priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
-  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
+  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_or_install_cb);
+}
+
+static void
+run_service_install (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (eam_pkgdb_get (priv->db, appid)) {
+    /* update */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_UNIMPLEMENTED, _("Method '%s' not implemented yet"),
+      "Update");
+  } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
+    /* install the latest version (which is NULL) */
+    priv->trans = eam_install_new (appid, NULL);
+    g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
+    eam_transaction_run_async (priv->trans, priv->cancellable,
+      refresh_or_install_cb, service);
+  } else {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
+      appid);
+  }
+}
+
+struct _load_pkgdb_install_clos {
+  EamService *service;
+  GDBusMethodInvocation *invocation;
+  gchar *appid;
+};
+
+static void
+load_pkgdb_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  struct _load_pkgdb_install_clos *clos = data;
+  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
+
+  GError *error = NULL;
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    priv->trans = NULL; /* clear the dummy transaction */
+    g_dbus_method_invocation_take_error (clos->invocation, error);
+    goto out;
+  }
+
+  priv->reloaddb = FALSE;
+  run_service_install (clos->service, clos->appid, clos->invocation);
+
+out:
+  g_free (clos->appid);
+  g_slice_free (struct _load_pkgdb_install_clos, clos);
 }
 
 static void
@@ -241,20 +315,75 @@ eam_service_install (EamService *service, const gchar *appid,
     return;
   }
 
-  if (eam_pkgdb_get (priv->db, appid)) {
-    /* update */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_UNIMPLEMENTED, _("Method '%s' not implemented yet"),
-      "Update");
-  } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
-    /* install the latest version (which is NULL) */
-    priv->trans = eam_install_new (appid, NULL);
-    run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
-  } else {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
-      appid);
+  if (priv->reloaddb) {
+    struct _load_pkgdb_install_clos *clos = g_slice_new (struct _load_pkgdb_install_clos);
+    clos->service = service;
+    clos->invocation = invocation;
+    clos->appid = g_strdup (appid);
+
+    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
+
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_install_cb,
+      clos);
+    return;
   }
+
+  run_service_install (service, appid, invocation);
+}
+
+static void
+append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
+{
+  const GList *l;
+  for (l = list; l; l = l->next) {
+    const EamPkg *pkg = l->data;
+    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (builder, "(sss)", eam_pkg_get_id (pkg),
+      eam_pkg_get_name (pkg), version);
+    g_free (version);
+  }
+}
+
+static void
+list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+  g_object_set_data (source, "invocation", NULL);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
+  eam_transaction_finish (priv->trans, res, NULL);
+
+  GVariantBuilder builder;
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_ARRAY);
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_installables (priv->updates));
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_upgradables (priv->updates));
+  GVariant *value = g_variant_builder_end (&builder);
+  GVariant *tuple = g_variant_new_tuple (&value, 1);
+  g_dbus_method_invocation_return_value (invocation, tuple);
+
+  g_clear_object (&priv->trans); /* we don't need you anymore */
+}
+
+static void
+eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db,
+    get_eam_updates (service));
+  run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
 }
 
 static void
@@ -273,6 +402,8 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     const gchar *appid = NULL;
     g_variant_get (params, "(&s)", &appid);
     eam_service_install (service, appid, invocation);
+  } else if (!g_strcmp0 (method, "ListAvailable")) {
+    eam_service_list_avail (service, invocation);
   }
 }
 
