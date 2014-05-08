@@ -111,7 +111,7 @@ class BundleConverter(object):
         pkg_name = bundle_info.app_name.replace('eos-','')
 
         exec_line = path.join("/endless", bundle_info.app_id, 'bin', path.basename(launcher))
-        icon = "eos-app-%s" % pkg_name
+        icon = "eos-app-%s" % pkg_name.lower()
 
         makedirs(applications_dir)
 
