@@ -129,6 +129,9 @@ appid_is_legal (const char *appid)
   if (!appid || appid[0] == '\0')
     return FALSE;
 
+  if (g_strcmp0 (appid, "share") == 0)
+    return FALSE;
+
   if (!g_ascii_isalnum (appid[0]))
     return FALSE; /* must start with an alphanumeric character */
 
