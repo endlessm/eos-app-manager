@@ -28,21 +28,31 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamUpdates, eam_updates, G_TYPE_OBJECT)
 G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
 static void
+eam_updates_reset_lists (EamUpdates *self)
+{
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+
+  /* this list points to structures that belong to priv->avails, hence
+   * we don't delete its content */
+  g_list_free (priv->installs);
+  priv->installs = NULL;
+
+  /* this list points to structures that belong to EamPkgdb, hence we
+   * don't delete its content */
+  g_list_free (priv->updates);
+  priv->updates = NULL;
+
+  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  priv->avails = NULL;
+}
+
+static void
 eam_updates_finalize (GObject *obj)
 {
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (EAM_UPDATES (obj));
 
   g_object_unref (priv->wc);
-
-  /* this list points to structures that belong to priv->avails, hence
-   * we don't delete its content */
-  g_list_free (priv->installs);
-
-  /* this list points to structures that belong to EamPkgdb, hence we
-   * don't delete its content */
-  g_list_free (priv->updates);
-
-  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  eam_updates_reset_lists (EAM_UPDATES (obj));
 
   G_OBJECT_CLASS (eam_updates_parent_class)->finalize (obj);
 }
@@ -242,7 +252,7 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   /* @TODO: if we already have priv->avails compare with the new avails list,
      and if it is different, raise "new updates" signal */
-  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
+  eam_updates_reset_lists (self);
   priv->avails = avails;
 
   return TRUE;
