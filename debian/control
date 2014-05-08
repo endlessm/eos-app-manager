@@ -5,6 +5,7 @@ Priority: standard
 Standards-Version: 3.9.4
 Build-Depends: debhelper (>= 9),
                dh-autoreconf (>= 7),
+               intltool,
                libglib2.0-dev (>= 2.40),
                libglib2.0-bin,
                libjson-glib-dev (>= 0.16.2),
