@@ -71,7 +71,7 @@ if [ "$?" -ne 0 ]; then
 fi
 
 # Untar the bundle to a temporary directory
-${TAR} --extract --file=$BUNDLE  --directory=$TMP
+${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$TMP
 if [ "$?" -ne 0 ]; then
   exit_error "To uncompress the bundle '${BUNDLE}' to directory '${TMP}' failed"
 fi
