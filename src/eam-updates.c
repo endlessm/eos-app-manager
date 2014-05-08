@@ -335,7 +335,7 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
  * Returns: (transfer none) (element-type EamPkg): return a #GList
  * with the installable packages.
  **/
-GList *
+const GList *
 eam_updates_get_installables (EamUpdates *self)
 {
   g_return_val_if_fail (EAM_IS_UPDATES (self), NULL);
@@ -353,7 +353,7 @@ eam_updates_get_installables (EamUpdates *self)
  * Returns: (transfer none) (element-type EamPkg): returns a #GList
  * with the upgradable packages.
  **/
-GList *
+const GList *
 eam_updates_get_upgradables (EamUpdates *self)
 {
   g_return_val_if_fail (EAM_IS_UPDATES (self), NULL);
@@ -361,7 +361,6 @@ eam_updates_get_upgradables (EamUpdates *self)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   return priv->updates;
 }
-
 
 /**
  * eam_updates_pkg_is_installable:
