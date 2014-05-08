@@ -101,6 +101,8 @@ signal_hangup (gpointer data)
   g_bus_unown_name (priv->busowner);
   priv->busowner = 0;
 
+  g_debug ("Received SIGHUP - terminating");
+
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
   return FALSE;
 }
@@ -108,6 +110,17 @@ signal_hangup (gpointer data)
 static gboolean
 signal_terminate (gpointer data)
 {
+  g_debug ("Received SIGTERM - terminating");
+
+  eam_dbus_server_quit (EAM_DBUS_SERVER (data));
+  return FALSE;
+}
+
+static gboolean
+signal_interrupt (gpointer data)
+{
+  g_debug ("Received SIGINT - terminating");
+
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
   return FALSE;
 }
@@ -123,7 +136,7 @@ eam_dbus_server_init (EamDbusServer *server)
 #ifdef G_OS_UNIX
   priv->hangup = g_unix_signal_add (SIGHUP, signal_hangup, server);
   priv->terminate = g_unix_signal_add (SIGTERM, signal_terminate, server);
-  priv->interrupt = g_unix_signal_add (SIGINT, signal_terminate, server);
+  priv->interrupt = g_unix_signal_add (SIGINT, signal_interrupt, server);
 #endif
 }
 
