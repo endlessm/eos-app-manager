@@ -322,6 +322,11 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
 
+  g_list_free (priv->installs);
+  priv->installs = NULL;
+  g_list_free (priv->updates);
+  priv->updates = NULL;
+
   GList *l;
   for (l = priv->avails; l && l->data; l = l->next) {
     EamPkg *apkg = l->data;
