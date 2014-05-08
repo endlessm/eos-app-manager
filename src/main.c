@@ -8,6 +8,7 @@
 #include "eam-config.h"
 #include "eam-pkgdb.h"
 #include "eam-dbus-server.h"
+#include "eam-fs-sanity.h"
 
 static const gchar *opt_cfgfile;
 static gboolean opt_dumpcfg;
@@ -87,6 +88,9 @@ main (int argc, gchar **argv)
     eam_config_dump (NULL);
     return EXIT_SUCCESS;
   }
+
+  if (!eam_fs_sanity_check ())
+    return EXIT_FAILURE;
 
   EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_get()->appdir);
   EamDbusServer *server = eam_dbus_server_new (db);

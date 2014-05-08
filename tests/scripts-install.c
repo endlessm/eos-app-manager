@@ -3,6 +3,8 @@
 #include <glib/gstdio.h>
 #include <eam-spawner.h>
 
+#include "eam-fs-sanity.h"
+
 #define EAM_TEST_DIR "/tmp/eam-test"
 #define EAM_PREFIX EAM_TEST_DIR "/endless"
 #define EAM_TMP EAM_TEST_DIR "/tmp"
@@ -28,68 +30,13 @@ setup_filesystem (void)
 }
 
 static void
-delete_file (const gchar *path)
-{
-  GError *error = NULL;
-  GFileInfo *child_info;
-
-  g_assert (path);
-
-  GFile *file = g_file_new_for_path (path);
-  GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
-                                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                         NULL, &error);
-
-  if (error) {
-    int code = error->code;
-    g_clear_error (&error);
-
-    if (code == G_IO_ERROR_NOT_FOUND)
-      /* There is not file to delete */
-      goto bail;
-    else if (code == G_IO_ERROR_NOT_DIRECTORY)
-      /* The file is a regular file, not a directory */
-      goto delete;
-    else {
-      g_print ("Failure when cleaning the test: %s\n", error->message);
-      g_clear_error (&error);
-      g_assert_not_reached ();
-    }
-  }
-
-  while ((child_info = g_file_enumerator_next_file (children, NULL, &error))) {
-    GFile *child = g_file_get_child (file, g_file_info_get_name (child_info));
-    gchar *child_path = g_file_get_path (child);
-    g_object_unref (child_info);
-    g_object_unref (child);
-
-    delete_file (child_path);
-    g_free (child_path);
-  }
-  g_object_unref (children);
-
-  if (error) {
-    g_print ("Failure when cleaning the test: %s\n", error->message);
-    g_clear_error (&error);
-    g_assert_not_reached ();
-  }
-
-delete:
-  g_file_delete (file, NULL, &error);
-  if (error) {
-    g_print ("Failure when cleaning the test: %s\n", error->message);
-    g_clear_error (&error);
-    g_assert_not_reached ();
-  }
-
-bail:
-  g_object_unref (file);
-}
-
-static void
 clear_filesystem (void)
 {
-  delete_file (EAM_TEST_DIR);
+  if (!g_file_test (EAM_TEST_DIR, G_FILE_TEST_EXISTS))
+    return;
+
+  if (!eam_fs_sanity_delete (EAM_TEST_DIR))
+    g_print ("Failure when cleaning the test files");
 }
 
 static void
