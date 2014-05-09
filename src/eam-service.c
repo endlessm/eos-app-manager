@@ -358,7 +358,7 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
   eam_transaction_finish (priv->trans, res, NULL);
 
   GVariantBuilder builder;
-  g_variant_builder_init (&builder, G_VARIANT_TYPE_ARRAY);
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sss)"));
   append_pkg_list_to_variant_builder (&builder,
     eam_updates_get_installables (priv->updates));
   append_pkg_list_to_variant_builder (&builder,
