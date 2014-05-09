@@ -7,7 +7,6 @@
 #include <glib/gi18n.h>
 
 #include <string.h>
-#include <errno.h>
 
 #include "eam-pkgdb.h"
 
@@ -261,12 +260,8 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
   if (!dir)
     return FALSE;
 
-  int saved_errno = 0;
   const gchar *appid;
   while ((appid = g_dir_read_name (dir))) {
-    if (errno)
-      saved_errno = errno;
-
     if (!appid_is_legal (appid))
       continue;
 
@@ -281,15 +276,8 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
 	g_clear_error (&perr);
     }
   }
-  g_dir_close (dir);
 
-  if (saved_errno) {
-    g_set_error (error, G_IO_ERROR, g_io_error_from_errno (saved_errno),
-                 _("Error when getting information for directory '%s': %s"),
-                 priv->appdir,
-                 strerror (saved_errno));
-    return FALSE;
-  }
+  g_dir_close (dir);
 
   return TRUE;
 }
