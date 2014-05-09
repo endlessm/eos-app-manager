@@ -6,3 +6,6 @@ Documentation=man:eam(8)
 Type=dbus
 BusName=com.Endless.AppManager
 ExecStart=@bindir@/eam
+
+[Install]
+WantedBy=graphical.target
