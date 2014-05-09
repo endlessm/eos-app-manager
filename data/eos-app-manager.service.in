@@ -1,0 +1,8 @@
+[Unit]
+Description=Endless App Manager
+Documentation=man:eam(8)
+
+[Service]
+Type=dbus
+BusName=com.Endless.AppManager
+ExecStart=@bindir@/eam

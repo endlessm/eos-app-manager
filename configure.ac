@@ -33,6 +33,7 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  gio-unix-2.0 >= $GLIB_REQUIRED
 		  libsoup-2.4 >= $SOUP_REQUIRED
 		  json-glib-1.0 >= $JSON_GLIB_REQUIRED
+		  systemd
 		  ])
 
 # GResource
@@ -40,6 +41,9 @@ AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources], [no])
 if test x$GLIB_COMPILE_RESOURCES = xno; then
    AC_MSG_ERROR(["Could not find a glib-compile-resources in your PATH"])
 fi
+
+# systemd
+AC_SUBST([systemdsystemunitdir], [$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
 
 GETTEXT_PACKAGE=eam
 AC_SUBST([GETTEXT_PACKAGE])

@@ -14,6 +14,13 @@ dbusconfdir = $(sysconfdir)/dbus-1/system.d
 dbusconf_in_files = com.Endless.AppManager.conf.in
 dbusconf_DATA = $(dbusconf_in_files:.conf.in=.conf)
 
+systemdservice_in_files = eos-app-manager.service.in
+systemdservicedir = $(systemdsystemunitdir)
+systemdservice_DATA = $(systemdservice_in_files:.service.in=.service)
+
+$(systemdservice_DATA): $(systemdservice_in_files) $(systemdsystemunitdir) Makefile
+	@sed -e "s|\@bindir\@|$(bindir)|" $< > $@
+
 xsessiondir = $(sysconfdir)/X11/Xsession.d
 xsession_DATA = 65eam_xdg_data_dirs_update
 
@@ -24,6 +31,7 @@ EXTRA_DIST = \
 	$(RESOURCE_FILES) \
 	eam.gresource.xml \
 	$(dbusservice_in_files) \
+	$(systemdservice_in_files) \
 	$(dbusconf_in_files) \
 	65eam_xdg_data_dirs_update \
 	$(NULL)
