@@ -6,6 +6,7 @@ Standards-Version: 3.9.4
 Build-Depends: debhelper (>= 9),
                desktop-file-utils,
                dh-autoreconf (>= 7),
+               dh-systemd,
                intltool,
                libglib2.0-dev (>= 2.40),
                libglib2.0-bin,
