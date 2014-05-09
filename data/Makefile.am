@@ -1,6 +1,5 @@
 RESOURCE_FILES = \
 	eam-dbus-interface.xml \
-	eam-default.cfg \
 	$(NULL)
 
 dbusservicedir       = $(datadir)/dbus-1/system-services
@@ -27,13 +26,17 @@ xsession_DATA = 65eam_xdg_data_dirs_update
 $(dbusconf_DATA): $(dbusconf_in_files) Makefile
 	@sed -e "s|\@EAM_USER\@|$(EAM_USER)|" $< > $@
 
+confdir = $(sysconfdir)/eos-app-manager
+conf_DATA = eam-default.cfg
+
 EXTRA_DIST = \
 	$(RESOURCE_FILES) \
 	eam.gresource.xml \
 	$(dbusservice_in_files) \
 	$(systemdservice_in_files) \
 	$(dbusconf_in_files) \
-	65eam_xdg_data_dirs_update \
+	$(xsession_DATA) \
+	$(conf_DATA) \
 	$(NULL)
 
 DISTCLEANFILES = \

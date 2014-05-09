@@ -1,6 +1,9 @@
 bin_PROGRAMS = eam
 
-AM_CPPFLAGS = -DG_LOG_DOMAIN=\"Eam\"
+AM_CPPFLAGS = \
+	-DG_LOG_DOMAIN=\"Eam\" \
+	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	$(NULL)
 
 source_c = \
 	eam-pkg.c \

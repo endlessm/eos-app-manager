@@ -86,15 +86,11 @@ get_str (GKeyFile *keyfile, gchar *grp, gchar *key)
 static GKeyFile *
 load_default (void)
 {
-  GBytes *data = g_resources_lookup_data ("/com/Endless/AppManager/eam-default.cfg",
-    G_RESOURCE_LOOKUP_FLAGS_NONE, NULL);
-  if (!data)
-    return NULL;
-
   GKeyFile *keyfile = g_key_file_new ();
-  gboolean loaded = g_key_file_load_from_data (keyfile,
-     g_bytes_get_data (data, NULL), -1, G_KEY_FILE_NONE, NULL);
-  g_bytes_unref (data);
+  gboolean loaded = g_key_file_load_from_file (keyfile,
+     SYSCONFDIR "/eos-app-manager/eam-default.cfg",
+     G_KEY_FILE_NONE, NULL);
+
   if (!loaded) {
     g_key_file_unref (keyfile);
     return NULL;
