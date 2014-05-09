@@ -38,6 +38,19 @@
     </method>
 
     <!--
+	Uninstall:
+
+        Uninstalls a package.
+    -->
+    <method name="Uninstall" >
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="s" direction="in" />
+      <arg type="b" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      </arg>
+    </method>
+
+    <!--
 	ListAvailable:
 
         Returns a list of all applications available (including those not yet

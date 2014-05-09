@@ -24,6 +24,8 @@ case "$1" in
 	;;
     install) call "Install" "$2"
 	;;
+    uninstall) call "Uninstall" "$2"
+	;;
     list) call "ListAvailable"
 	;;
     *) echo "invalid command \"$1\""
