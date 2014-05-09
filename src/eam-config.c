@@ -96,6 +96,8 @@ load_default (void)
     return NULL;
   }
 
+  g_debug ("Loaded configuration from %s\n", SYSCONFDIR "/eos-app-manager/eam-default.cfg");
+
   return keyfile;
 }
 
