@@ -26,8 +26,12 @@ xsession_DATA = 65eam_xdg_data_dirs_update
 $(dbusconf_DATA): $(dbusconf_in_files) Makefile
 	@sed -e "s|\@EAM_USER\@|$(EAM_USER)|" $< > $@
 
+conf_in_files = eam-default.cfg.in
 confdir = $(sysconfdir)/eos-app-manager
-conf_DATA = eam-default.cfg
+conf_DATA = $(conf_in_files:.cfg.in=.cfg)
+
+$(conf_DATA): $(conf_in_files) Makefile
+	@sed -e "s|\@pkglibexecdir\@|$(pkglibexecdir)|" -e "s|\@localstatedir\@|$(localstatedir)|" $< > $@
 
 EXTRA_DIST = \
 	$(RESOURCE_FILES) \
@@ -35,12 +39,13 @@ EXTRA_DIST = \
 	$(dbusservice_in_files) \
 	$(systemdservice_in_files) \
 	$(dbusconf_in_files) \
+	$(conf_in_files) \
 	$(xsession_DATA) \
-	$(conf_DATA) \
 	$(NULL)
 
 DISTCLEANFILES = \
 	$(dbusservice_DATA) \
 	$(systemdservice_DATA) \
 	$(dbusconf_DATA) \
+	$(conf_DATA) \
 	$(NULL)

@@ -1,5 +1,6 @@
 [eam]
 appdir = /endless
-downloaddir = /var/cache/endless/dl
+downloaddir = @localstatedir@/endless/dl
 serveraddress = http://localhost
 protocolversion = v1
+scriptdir = @pkglibexecdir@
