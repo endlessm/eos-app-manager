@@ -287,10 +287,11 @@ load_pkgdb_install_cb (GObject *source, GAsyncResult *res, gpointer data)
   struct _load_pkgdb_install_clos *clos = data;
   EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
 
+  priv->trans = NULL; /* clear the dummy transaction */
+
   GError *error = NULL;
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
   if (error) {
-    priv->trans = NULL; /* clear the dummy transaction */
     g_dbus_method_invocation_take_error (clos->invocation, error);
     goto out;
   }
