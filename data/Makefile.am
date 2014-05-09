@@ -38,5 +38,6 @@ EXTRA_DIST = \
 
 DISTCLEANFILES = \
 	$(dbusservice_DATA) \
+	$(systemdservice_DATA) \
 	$(dbusconf_DATA) \
 	$(NULL)
