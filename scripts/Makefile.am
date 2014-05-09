@@ -36,3 +36,5 @@ EXTRA_DIST = \
         $(install_scripts) \
 	$(uninstall_scripts) \
 	$(NULL)
+
+-include $(top_srcdir)/git.mk

@@ -68,3 +68,5 @@ eam-resources.c: $(gresource_file) $(resource_files)
 		--target=$@ \
 		--generate-source \
 		$<
+
+-include $(top_srcdir)/git.mk

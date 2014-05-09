@@ -33,3 +33,5 @@ test_programs = \
 	spawner \
 	scripts-install \
 	$(NULL)
+
+-include $(top_srcdir)/git.mk

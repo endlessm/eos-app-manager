@@ -49,3 +49,5 @@ DISTCLEANFILES = \
 	$(dbusconf_DATA) \
 	$(conf_DATA) \
 	$(NULL)
+
+-include $(top_srcdir)/git.mk
