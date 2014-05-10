@@ -226,7 +226,7 @@ eam_fs_sanity_delete (const gchar *path)
     GFileInfo *file_info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, &error);
     if (error) {
-      g_print ("Failure when cleaning the test: %s\n", error->message);
+      g_warning ("Failure querying information for file '%s': %s\n", path, error->message);
       g_clear_error (&error);
       goto bail;
     }
