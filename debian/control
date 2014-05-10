@@ -14,7 +14,8 @@ Build-Depends: debhelper (>= 9),
                libjson-glib-dev (>= 0.16.2),
                libsoup2.4-dev (>= 2.44),
                pkg-config (>= 0.24),
-               shared-mime-info
+               shared-mime-info,
+               systemd
 Homepage: http://www.endlessm.com
 
 Package: eos-app-manager
