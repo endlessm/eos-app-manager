@@ -10,6 +10,7 @@
 #include "eam-updates.h"
 #include "eam-refresh.h"
 #include "eam-install.h"
+#include "eam-uninstall.h"
 #include "eam-list-avail.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
@@ -180,7 +181,47 @@ run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation 
 }
 
 static void
-end_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
+  GError *error = NULL;
+  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (invocation, error);
+    goto out;
+  }
+
+  g_object_set_data (source, "invocation", NULL);
+  GVariant *value = g_variant_new ("(b)", ret);
+  g_dbus_method_invocation_return_value (invocation, value);
+
+out:
+  g_clear_object (&priv->trans); /* we don't need you anymore */
+}
+
+static void
+eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
+  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
+}
+
+static void
+reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   EamService *service = EAM_SERVICE (data);
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -206,7 +247,7 @@ out:
 }
 
 static void
-refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
@@ -222,9 +263,9 @@ refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
-  if (ret && EAM_IS_INSTALL (priv->trans)) {
-      priv->reloaddb = TRUE; /* if we installed something we reload the database */
-      eam_pkgdb_load_async (priv->db, priv->cancellable, end_install_cb, service);
+  if (ret) {
+      priv->reloaddb = TRUE; /* if we installed (or uninstalled) something we reload the database */
+      eam_pkgdb_load_async (priv->db, priv->cancellable, reload_pkgdb_after_transaction_cb, service);
       return;
   }
 
@@ -234,21 +275,6 @@ refresh_or_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 
 out:
   g_clear_object (&priv->trans); /* we don't need you anymore */
-}
-
-static void
-eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->trans) { /* are we running a transaction? */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
-    return;
-  }
-
-  priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
-  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_or_install_cb);
 }
 
 static void
@@ -265,9 +291,7 @@ run_service_install (EamService *service, const gchar *appid,
   } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version (which is NULL) */
     priv->trans = eam_install_new (appid, NULL);
-    g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
-    eam_transaction_run_async (priv->trans, priv->cancellable,
-      refresh_or_install_cb, service);
+    run_eam_transaction (service, invocation, install_or_uninstall_cb);
   } else {
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
       EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
@@ -330,6 +354,73 @@ eam_service_install (EamService *service, const gchar *appid,
   }
 
   run_service_install (service, appid, invocation);
+}
+
+static void
+run_service_uninstall (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (!eam_pkgdb_get (priv->db, appid)) {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
+      appid);
+  } else {
+    priv->trans = eam_uninstall_new (appid);
+    run_eam_transaction (service, invocation, install_or_uninstall_cb);
+  }
+}
+
+static void
+load_pkgdb_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  struct _load_pkgdb_install_clos *clos = data;
+  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
+
+  priv->trans = NULL; /* clear the dummy transaction */
+
+  GError *error = NULL;
+  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (clos->invocation, error);
+    goto out;
+  }
+
+  priv->reloaddb = FALSE;
+  run_service_uninstall (clos->service, clos->appid, clos->invocation);
+
+out:
+  g_free (clos->appid);
+  g_slice_free (struct _load_pkgdb_install_clos, clos);
+}
+
+static void
+eam_service_uninstall (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  if (priv->reloaddb) {
+    struct _load_pkgdb_install_clos *clos = g_slice_new (struct _load_pkgdb_install_clos);
+    clos->service = service;
+    clos->invocation = invocation;
+    clos->appid = g_strdup (appid);
+
+    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
+
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_uninstall_cb,
+      clos);
+    return;
+  }
+
+  run_service_uninstall (service, appid, invocation);
 }
 
 static void
@@ -403,6 +494,10 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     const gchar *appid = NULL;
     g_variant_get (params, "(&s)", &appid);
     eam_service_install (service, appid, invocation);
+  } else if (!g_strcmp0 (method, "Uninstall")) {
+    const gchar *appid = NULL;
+    g_variant_get (params, "(&s)", &appid);
+    eam_service_uninstall (service, appid, invocation);
   } else if (!g_strcmp0 (method, "ListAvailable")) {
     eam_service_list_avail (service, invocation);
   }

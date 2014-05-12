@@ -22,6 +22,7 @@ source_c = \
 	eam-spawner.c \
 	eam-transaction.c \
 	eam-install.c \
+	eam-uninstall.c \
 	eam-fs-sanity.c \
 	eam-list-avail.c \
 	$(NULL)
@@ -42,6 +43,7 @@ source_h = \
 	eam-spawner.h \
 	eam-transaction.h \
 	eam-install.h \
+	eam-uninstall.h \
 	eam-fs-sanity.h \
 	eam-list-avail.h \
 	$(NULL)
