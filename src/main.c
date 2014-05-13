@@ -12,6 +12,7 @@
 
 static const gchar *opt_cfgfile;
 static gboolean opt_dumpcfg;
+static gboolean opt_dump_pkgdb;
 
 static gboolean
 parse_options (int *argc, gchar ***argv)
@@ -20,6 +21,7 @@ parse_options (int *argc, gchar ***argv)
   GOptionEntry entries[] = {
     { "config", 'c', 0, G_OPTION_ARG_FILENAME, &opt_cfgfile, N_ ("Configuration file"), NULL },
     { "dump", 'd', 0, G_OPTION_ARG_NONE, &opt_dumpcfg, N_ ("Dump configuration"), NULL },
+    { "dump-pkgdb", 'l', 0, G_OPTION_ARG_NONE, &opt_dump_pkgdb, N_ ("Dump package database"), NULL },
     { NULL },
   };
 
@@ -66,6 +68,25 @@ bail:
   return ret;
 }
 
+static gboolean
+dump_pkgdb (EamPkgdb * db)
+{
+  GError *error = NULL;
+
+  g_return_val_if_fail (EAM_IS_PKGDB (db), FALSE);
+
+  eam_pkgdb_load (db, &error);
+  if (error) {
+    g_warning (N_ ("Cannot load the package database"));
+    g_clear_error(&error);
+
+    return FALSE;
+  }
+
+  eam_pkgdb_dump (db);
+  return TRUE;
+}
+
 int
 main (int argc, gchar **argv)
 {
@@ -93,6 +114,15 @@ main (int argc, gchar **argv)
     return EXIT_FAILURE;
 
   EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_get()->appdir);
+
+  if (opt_dump_pkgdb) {
+    if (dump_pkgdb (db))
+      ret = EXIT_SUCCESS;
+
+    g_object_unref (db);
+    return ret;
+  }
+
   EamDbusServer *server = eam_dbus_server_new (db);
 
   if (eam_dbus_server_run (server))

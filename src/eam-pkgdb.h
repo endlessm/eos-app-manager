@@ -65,6 +65,8 @@ gboolean        eam_pkgdb_load_finish                            (EamPkgdb *pkgd
                                                                   GAsyncResult *res,
                                                                   GError **error);
 
+void            eam_pkgdb_dump                                   (EamPkgdb *pkgdb);
+
 G_END_DECLS
 
 #endif /* EAM_PKGDB_H */
