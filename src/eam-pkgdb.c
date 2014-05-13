@@ -237,7 +237,7 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
 }
 
 /**
- * eam_pkgdb_del:
+ * eam_pkgdb_get:
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
@@ -258,7 +258,7 @@ eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
 }
 
 /**
- * eam_pkgdb_del:
+ * eam_pkgdb_exists:
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
