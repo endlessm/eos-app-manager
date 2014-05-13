@@ -340,3 +340,42 @@ eam_pkgdb_load_finish (EamPkgdb *pkgdb, GAsyncResult *res, GError **error)
   g_return_val_if_fail (g_task_is_valid (res, pkgdb), FALSE);
   return g_task_propagate_boolean (G_TASK (res), error);
 }
+
+static void
+print_pkgtable_element (gpointer key, gpointer value, gpointer data)
+{
+  const gchar *appid = (const gchar *) key;
+  const EamPkg *pkg = (const EamPkg *) value;
+
+  gchar *pkg_version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+
+  g_print("\tAppId = '%s'\n"
+          "\tPackageInfo = \n"
+          "\t\tid: '%s'\n"
+          "\t\tname: '%s'\n"
+          "\t\tversion: '%s'\n"
+          "\n\n",
+          appid,
+          eam_pkg_get_id (pkg),
+          eam_pkg_get_name (pkg),
+          pkg_version);
+
+  g_free (pkg_version);
+}
+
+/**
+ * eam_pkgdb_dump:
+ * @pkgdb: a #EamPkgdb
+ *
+ * Prints the @pkgdb contents.
+ */
+void
+eam_pkgdb_dump (EamPkgdb *pkgdb)
+{
+  g_return_if_fail (EAM_IS_PKGDB (pkgdb));
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  g_print ("EAM package database:\n\n");
+  g_hash_table_foreach (priv->pkgtable, print_pkgtable_element, NULL);
+}
