@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "eam-pkgdb.h"
+#include "eam-version.h"
 
 typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
 
@@ -177,6 +178,43 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   return g_hash_table_insert (priv->pkgtable, (gpointer) eam_pkg_get_id (pkg),
     pkg);
 }
+
+/**
+ * eam_pkgdb_replace:
+ * @pkgdb: a #EamPkgdb
+ * @pkg: the #EamPkg of the application to add or replace
+ *
+ * Adds or replace a @pkg into the @pkgdb. It only replaces the
+ * package if new one has a greater version.
+ *
+ * Returns: %TRUE if the @pkg was added or replaced successfully.
+ */
+gboolean
+eam_pkgdb_replace (EamPkgdb *pkgdb, EamPkg *pkg)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (pkg, FALSE);
+
+  const gchar *appid = eam_pkg_get_id (pkg);
+  if (!appid_is_legal (appid))
+    return FALSE;
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  EamPkg *opkg = g_hash_table_lookup (priv->pkgtable, appid);
+  if (opkg) {
+    EamPkgVersion *over = eam_pkg_get_version (opkg);
+    EamPkgVersion *ver = eam_pkg_get_version (pkg);
+
+    if (eam_pkg_version_relate (ver, EAM_RELATION_GT, over))
+      return g_hash_table_replace (priv->pkgtable, (gpointer) appid, pkg);
+
+    return FALSE;
+  }
+
+  return g_hash_table_insert (priv->pkgtable, (gpointer) appid, pkg);
+}
+
 
 /**
  * eam_pkgdb_del:
