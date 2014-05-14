@@ -107,7 +107,7 @@ test_updates_filter (void)
 
   eam_updates_filter (updates, db);
 
-  GList *list;
+  const GList *list;
   EamPkg *pkg;
   list = eam_updates_get_upgradables (updates);
   g_assert_nonnull (list);
