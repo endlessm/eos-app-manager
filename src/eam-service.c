@@ -22,8 +22,10 @@ struct _EamServicePrivate {
   EamPkgdb *db;
   EamUpdates *updates;
   guint updates_id;
+  guint filtered_id;
   EamTransaction *trans;
 
+  gchar **available_updates;
   gboolean reloaddb;
 
   GCancellable *cancellable;
@@ -49,11 +51,16 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
+  g_clear_pointer (&priv->available_updates, g_strfreev);
   g_clear_object (&priv->db);
 
   if (priv->updates && priv->updates_id) {
     g_signal_handler_disconnect (priv->updates, priv->updates_id);
     priv->updates_id = 0;
+  }
+  if (priv->updates && priv->filtered_id) {
+    g_signal_handler_disconnect (priv->updates, priv->filtered_id);
+    priv->filtered_id = 0;
   }
   g_clear_object (&priv->updates);
 
@@ -146,6 +153,100 @@ build_avail_pkg_list_variant (EamService *service)
   return g_variant_new_tuple (&value, 1);
 }
 
+static GVariant *
+build_available_updates_variant (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->available_updates)
+    return g_variant_new_strv ((const gchar * const *) priv->available_updates, -1);
+
+  GVariantBuilder empty;
+  g_variant_builder_init (&empty, G_VARIANT_TYPE ("as"));
+  return g_variant_new ("as", &empty);
+}
+
+/*
+ * let's build a new available_updates string array and compare it
+ * with the current one.
+ *
+ * If they are different, raise the PropertyChanged signal.
+ *
+ * Replace the string array afterwards.
+ */
+static void
+updates_filtered_cb (EamService *service, gpointer data)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (!priv->connection)
+    return;
+
+  const GList *upgradables = eam_updates_get_upgradables (priv->updates);
+  guint nlen = g_list_length ((GList *) upgradables); /* new length */
+  guint olen = priv->available_updates ? g_strv_length (priv->available_updates)
+    : 0; /* old length */
+
+  if (nlen == 0 && olen == 0)
+    return; /* odd case */
+
+  gchar **available_updates = g_new0 (gchar *, nlen + 1);
+
+  guint i = 0;
+  const GList *l;
+  for (l = upgradables; l; l = l->next) {
+    const EamPkg *pkg = l->data;
+    available_updates[i++] = g_strdup (eam_pkg_get_id (pkg));
+  }
+
+  if (nlen != olen)
+    goto do_signal;
+
+  /* don't you love O^2? */
+  guint j, found = 0;
+  for (i = 0; i < nlen; i++) {
+    for (j = 0; j < olen; j++) {
+      if (g_strcmp0 (available_updates[i], priv->available_updates[j]) == 0) {
+        found++;
+        break;
+      }
+    }
+  }
+
+  if (found != nlen)
+    goto do_signal;
+
+  g_clear_pointer (&available_updates, g_strfreev);
+  return;
+
+do_signal:
+  g_clear_pointer (&priv->available_updates, g_strfreev);
+  priv->available_updates = available_updates;
+
+  {
+    GVariantBuilder changed, invalidated;
+
+    g_variant_builder_init (&invalidated, G_VARIANT_TYPE ("as"));
+    g_variant_builder_init (&changed, G_VARIANT_TYPE_ARRAY);
+    g_variant_builder_add (&changed, "{sv}", "AvailableUpdates",
+      build_available_updates_variant (service));
+
+    GVariant *params = g_variant_new ("(sa{sv}as)", "com.Endless.AppManager",
+      &changed, &invalidated);
+
+    GError *error = NULL;
+    g_dbus_connection_emit_signal (priv->connection, NULL,
+      "/com/Endless/AppManager", "org.freedesktop.DBus.Properties",
+      "PropertiesChanged", params, &error);
+
+    if (error) {
+      g_critical ("Couldn't emit DBus signal \"PropertiesChanged\": %s",
+        error->message);
+      g_clear_error (&error);
+    }
+  }
+}
+
 static void
 avails_changed_cb (EamService *service, gpointer data)
 {
@@ -183,6 +284,9 @@ get_eam_updates (EamService *service)
      * first. */
     priv->updates_id = g_signal_connect_swapped (priv->updates,
       "available-apps-changed", G_CALLBACK (avails_changed_cb), service);
+
+    priv->filtered_id = g_signal_connect_swapped (priv->updates,
+      "updates-filtered", G_CALLBACK (updates_filtered_cb), service);
   }
 
   return priv->updates;
@@ -560,8 +664,28 @@ handle_method_call (GDBusConnection *connection, const char *sender,
   }
 }
 
+static GVariant *
+handle_get_property (GDBusConnection *connection, const gchar *sender,
+  const gchar *path, const gchar *interface, const gchar *name, GError **error,
+  gpointer data)
+{
+  EamService *service = EAM_SERVICE (data);
+
+  if (g_strcmp0 (interface, "com.Endless.AppManager"))
+    return NULL;
+
+  if (!g_strcmp0 (name, "AvailableUpdates"))
+    return build_available_updates_variant (service);
+
+  /* return an error */
+  g_set_error (error, EAM_SERVICE_ERROR, EAM_SERVICE_ERROR_UNIMPLEMENTED,
+    "Property '%s' is not implemented", name);
+
+  return NULL;
+}
+
 static const GDBusInterfaceVTable interface_vtable = {
-  handle_method_call, NULL, NULL,
+  handle_method_call, handle_get_property, NULL,
 };
 
 static GDBusNodeInfo*
