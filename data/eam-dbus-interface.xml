@@ -13,6 +13,17 @@
   <interface name="com.Endless.AppManager">
 
     <!--
+          AvailableApplicationsChanged (as available_applications):
+
+	  A signal to which other processes can subscribe, indicating that the
+	  list of available applications has been updated. The passed-in array
+	  of strings is the new value returned by ListAvailable()
+    -->
+    <signal name="AvailableApplicationsChanged">
+      <arg type="a(sss)" direction="out" />
+    </signal>
+
+    <!--
 	Refresh:
 
         Refreshes the package database.

@@ -21,6 +21,7 @@ struct _EamServicePrivate {
 
   EamPkgdb *db;
   EamUpdates *updates;
+  guint updates_id;
   EamTransaction *trans;
 
   gboolean reloaddb;
@@ -49,7 +50,13 @@ eam_service_dispose (GObject *obj)
   }
 
   g_clear_object (&priv->db);
+
+  if (priv->updates && priv->updates_id) {
+    g_signal_handler_disconnect (priv->updates, priv->updates_id);
+    priv->updates_id = 0;
+  }
   g_clear_object (&priv->updates);
+
   g_clear_object (&priv->cancellable);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
@@ -139,12 +146,34 @@ build_avail_pkg_list_variant (EamService *service)
   return g_variant_new_tuple (&value, 1);
 }
 
+static void
+avails_changed_cb (EamService *service, gpointer data)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  GError *error = NULL;
+  g_dbus_connection_emit_signal (priv->connection, NULL,
+    "/com/Endless/AppManager", "com.Endless.AppManager",
+    "AvailableApplicationsChanged", build_avail_pkg_list_variant (service),
+    &error);
+
+  if (error) {
+    g_critical ("Couldn't emit DBus signal \"AvailableApplicationsChanged\": %s",
+      error->message);
+    g_clear_error (&error);
+  }
+}
+
 static EamUpdates *
 get_eam_updates (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
   if (!priv->updates) {
     priv->updates = eam_updates_new ();
+    priv->updates_id = g_signal_connect_swapped (priv->updates,
+      "available-apps-changed", G_CALLBACK (avails_changed_cb), service);
+
     /* let's read what we have, without refreshing the database */
     if (eam_updates_parse (priv->updates, NULL) && priv->db)
       eam_updates_filter (priv->updates, priv->db);
