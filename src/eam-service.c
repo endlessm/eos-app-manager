@@ -109,6 +109,36 @@ eam_service_new (EamPkgdb *db)
   return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
 }
 
+static void
+append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
+{
+  const GList *l;
+  for (l = list; l; l = l->next) {
+    const EamPkg *pkg = l->data;
+    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (builder, "(sss)", eam_pkg_get_id (pkg),
+      eam_pkg_get_name (pkg), version);
+    g_free (version);
+  }
+}
+
+static GVariant *
+build_avail_pkg_list_variant (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sss)"));
+
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_installables (priv->updates));
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_upgradables (priv->updates));
+
+  GVariant *value = g_variant_builder_end (&builder);
+  return g_variant_new_tuple (&value, 1);
+}
+
 static EamUpdates *
 get_eam_updates (EamService *service)
 {
@@ -424,19 +454,6 @@ eam_service_uninstall (EamService *service, const gchar *appid,
 }
 
 static void
-append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
-{
-  const GList *l;
-  for (l = list; l; l = l->next) {
-    const EamPkg *pkg = l->data;
-    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (builder, "(sss)", eam_pkg_get_id (pkg),
-      eam_pkg_get_name (pkg), version);
-    g_free (version);
-  }
-}
-
-static void
 list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
@@ -449,15 +466,8 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   eam_transaction_finish (priv->trans, res, NULL);
 
-  GVariantBuilder builder;
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sss)"));
-  append_pkg_list_to_variant_builder (&builder,
-    eam_updates_get_installables (priv->updates));
-  append_pkg_list_to_variant_builder (&builder,
-    eam_updates_get_upgradables (priv->updates));
-  GVariant *value = g_variant_builder_end (&builder);
-  GVariant *tuple = g_variant_new_tuple (&value, 1);
-  g_dbus_method_invocation_return_value (invocation, tuple);
+  g_dbus_method_invocation_return_value (invocation,
+    build_avail_pkg_list_variant (service));
 
   g_clear_object (&priv->trans); /* we don't need you anymore */
 }
