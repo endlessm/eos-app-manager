@@ -131,7 +131,7 @@ class BundleConverter(object):
             desktop_file.write("Icon=%s\n" % icon)
             desktop_file.write("Categories=Utility;\n")
             desktop_file.write("X-Endless-ShowInAppStore=true\n")
-            desktop_file.write("X-Endless-SplashScreen=false")
+            desktop_file.write("X-Endless-SplashScreen=false\n")
             desktop_file.write("DBusActivatable=true")
 
     def convert(self):
