@@ -27,6 +27,13 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamUpdates, eam_updates, G_TYPE_OBJECT)
 
 G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
+enum {
+  AVAILABLE_APPS_CHANGED,
+  SIGNAL_MAX
+};
+
+guint signals[SIGNAL_MAX];
+
 static void
 eam_updates_reset_lists (EamUpdates *self)
 {
@@ -60,6 +67,10 @@ eam_updates_class_init (EamUpdatesClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->finalize = eam_updates_finalize;
+
+  signals[AVAILABLE_APPS_CHANGED] = g_signal_new ("available-apps-changed",
+    G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
 
 static void
@@ -221,6 +232,18 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
   eam_pkgdb_replace (avails, pkg);
 }
 
+static void
+replace_avails_db (EamUpdates *self, EamPkgdb *new_avails)
+{
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+
+  if (!eam_pkgdb_equal (priv->avails, new_avails))
+    g_signal_emit (self, signals[AVAILABLE_APPS_CHANGED], 0);
+
+  eam_updates_reset_lists (self);
+  priv->avails = new_avails;
+}
+
 /**
  * eam_updates_load:
  * @self: a #EamUpdates instance
@@ -246,11 +269,7 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   EamPkgdb *avails = eam_pkgdb_new ();
   json_array_foreach_element (array, foreach_json, avails);
 
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  /* @TODO: if we already have priv->avails compare with the new avails list,
-     and if it is different, raise "new updates" signal */
-  eam_updates_reset_lists (self);
-  priv->avails = avails;
+  replace_avails_db (self, avails);
 
   return TRUE;
 

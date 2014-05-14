@@ -80,6 +80,12 @@ test_updates_load (void)
 }
 
 static void
+on_available_apps_changed (EamUpdates *updates, gpointer data)
+{
+  g_assert_nonnull (updates);
+}
+
+static void
 test_updates_filter (void)
 {
   const gchar *avail = g_test_get_filename (G_TEST_DIST, "data",
@@ -91,6 +97,8 @@ test_updates_filter (void)
   g_assert_nonnull (node);
 
   EamUpdates *updates = eam_updates_new ();
+  g_signal_connect (updates, "available-apps-changed",
+    G_CALLBACK (on_available_apps_changed), NULL);
   g_assert (eam_updates_load (updates, node, NULL));
 
   const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
