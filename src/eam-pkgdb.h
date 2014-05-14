@@ -55,6 +55,9 @@ gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgd
 
 guint           eam_pkgdb_size                                   (EamPkgdb *pkgdb);
 
+gboolean        eam_pkgdb_equal                                  (EamPkgdb *old,
+                                                                  EamPkgdb *new);
+
 gboolean        eam_pkgdb_replace                                (EamPkgdb *pkgdb,
                                                                   EamPkg *pkg);
 

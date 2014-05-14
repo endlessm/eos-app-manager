@@ -344,6 +344,55 @@ eam_pkgdb_size (EamPkgdb *pkgdb)
 }
 
 /**
+ * eam_pkgdb_equal:
+ * @old: old #EamPkgdb or %NULL
+ * @new: new #EamPkgdb
+ *
+ * Compares two #EamPkgdb. If the @new one has new packages or an
+ * existing package with a greater version, it will return %FALSE, otherwise %TRUE
+ *
+ * Returns: %FALSE if @new has a package not existing in @old, or one
+ * with a greater version.
+ **/
+gboolean
+eam_pkgdb_equal (EamPkgdb *old, EamPkgdb *new)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (new), FALSE);
+
+  if (!old)
+    return FALSE;
+
+  g_return_val_if_fail (EAM_IS_PKGDB (old), FALSE);
+
+  EamPkgdbPrivate *opriv = eam_pkgdb_get_instance_private (old);
+  EamPkgdbPrivate *npriv = eam_pkgdb_get_instance_private (new);
+
+  gint dsiz = g_hash_table_size (opriv->pkgtable) - g_hash_table_size (npriv->pkgtable);
+  if (dsiz)
+    return FALSE;
+
+  EamPkg *npkg;
+  GHashTableIter iter;
+  g_hash_table_iter_init (&iter, npriv->pkgtable);
+  while (g_hash_table_iter_next (&iter, NULL, (gpointer *) &npkg)) {
+    if (!npkg) /* should not happen */
+      continue;
+
+    EamPkg *opkg = g_hash_table_lookup (opriv->pkgtable, eam_pkg_get_id (npkg));
+    if (!opkg) /* new package! */
+      return FALSE;
+
+    /* shall we check for downgraded packages? I don't think so */
+    if (eam_pkg_version_relate (eam_pkg_get_version (opkg), EAM_RELATION_LT,
+          eam_pkg_get_version (npkg))) /* new version! */
+      return FALSE;
+  }
+
+  /* shall we check for deprecated packages? I don't think so. */
+  return TRUE;
+}
+
+/**
  * eam_pkgdb_load:
  * @pkgdb: a #EamPkgdb
  *
