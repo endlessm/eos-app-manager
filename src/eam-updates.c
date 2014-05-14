@@ -19,7 +19,7 @@ typedef struct _EamUpdatesPrivate EamUpdatesPrivate;
 struct _EamUpdatesPrivate
 {
   EamWc *wc;
-  GList *avails;
+  EamPkgdb *avails;
   GList *installs, *updates;
 };
 
@@ -34,16 +34,13 @@ eam_updates_reset_lists (EamUpdates *self)
 
   /* this list points to structures that belong to priv->avails, hence
    * we don't delete its content */
-  g_list_free (priv->installs);
-  priv->installs = NULL;
+  g_clear_pointer (&priv->installs, g_list_free);
 
   /* this list points to structures that belong to EamPkgdb, hence we
    * don't delete its content */
-  g_list_free (priv->updates);
-  priv->updates = NULL;
+  g_clear_pointer (&priv->updates, g_list_free);
 
-  g_list_free_full (priv->avails, (GDestroyNotify) eam_pkg_free);
-  priv->avails = NULL;
+  g_clear_object (&priv->avails);
 }
 
 static void
@@ -208,7 +205,7 @@ pkg_json_is_valid (JsonObject *json)
 static void
 foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
 {
-  GList **avails = data;
+  EamPkgdb *avails = data;
 
   if (!JSON_NODE_HOLDS_OBJECT (node))
     return;
@@ -221,7 +218,7 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
   if (!pkg)
     return;
 
-  *avails = g_list_prepend (*avails, pkg);
+  eam_pkgdb_replace (avails, pkg);
 }
 
 /**
@@ -246,8 +243,8 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
 
   JsonArray *array = json_node_get_array (root);
 
-  GList *avails = NULL;
-  json_array_foreach_element (array, foreach_json, &avails);
+  EamPkgdb *avails = eam_pkgdb_new ();
+  json_array_foreach_element (array, foreach_json, avails);
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
   /* @TODO: if we already have priv->avails compare with the new avails list,
@@ -322,14 +319,14 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
 
-  g_list_free (priv->installs);
-  priv->installs = NULL;
-  g_list_free (priv->updates);
-  priv->updates = NULL;
+  g_clear_pointer (&priv->installs, g_list_free);
+  g_clear_pointer (&priv->updates, g_list_free);
 
-  GList *l;
-  for (l = priv->avails; l && l->data; l = l->next) {
-    EamPkg *apkg = l->data;
+  EamPkg *apkg;
+  while (eam_pkgdb_iter_next (priv->avails, &apkg)) {
+    if (!apkg)
+      continue;
+
     const EamPkg *fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
     if (!fpkg) {
       priv->installs = g_list_prepend (priv->installs, apkg);
