@@ -106,6 +106,11 @@ class BundleConverter(object):
 
     def _add_desktop_file(self, launcher, applications_dir, bundle_info):
         launcher_name = launcher + ".desktop"
+
+        # Handle special case of the main app launcher
+        if launcher == "eos-%s" % bundle_info.app_name.lower():
+            launcher_name = bundle_info.app_id + ".desktop"
+
         desktop_launcher = path.join(applications_dir, launcher_name)
 
         pkg_name = bundle_info.app_name.replace('eos-','')
