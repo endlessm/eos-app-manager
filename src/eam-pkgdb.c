@@ -17,6 +17,7 @@ struct _EamPkgdbPrivate
 {
   GHashTable *pkgtable;
   gchar *appdir;
+  GHashTableIter *iter;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamPkgdb, eam_pkgdb, G_TYPE_INITIALLY_UNOWNED)
@@ -33,6 +34,7 @@ eam_pkgdb_finalize (GObject *obj)
 
   g_free (priv->appdir);
   g_hash_table_unref (priv->pkgtable);
+  g_slice_free (GHashTableIter, priv->iter);
 
   G_OBJECT_CLASS (eam_pkgdb_parent_class)->finalize (obj);
 }
@@ -215,6 +217,56 @@ eam_pkgdb_replace (EamPkgdb *pkgdb, EamPkg *pkg)
   return g_hash_table_insert (priv->pkgtable, (gpointer) appid, pkg);
 }
 
+/**
+ * eam_pkgdb_iter_next:
+ * @pkgdb: a #EamPkgdb instance.
+ * @pkg: (out caller-allocates): a location to store the #EamPkg
+ *
+ * This is a decorator to g_hash_table_iter_next().
+ *
+ * The intention of this method is to traverse completely the hash
+ * table, hence the iterator is handled internally.
+ *
+ * Returns: %FALSE if the end of the #EamPkgdb has been reached.
+ **/
+gboolean
+eam_pkgdb_iter_next (EamPkgdb *pkgdb, EamPkg **pkg)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (pkg, FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  if (!priv->iter) {
+    priv->iter = g_slice_new (GHashTableIter);
+    g_hash_table_iter_init (priv->iter, priv->pkgtable);
+  }
+
+  if (g_hash_table_iter_next (priv->iter, NULL, (gpointer *) pkg))
+    return TRUE;
+
+  eam_pkgdb_iter_reset (pkgdb);
+  return FALSE;
+}
+
+/**
+ * eam_pkgdb_iter_reset:
+ * @pkgdb: a #EamPkgdb instance.
+ *
+ * Resets the internal iterator.
+ **/
+void
+eam_pkgdb_iter_reset (EamPkgdb *pkgdb)
+{
+  g_return_if_fail (EAM_IS_PKGDB (pkgdb));
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  if (priv->iter) {
+    g_slice_free (GHashTableIter, priv->iter);
+    priv->iter = NULL;
+  }
+}
 
 /**
  * eam_pkgdb_del:

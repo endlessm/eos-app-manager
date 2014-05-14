@@ -56,6 +56,11 @@ gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgd
 gboolean        eam_pkgdb_replace                                (EamPkgdb *pkgdb,
                                                                   EamPkg *pkg);
 
+gboolean        eam_pkgdb_iter_next                              (EamPkgdb *pkgdb,
+                                                                  EamPkg **pkg);
+
+void            eam_pkgdb_iter_reset                             (EamPkgdb *pkgdb);
+
 gboolean        eam_pkgdb_load                                   (EamPkgdb *pkgdb,
                                                                   GError **error);
 
