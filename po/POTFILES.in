@@ -9,3 +9,4 @@ src/eam-pkgdb.c
 src/eam-spawner.c
 src/eam-service.c
 src/eam-install.c
+src/eam-update.c
