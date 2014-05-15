@@ -403,6 +403,34 @@ eam_updates_get_upgradables (EamUpdates *self)
 }
 
 /**
+ * eam_updates_pkg_is_upgradable:
+ * @self: an #EamUpdates instance
+ * @appid: the application ID to update
+ *
+ * Checks if an update exists for the specified app ID.
+ *
+ * Returns: %TRUE if a new version of the application exists, %FALSE
+ * otherwise
+ **/
+gboolean
+eam_updates_pkg_is_upgradable (EamUpdates *self, const gchar *appid)
+{
+  g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
+  g_return_val_if_fail (appid, FALSE);
+
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  GList *l;
+
+  for (l = priv->updates; l; l = l->next) {
+    EamPkg *pkg = l->data;
+    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0)
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
  * eam_updates_pkg_is_installable:
  * @self: an #EamUpdates instance
  * @appid: the application ID to search

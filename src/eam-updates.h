@@ -89,6 +89,9 @@ const GList    *eam_updates_get_installables                         (EamUpdates
 
 const GList    *eam_updates_get_upgradables                          (EamUpdates *self);
 
+gboolean        eam_updates_pkg_is_upgradable                        (EamUpdates *self,
+                                                                      const gchar *appid);
+
 const EamPkg   *eam_updates_pkg_is_installable                       (EamUpdates *self,
                                                                       const gchar *appid);
 
