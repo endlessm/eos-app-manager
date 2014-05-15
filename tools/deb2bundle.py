@@ -97,20 +97,22 @@ class BundleConverter(object):
                 line = line.replace("/usr/", "/endless/%s/" % bundle_info.app_id )
                 print(line, end='')
 
-
     def _fix_launcher_paths(self, launcher, bin_path, bundle_info):
         self._fix_path(path.join(bin_path, launcher), bundle_info)
 
     def _fix_source_paths(self, src_file, bundle_info):
         self._fix_path(src_file, bundle_info)
 
-    def _add_desktop_file(self, launcher, applications_dir, bundle_info):
-        launcher_name = launcher + ".desktop"
+    def _add_desktop_file(self, launcher, exec_line, applications_dir, bundle_info, alt_launcher_name = None):
+        if alt_launcher_name:
+            launcher_name = alt_launcher_name + ".desktop"
+        else:
+            launcher_name = launcher + ".desktop"
+
         desktop_launcher = path.join(applications_dir, launcher_name)
 
         pkg_name = bundle_info.app_name.replace('eos-','')
 
-        exec_line = path.join("/endless", bundle_info.app_id, 'bin', path.basename(launcher))
         icon = "eos-app-%s" % pkg_name.lower()
 
         makedirs(applications_dir)
@@ -126,7 +128,18 @@ class BundleConverter(object):
             desktop_file.write("Icon=%s\n" % icon)
             desktop_file.write("Categories=Utility;\n")
             desktop_file.write("X-Endless-ShowInAppStore=true\n")
-            desktop_file.write("X-Endless-SplashScreen=false")
+            desktop_file.write("X-Endless-SplashScreen=false\n")
+            desktop_file.write("DBusActivatable=true")
+
+    def _create_dbus_service(self, launcher, exec_line, service_dir, bundle_info):
+        if not path.exists(service_dir):
+            makedirs(service_dir)
+
+            service_path = path.join(service_dir, "%s.service" % bundle_info.app_id)
+            with open(service_path, 'w') as service_file:
+                service_file.write("[D-BUS Service]\n")
+                service_file.write("Name=%s\n" % bundle_info.app_id)
+                service_file.write("Exec=%s --gapplication-service" % exec_line)
 
     def convert(self):
         if not path.isfile(self.args.deb_package):
@@ -179,7 +192,19 @@ class BundleConverter(object):
             for launcher in listdir(bin_path):
                 print("  Fixing launcher: %s" % launcher)
                 self._fix_launcher_paths(launcher, bin_path, bundle_info)
-                self._add_desktop_file(launcher, applications_dir, bundle_info)
+
+                exec_line = path.join("/endless", bundle_info.app_id, 'bin', path.basename(launcher))
+
+                # Handle special case of the main app launcher
+                alt_launcher_name = None
+                if launcher == "eos-%s" % bundle_info.app_name.lower():
+                    service_dir = path.join(extraction_dir, 'share/dbus-1/services')
+                    self._create_dbus_service(launcher, exec_line, service_dir, bundle_info)
+
+                    # Make sure that the launcher desktop file is properly named
+                    alt_launcher_name = bundle_info.app_id
+
+                self._add_desktop_file(launcher, exec_line, applications_dir, bundle_info, alt_launcher_name)
 
         # Use full package name if regular run and simple .tgz if debugging
         if not self.args.debug:
