@@ -2,8 +2,10 @@
 
 #include <glib.h>
 #include <string.h>
-#include <eam-rest.h>
 #include <eam-config.h>
+#include <eam-os.h>
+#include <eam-rest.h>
+
 
 #define config "[eam]\nappdir = /endless\n" \
   "downloaddir=/var/tmp\n" \
@@ -26,21 +28,30 @@ load_config (const gchar *protver)
 static void
 test_restv1_basic (void)
 {
-  gchar *uri;
+  gchar *uri, *turi;
+  const gchar *version;
 
   load_config ("v1");
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
-  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/1.2");
+  turi = g_strconcat ("http://localhost/api/v1/updates/", eam_os_get_version (), NULL);
+  g_assert_cmpstr (uri, ==, turi);
   g_free (uri);
+  g_free (turi);
+
+  version = eam_os_get_version ();
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATES, "com.application.id1", NULL);
-  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/1.2/com.application.id1");
+  turi = g_strconcat ("http://localhost/api/v1/updates/", version, "/com.application.id1", NULL);
+  g_assert_cmpstr (uri, ==, turi);
   g_free (uri);
+  g_free (turi);
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK, "com.application.id2", "2.22", NULL);
-  g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/1.2/com.application.id2/2.22");
+  turi = g_strconcat ("http://localhost/api/v1/updates/", version, "/com.application.id2/2.22", NULL);
+  g_assert_cmpstr (uri, ==, turi);
   g_free (uri);
+  g_free (turi);
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_BLOB, "bbccddee-2.22-full", NULL);
   g_assert_cmpstr (uri, ==, "http://localhost/api/v1/updates/blob/bbccddee-2.22-full");
