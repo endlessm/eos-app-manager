@@ -318,7 +318,9 @@ struct _load_pkgdb_clos {
   EamService *service;
   GDBusMethodInvocation *invocation;
   GAsyncReadyCallback callback;
+
   gchar *appid;
+  void (*run_service) (EamService*, const gchar*, GDBusMethodInvocation*);
 };
 
 static void
@@ -326,6 +328,9 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   struct _load_pkgdb_clos *clos = data;
   EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
+
+  if (GPOINTER_TO_INT (priv->trans) == 1)
+    priv->trans = NULL; /* clear the dummy transaction */
 
   GError *error = NULL;
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
@@ -336,9 +341,14 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   eam_service_set_reloaddb (clos->service, FALSE);
-  run_eam_transaction (clos->service, clos->invocation, clos->callback);
+
+  if (clos->run_service)
+    clos->run_service (clos->service, clos->appid, clos->invocation);
+  else
+    run_eam_transaction (clos->service, clos->invocation, clos->callback);
 
 out:
+  g_free (clos->appid);
   g_slice_free (struct _load_pkgdb_clos, clos);
 }
 
@@ -482,29 +492,6 @@ run_service_install (EamService *service, const gchar *appid,
 }
 
 static void
-load_pkgdb_install_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  struct _load_pkgdb_clos *clos = data;
-  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
-
-  priv->trans = NULL; /* clear the dummy transaction */
-
-  GError *error = NULL;
-  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
-  if (error) {
-    g_dbus_method_invocation_take_error (clos->invocation, error);
-    goto out;
-  }
-
-  eam_service_set_reloaddb (clos->service, FALSE);
-  run_service_install (clos->service, clos->appid, clos->invocation);
-
-out:
-  g_free (clos->appid);
-  g_slice_free (struct _load_pkgdb_clos, clos);
-}
-
-static void
 eam_service_install (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
@@ -521,11 +508,11 @@ eam_service_install (EamService *service, const gchar *appid,
     clos->service = service;
     clos->invocation = invocation;
     clos->appid = g_strdup (appid);
+    clos->run_service = run_service_install;
 
     priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
 
-    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_install_cb,
-      clos);
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
     return;
   }
 
@@ -549,29 +536,6 @@ run_service_uninstall (EamService *service, const gchar *appid,
 }
 
 static void
-load_pkgdb_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  struct _load_pkgdb_clos *clos = data;
-  EamServicePrivate *priv = eam_service_get_instance_private (clos->service);
-
-  priv->trans = NULL; /* clear the dummy transaction */
-
-  GError *error = NULL;
-  eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
-  if (error) {
-    g_dbus_method_invocation_take_error (clos->invocation, error);
-    goto out;
-  }
-
-  eam_service_set_reloaddb (clos->service, FALSE);
-  run_service_uninstall (clos->service, clos->appid, clos->invocation);
-
-out:
-  g_free (clos->appid);
-  g_slice_free (struct _load_pkgdb_clos, clos);
-}
-
-static void
 eam_service_uninstall (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
@@ -588,11 +552,11 @@ eam_service_uninstall (EamService *service, const gchar *appid,
     clos->service = service;
     clos->invocation = invocation;
     clos->appid = g_strdup (appid);
+    clos->run_service = run_service_uninstall;
 
     priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
 
-    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_uninstall_cb,
-      clos);
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
     return;
   }
 
