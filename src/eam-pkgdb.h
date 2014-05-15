@@ -53,6 +53,19 @@ const EamPkg   *eam_pkgdb_get                                    (EamPkgdb *pkgd
 
 gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgdb, const gchar *appid);
 
+guint           eam_pkgdb_size                                   (EamPkgdb *pkgdb);
+
+gboolean        eam_pkgdb_equal                                  (EamPkgdb *old,
+                                                                  EamPkgdb *new);
+
+gboolean        eam_pkgdb_replace                                (EamPkgdb *pkgdb,
+                                                                  EamPkg *pkg);
+
+gboolean        eam_pkgdb_iter_next                              (EamPkgdb *pkgdb,
+                                                                  EamPkg **pkg);
+
+void            eam_pkgdb_iter_reset                             (EamPkgdb *pkgdb);
+
 gboolean        eam_pkgdb_load                                   (EamPkgdb *pkgdb,
                                                                   GError **error);
 

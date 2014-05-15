@@ -21,6 +21,7 @@ struct _EamServicePrivate {
 
   EamPkgdb *db;
   EamUpdates *updates;
+  guint updates_id;
   EamTransaction *trans;
 
   gboolean reloaddb;
@@ -49,7 +50,13 @@ eam_service_dispose (GObject *obj)
   }
 
   g_clear_object (&priv->db);
+
+  if (priv->updates && priv->updates_id) {
+    g_signal_handler_disconnect (priv->updates, priv->updates_id);
+    priv->updates_id = 0;
+  }
   g_clear_object (&priv->updates);
+
   g_clear_object (&priv->cancellable);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
@@ -109,12 +116,64 @@ eam_service_new (EamPkgdb *db)
   return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
 }
 
+static void
+append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
+{
+  const GList *l;
+  for (l = list; l; l = l->next) {
+    const EamPkg *pkg = l->data;
+    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (builder, "(sss)", eam_pkg_get_id (pkg),
+      eam_pkg_get_name (pkg), version);
+    g_free (version);
+  }
+}
+
+static GVariant *
+build_avail_pkg_list_variant (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sss)"));
+
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_installables (priv->updates));
+  append_pkg_list_to_variant_builder (&builder,
+    eam_updates_get_upgradables (priv->updates));
+
+  GVariant *value = g_variant_builder_end (&builder);
+  return g_variant_new_tuple (&value, 1);
+}
+
+static void
+avails_changed_cb (EamService *service, gpointer data)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  GError *error = NULL;
+  g_dbus_connection_emit_signal (priv->connection, NULL,
+    "/com/Endless/AppManager", "com.Endless.AppManager",
+    "AvailableApplicationsChanged", build_avail_pkg_list_variant (service),
+    &error);
+
+  if (error) {
+    g_critical ("Couldn't emit DBus signal \"AvailableApplicationsChanged\": %s",
+      error->message);
+    g_clear_error (&error);
+  }
+}
+
 static EamUpdates *
 get_eam_updates (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
   if (!priv->updates) {
     priv->updates = eam_updates_new ();
+    priv->updates_id = g_signal_connect_swapped (priv->updates,
+      "available-apps-changed", G_CALLBACK (avails_changed_cb), service);
+
     /* let's read what we have, without refreshing the database */
     if (eam_updates_parse (priv->updates, NULL) && priv->db)
       eam_updates_filter (priv->updates, priv->db);
@@ -424,19 +483,6 @@ eam_service_uninstall (EamService *service, const gchar *appid,
 }
 
 static void
-append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
-{
-  const GList *l;
-  for (l = list; l; l = l->next) {
-    const EamPkg *pkg = l->data;
-    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (builder, "(sss)", eam_pkg_get_id (pkg),
-      eam_pkg_get_name (pkg), version);
-    g_free (version);
-  }
-}
-
-static void
 list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
@@ -449,15 +495,8 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   eam_transaction_finish (priv->trans, res, NULL);
 
-  GVariantBuilder builder;
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sss)"));
-  append_pkg_list_to_variant_builder (&builder,
-    eam_updates_get_installables (priv->updates));
-  append_pkg_list_to_variant_builder (&builder,
-    eam_updates_get_upgradables (priv->updates));
-  GVariant *value = g_variant_builder_end (&builder);
-  GVariant *tuple = g_variant_new_tuple (&value, 1);
-  g_dbus_method_invocation_return_value (invocation, tuple);
+  g_dbus_method_invocation_return_value (invocation,
+    build_avail_pkg_list_variant (service));
 
   g_clear_object (&priv->trans); /* we don't need you anymore */
 }

@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "eam-pkgdb.h"
+#include "eam-version.h"
 
 typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
 
@@ -16,6 +17,7 @@ struct _EamPkgdbPrivate
 {
   GHashTable *pkgtable;
   gchar *appdir;
+  GHashTableIter *iter;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamPkgdb, eam_pkgdb, G_TYPE_INITIALLY_UNOWNED)
@@ -32,6 +34,7 @@ eam_pkgdb_finalize (GObject *obj)
 
   g_free (priv->appdir);
   g_hash_table_unref (priv->pkgtable);
+  g_slice_free (GHashTableIter, priv->iter);
 
   G_OBJECT_CLASS (eam_pkgdb_parent_class)->finalize (obj);
 }
@@ -179,6 +182,93 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
 }
 
 /**
+ * eam_pkgdb_replace:
+ * @pkgdb: a #EamPkgdb
+ * @pkg: the #EamPkg of the application to add or replace
+ *
+ * Adds or replace a @pkg into the @pkgdb. It only replaces the
+ * package if new one has a greater version.
+ *
+ * Returns: %TRUE if the @pkg was added or replaced successfully.
+ */
+gboolean
+eam_pkgdb_replace (EamPkgdb *pkgdb, EamPkg *pkg)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (pkg, FALSE);
+
+  const gchar *appid = eam_pkg_get_id (pkg);
+  if (!appid_is_legal (appid))
+    return FALSE;
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  EamPkg *opkg = g_hash_table_lookup (priv->pkgtable, appid);
+  if (opkg) {
+    EamPkgVersion *over = eam_pkg_get_version (opkg);
+    EamPkgVersion *ver = eam_pkg_get_version (pkg);
+
+    if (eam_pkg_version_relate (ver, EAM_RELATION_GT, over))
+      return g_hash_table_replace (priv->pkgtable, (gpointer) appid, pkg);
+
+    return FALSE;
+  }
+
+  return g_hash_table_insert (priv->pkgtable, (gpointer) appid, pkg);
+}
+
+/**
+ * eam_pkgdb_iter_next:
+ * @pkgdb: a #EamPkgdb instance.
+ * @pkg: (out caller-allocates): a location to store the #EamPkg
+ *
+ * This is a decorator to g_hash_table_iter_next().
+ *
+ * The intention of this method is to traverse completely the hash
+ * table, hence the iterator is handled internally.
+ *
+ * Returns: %FALSE if the end of the #EamPkgdb has been reached.
+ **/
+gboolean
+eam_pkgdb_iter_next (EamPkgdb *pkgdb, EamPkg **pkg)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+  g_return_val_if_fail (pkg, FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  if (!priv->iter) {
+    priv->iter = g_slice_new (GHashTableIter);
+    g_hash_table_iter_init (priv->iter, priv->pkgtable);
+  }
+
+  if (g_hash_table_iter_next (priv->iter, NULL, (gpointer *) pkg))
+    return TRUE;
+
+  eam_pkgdb_iter_reset (pkgdb);
+  return FALSE;
+}
+
+/**
+ * eam_pkgdb_iter_reset:
+ * @pkgdb: a #EamPkgdb instance.
+ *
+ * Resets the internal iterator.
+ **/
+void
+eam_pkgdb_iter_reset (EamPkgdb *pkgdb)
+{
+  g_return_if_fail (EAM_IS_PKGDB (pkgdb));
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+
+  if (priv->iter) {
+    g_slice_free (GHashTableIter, priv->iter);
+    priv->iter = NULL;
+  }
+}
+
+/**
  * eam_pkgdb_del:
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
@@ -199,7 +289,7 @@ eam_pkgdb_del (EamPkgdb *pkgdb, const gchar *appid)
 }
 
 /**
- * eam_pkgdb_del:
+ * eam_pkgdb_get:
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
@@ -220,7 +310,7 @@ eam_pkgdb_get (EamPkgdb *pkgdb, const gchar *appid)
 }
 
 /**
- * eam_pkgdb_del:
+ * eam_pkgdb_exists:
  * @pkgdb: a #EamPkgdb
  * @appid: the application ID
  *
@@ -234,6 +324,72 @@ eam_pkgdb_exists (EamPkgdb *pkgdb, const gchar *appid)
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
   return g_hash_table_contains (priv->pkgtable, appid);
+}
+
+/**
+ * eam_pkgdb_size:
+ * @pkgdb: a #EamPkgdb
+ *
+ * Returns the number of packages in the #EamPkgdb
+ *
+ * Returns: The number of packages in the #EamPkgdb
+ **/
+guint
+eam_pkgdb_size (EamPkgdb *pkgdb)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (pkgdb), FALSE);
+
+  EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
+  return g_hash_table_size (priv->pkgtable);
+}
+
+/**
+ * eam_pkgdb_equal:
+ * @old: old #EamPkgdb or %NULL
+ * @new: new #EamPkgdb
+ *
+ * Compares two #EamPkgdb. If the @new one has new packages or an
+ * existing package with a greater version, it will return %FALSE, otherwise %TRUE
+ *
+ * Returns: %FALSE if @new has a package not existing in @old, or one
+ * with a greater version.
+ **/
+gboolean
+eam_pkgdb_equal (EamPkgdb *old, EamPkgdb *new)
+{
+  g_return_val_if_fail (EAM_IS_PKGDB (new), FALSE);
+
+  if (!old)
+    return FALSE;
+
+  g_return_val_if_fail (EAM_IS_PKGDB (old), FALSE);
+
+  EamPkgdbPrivate *opriv = eam_pkgdb_get_instance_private (old);
+  EamPkgdbPrivate *npriv = eam_pkgdb_get_instance_private (new);
+
+  gint dsiz = g_hash_table_size (opriv->pkgtable) - g_hash_table_size (npriv->pkgtable);
+  if (dsiz)
+    return FALSE;
+
+  EamPkg *npkg;
+  GHashTableIter iter;
+  g_hash_table_iter_init (&iter, npriv->pkgtable);
+  while (g_hash_table_iter_next (&iter, NULL, (gpointer *) &npkg)) {
+    if (!npkg) /* should not happen */
+      continue;
+
+    EamPkg *opkg = g_hash_table_lookup (opriv->pkgtable, eam_pkg_get_id (npkg));
+    if (!opkg) /* new package! */
+      return FALSE;
+
+    /* shall we check for downgraded packages? I don't think so */
+    if (eam_pkg_version_relate (eam_pkg_get_version (opkg), EAM_RELATION_LT,
+          eam_pkg_get_version (npkg))) /* new version! */
+      return FALSE;
+  }
+
+  /* shall we check for deprecated packages? I don't think so. */
+  return TRUE;
 }
 
 /**

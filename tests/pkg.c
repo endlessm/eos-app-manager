@@ -7,6 +7,7 @@
 
 #define bad_info_1 "[Bundle]"
 #define good_info "[Bundle]\napp_id = app01\napp_name= application one\nversion = 1\n"
+#define good_info_2 "[Bundle]\napp_id = app01\napp_name= application one\nversion = 2\n"
 #define good_json "{ \"appId\": \"com.application.id1\", \"appName\": \"App Name 1\", \"codeVersion\": \"1.1\" }"
 
 static void
@@ -84,6 +85,22 @@ test_pkgdb_basic (void)
   g_assert (eam_pkgdb_del (db, "app01"));
   rpkg = eam_pkgdb_get (db, "app01");
   g_assert_null (rpkg);
+
+  keyfile = g_key_file_new ();
+  g_key_file_load_from_data (keyfile, good_info_2, strlen (good_info_2),
+    G_KEY_FILE_NONE, NULL);
+  pkg = eam_pkg_new_from_keyfile (keyfile, NULL);
+  g_assert_nonnull (pkg);
+  g_key_file_free (keyfile);
+
+  g_assert (eam_pkgdb_replace (db, pkg));
+  rpkg = eam_pkgdb_get (db, "app01");
+  g_assert (pkg == rpkg);
+
+  g_assert_false (eam_pkgdb_replace (db, (EamPkg *) rpkg));
+  rpkg = eam_pkgdb_get (db, "app01");
+  g_assert (pkg == rpkg);
+
   g_object_unref (db);
 }
 

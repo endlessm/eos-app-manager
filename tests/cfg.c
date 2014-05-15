@@ -18,8 +18,6 @@ test_config_basic (void)
   EamConfig *cfg = eam_config_get ();
   g_assert_nonnull (cfg);
 
-  g_assert_null (cfg->appdir);
-
   GKeyFile *keyfile = g_key_file_new ();
   g_key_file_load_from_data (keyfile, config, strlen (config), G_KEY_FILE_NONE, NULL);
   g_assert_true (eam_config_load (cfg, keyfile));
