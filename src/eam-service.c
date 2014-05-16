@@ -174,12 +174,15 @@ get_eam_updates (EamService *service)
 
   if (!priv->updates) {
     priv->updates = eam_updates_new ();
+
+    /* let's read what we have, without refreshing the database and
+     * ignoring parsing errors. */
+    eam_updates_parse (priv->updates, NULL);
+
+    /* we connect after parse because we want to go silence at
+     * first. */
     priv->updates_id = g_signal_connect_swapped (priv->updates,
       "available-apps-changed", G_CALLBACK (avails_changed_cb), service);
-
-    /* let's read what we have, without refreshing the database */
-    if (eam_updates_parse (priv->updates, NULL) && priv->db)
-      eam_updates_filter (priv->updates, priv->db);
   }
 
   return priv->updates;
