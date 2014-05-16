@@ -237,12 +237,13 @@ static void
 replace_avails_db (EamUpdates *self, EamPkgdb *new_avails)
 {
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-
-  if (!eam_pkgdb_equal (priv->avails, new_avails))
-    g_signal_emit (self, signals[AVAILABLE_APPS_CHANGED], 0);
+  gboolean equal = eam_pkgdb_equal (priv->avails, new_avails);
 
   eam_updates_reset_lists (self);
   priv->avails = new_avails;
+
+  if (!equal)
+    g_signal_emit (self, signals[AVAILABLE_APPS_CHANGED], 0);
 }
 
 /**
