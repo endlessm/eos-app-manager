@@ -151,6 +151,9 @@ avails_changed_cb (EamService *service, gpointer data)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  if (!priv->connection)
+    return;
+
   GError *error = NULL;
   g_dbus_connection_emit_signal (priv->connection, NULL,
     "/com/Endless/AppManager", "com.Endless.AppManager",
