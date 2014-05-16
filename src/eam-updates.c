@@ -229,7 +229,8 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
   if (!pkg)
     return;
 
-  eam_pkgdb_replace (avails, pkg);
+  if (!eam_pkgdb_replace (avails, pkg))
+    eam_pkg_free (pkg);
 }
 
 static void

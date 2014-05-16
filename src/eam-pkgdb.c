@@ -209,7 +209,7 @@ eam_pkgdb_replace (EamPkgdb *pkgdb, EamPkg *pkg)
     EamPkgVersion *ver = eam_pkg_get_version (pkg);
 
     if (eam_pkg_version_relate (ver, EAM_RELATION_GT, over))
-      return g_hash_table_replace (priv->pkgtable, (gpointer) appid, pkg);
+      return !g_hash_table_replace (priv->pkgtable, (gpointer) appid, pkg);
 
     return FALSE;
   }
