@@ -189,6 +189,17 @@ get_eam_updates (EamService *service)
 }
 
 static void
+eam_service_set_reloaddb (EamService *service, gboolean value)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->reloaddb && !value)
+    eam_updates_filter (priv->updates, priv->db);
+
+  priv->reloaddb = value;
+}
+
+static void
 run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
   GAsyncReadyCallback callback)
 {
@@ -219,7 +230,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
-  priv->reloaddb = FALSE;
+  eam_service_set_reloaddb (clos->service, FALSE);
   run_eam_transaction (clos->service, clos->invocation, clos->callback);
 
 out:
@@ -302,7 +313,7 @@ reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer 
     goto out;
   }
 
-  priv->reloaddb = FALSE;
+  eam_service_set_reloaddb (service, FALSE);
 
   GVariant *value = g_variant_new ("(b)", TRUE);
   g_dbus_method_invocation_return_value (invocation, value);
@@ -329,9 +340,10 @@ install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   if (ret) {
-      priv->reloaddb = TRUE; /* if we installed (or uninstalled) something we reload the database */
-      eam_pkgdb_load_async (priv->db, priv->cancellable, reload_pkgdb_after_transaction_cb, service);
-      return;
+    /* if we installed (or uninstalled) something we reload the database */
+    eam_service_set_reloaddb (service, TRUE);
+    eam_pkgdb_load_async (priv->db, priv->cancellable, reload_pkgdb_after_transaction_cb, service);
+    return;
   }
 
   g_object_set_data (source, "invocation", NULL);
@@ -385,7 +397,7 @@ load_pkgdb_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
-  priv->reloaddb = FALSE;
+  eam_service_set_reloaddb (clos->service, FALSE);
   run_service_install (clos->service, clos->appid, clos->invocation);
 
 out:
@@ -452,7 +464,7 @@ load_pkgdb_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
-  priv->reloaddb = FALSE;
+  eam_service_set_reloaddb (clos->service, FALSE);
   run_service_uninstall (clos->service, clos->appid, clos->invocation);
 
 out:
