@@ -30,8 +30,6 @@ static void eam_install_run_async (EamTransaction *trans, GCancellable *cancella
 static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
   GError **error);
 
-G_DEFINE_QUARK (eam-install-error-quark, eam_install_error)
-
 G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
   G_ADD_PRIVATE (EamInstall));
@@ -381,8 +379,8 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   }
 
   if (!json) {
-    g_task_return_new_error (task, EAM_INSTALL_ERROR,
-       EAM_INSTALL_ERROR_INVALID_FILE,
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+       EAM_TRANSACTION_ERROR_INVALID_FILE,
        _("Not valid stream with update/install link"));
     goto bail;
   }
@@ -392,8 +390,8 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   const gchar *version = json_object_get_string_member (json, "codeVersion");
 
   if (!path || !hash) {
-    g_task_return_new_error (task, EAM_INSTALL_ERROR,
-       EAM_INSTALL_ERROR_INVALID_FILE,
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+       EAM_TRANSACTION_ERROR_INVALID_FILE,
        _("Not valid application link"));
     goto bail;
   }
@@ -401,8 +399,8 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_DOWNLOAD_LINK, path,
     NULL);
   if (!uri) {
-    g_task_return_new_error (task, EAM_INSTALL_ERROR,
-      EAM_INSTALL_ERROR_PROTOCOL_ERROR,
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+      EAM_TRANSACTION_ERROR_PROTOCOL_ERROR,
       _("Not valid method or protocol version"));
     goto bail;
   }
@@ -477,7 +475,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   /* is it enough? */
   if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
     g_task_report_new_error (trans, callback, data, eam_install_run_async,
-      EAM_INSTALL_ERROR, EAM_INSTALL_ERROR_NO_NETWORK,
+      EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_NO_NETWORK,
       _("Networking is not available"));
     return;
   }
@@ -490,7 +488,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
 
   if (!uri) {
     g_task_report_new_error (self, callback, data, eam_install_run_async,
-      EAM_INSTALL_ERROR, EAM_INSTALL_ERROR_PROTOCOL_ERROR,
+      EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_PROTOCOL_ERROR,
       _("Not valid method or protocol version"));
     return;
   }

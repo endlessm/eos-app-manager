@@ -11,23 +11,6 @@
 
 G_BEGIN_DECLS
 
-/**
- * EamListAvailError:
- * @EAM_LIST_AVAIL_ERROR_PROTOCOL_ERROR: Invalid URI.
- * @EAM_LIST_AVAIL_ERROR_INVALID_FILE: Invalid list_avail file.
- * @EAM_LIST_AVAIL_ERROR_NO_NETWORK: The network is not available.
- *
- * These constants identify all the available errors managed by
- * the Endless Application Manager ListAvail.
- */
-typedef enum {
-  EAM_LIST_AVAIL_ERROR_PROTOCOL_ERROR = 1,
-  EAM_LIST_AVAIL_ERROR_INVALID_FILE,
-  EAM_LIST_AVAIL_ERROR_NO_NETWORK,
-} EamListAvailError;
-
-#define EAM_LIST_AVAIL_ERROR eam_list_avail_error_quark ()
-
 #define EAM_TYPE_LIST_AVAIL (eam_list_avail_get_type())
 
 #define EAM_LIST_AVAIL(o) \

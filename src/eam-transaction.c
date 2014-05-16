@@ -6,6 +6,8 @@
 
 #include "eam-transaction.h"
 
+G_DEFINE_QUARK (eam-transaction-error-quark, eam_transaction_error)
+
 G_DEFINE_INTERFACE (EamTransaction, eam_transaction, G_TYPE_OBJECT)
 
 static void
