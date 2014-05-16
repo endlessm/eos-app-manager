@@ -352,7 +352,7 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
     } else {
       if (eam_pkg_version_relate (eam_pkg_get_version (apkg), EAM_RELATION_GT,
                                   eam_pkg_get_version (fpkg)))
-        priv->updates = g_list_prepend (priv->updates, (gpointer) fpkg);
+        priv->updates = g_list_prepend (priv->updates, (gpointer) apkg);
     }
   }
 }
