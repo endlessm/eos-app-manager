@@ -31,7 +31,7 @@ test_programs = \
 	rest \
 	updates \
 	spawner \
-	scripts-install \
+	scripts \
 	$(NULL)
 
 -include $(top_srcdir)/git.mk
