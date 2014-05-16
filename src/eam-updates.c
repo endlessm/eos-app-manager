@@ -29,6 +29,7 @@ G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
 enum {
   AVAILABLE_APPS_CHANGED,
+  UPDATES_FILTERED,
   SIGNAL_MAX
 };
 
@@ -69,6 +70,10 @@ eam_updates_class_init (EamUpdatesClass *klass)
   object_class->finalize = eam_updates_finalize;
 
   signals[AVAILABLE_APPS_CHANGED] = g_signal_new ("available-apps-changed",
+    G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
+
+  signals[UPDATES_FILTERED] = g_signal_new ("updates-filtered",
     G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
     g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
@@ -229,19 +234,21 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
   if (!pkg)
     return;
 
-  eam_pkgdb_replace (avails, pkg);
+  if (!eam_pkgdb_replace (avails, pkg))
+    eam_pkg_free (pkg);
 }
 
 static void
 replace_avails_db (EamUpdates *self, EamPkgdb *new_avails)
 {
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-
-  if (!eam_pkgdb_equal (priv->avails, new_avails))
-    g_signal_emit (self, signals[AVAILABLE_APPS_CHANGED], 0);
+  gboolean equal = eam_pkgdb_equal (priv->avails, new_avails);
 
   eam_updates_reset_lists (self);
   priv->avails = new_avails;
+
+  if (!equal)
+    g_signal_emit (self, signals[AVAILABLE_APPS_CHANGED], 0);
 }
 
 /**
@@ -352,9 +359,11 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
     } else {
       if (eam_pkg_version_relate (eam_pkg_get_version (apkg), EAM_RELATION_GT,
                                   eam_pkg_get_version (fpkg)))
-        priv->updates = g_list_prepend (priv->updates, (gpointer) fpkg);
+        priv->updates = g_list_prepend (priv->updates, (gpointer) apkg);
     }
   }
+
+  g_signal_emit (self, signals[UPDATES_FILTERED], 0);
 }
 
 /**
