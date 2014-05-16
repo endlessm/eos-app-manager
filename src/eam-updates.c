@@ -29,6 +29,7 @@ G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
 enum {
   AVAILABLE_APPS_CHANGED,
+  UPDATES_FILTERED,
   SIGNAL_MAX
 };
 
@@ -69,6 +70,10 @@ eam_updates_class_init (EamUpdatesClass *klass)
   object_class->finalize = eam_updates_finalize;
 
   signals[AVAILABLE_APPS_CHANGED] = g_signal_new ("available-apps-changed",
+    G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
+
+  signals[UPDATES_FILTERED] = g_signal_new ("updates-filtered",
     G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
     g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
@@ -357,6 +362,8 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
         priv->updates = g_list_prepend (priv->updates, (gpointer) apkg);
     }
   }
+
+  g_signal_emit (self, signals[UPDATES_FILTERED], 0);
 }
 
 /**
