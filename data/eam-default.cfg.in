@@ -4,3 +4,4 @@ downloaddir = @localstatedir@/cache/eos-app-manager
 serveraddress = http://staging-dev.endlessm-sf.com
 protocolversion = v1
 scriptdir = @pkglibexecdir@
+timeout = 300

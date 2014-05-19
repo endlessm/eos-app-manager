@@ -11,6 +11,7 @@
 
 #include "eam-dbus-server.h"
 #include "eam-service.h"
+#include "eam-config.h"
 
 typedef struct _EamDbusServerPrivate EamDbusServerPrivate;
 
@@ -22,6 +23,7 @@ struct _EamDbusServerPrivate {
   guint interrupt;
 
   guint quit_id;
+  guint timer_id;
   EamService *service;
 };
 
@@ -51,8 +53,12 @@ eam_dbus_server_finalize (GObject *obj)
   if (priv->interrupt > 0)
     g_source_remove (priv->interrupt);
 
-  if (priv->quit_id)
+  if (priv->quit_id > 0)
     g_signal_handler_disconnect (priv->service, priv->quit_id);
+
+  if (priv->timer_id > 0)
+    g_source_remove (priv->timer_id);
+
   g_clear_object (&priv->service);
 
   G_OBJECT_CLASS (eam_dbus_server_parent_class)->finalize (obj);
@@ -62,6 +68,20 @@ static void
 quit_request_cb (EamDbusServer *server, gpointer data)
 {
   eam_dbus_server_quit (server);
+}
+
+static gboolean
+timeout_cb (gpointer data)
+{
+  EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (EAM_DBUS_SERVER (data));
+  guint idle = eam_service_get_idle (priv->service);
+
+  if (idle > eam_config_timeout ()) {
+    eam_dbus_server_quit (EAM_DBUS_SERVER (data));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static void
@@ -75,6 +95,10 @@ eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
     priv->service = eam_service_new (g_value_get_object (value));
     priv->quit_id = g_signal_connect_swapped (priv->service, "quit-requested",
       G_CALLBACK (quit_request_cb), obj);
+    if (eam_config_timeout () > 0) {
+      priv->timer_id = g_timeout_add_seconds (eam_config_timeout (), timeout_cb, obj);
+      g_source_set_name_by_id (priv->timer_id, "[EAM] timeout poll");
+    }
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
