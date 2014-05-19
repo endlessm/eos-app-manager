@@ -62,6 +62,8 @@ EamService     *eam_service_new                                   (EamPkgdb *db)
 void            eam_service_dbus_register                         (EamService *service,
 								   GDBusConnection *connection);
 
+guint           eam_service_get_idle                              (EamService *service);
+
 G_END_DECLS
 
 #endif /* EAM_SERVICE_H */

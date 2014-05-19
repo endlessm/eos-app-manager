@@ -29,6 +29,8 @@ struct _EamServicePrivate {
   gchar **available_updates;
   gboolean reloaddb;
 
+  GTimer *timer;
+
   GCancellable *cancellable;
 };
 
@@ -60,6 +62,7 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
+  g_clear_pointer (&priv->timer, g_timer_destroy);
   g_clear_pointer (&priv->available_updates, g_strfreev);
   g_clear_object (&priv->db);
 
@@ -122,6 +125,7 @@ eam_service_init (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   priv->cancellable = g_cancellable_new ();
   priv->reloaddb = TRUE; /* initial state */
+  priv->timer = g_timer_new ();
 }
 
 /**
@@ -410,9 +414,19 @@ out:
 }
 
 static void
+eam_service_reset_timer (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  g_timer_reset (priv->timer);
+}
+
+static void
 eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -488,6 +502,8 @@ run_service_install (EamService *service, const gchar *appid,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_service_reset_timer (service);
+
   if (eam_pkgdb_get (priv->db, appid)) {
     if (eam_updates_pkg_is_upgradable (get_eam_updates (service), appid)) {
       /* update to the last version */
@@ -514,6 +530,8 @@ eam_service_install (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -558,6 +576,8 @@ eam_service_uninstall (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -604,6 +624,8 @@ static void
 eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -665,6 +687,8 @@ handle_get_property (GDBusConnection *connection, const gchar *sender,
   gpointer data)
 {
   EamService *service = EAM_SERVICE (data);
+
+  eam_service_reset_timer (service);
 
   if (g_strcmp0 (interface, "com.Endless.AppManager"))
     return NULL;
@@ -736,4 +760,18 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
+}
+
+/**
+ * eam_service_get_idle:
+ * @service: a #EamService instance
+ *
+ * Returns: the idle elapsed time in seconds
+ **/
+guint
+eam_service_get_idle (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  return g_timer_elapsed (priv->timer, NULL);
 }
