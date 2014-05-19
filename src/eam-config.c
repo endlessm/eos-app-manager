@@ -60,16 +60,11 @@ eam_config_free (EamConfig *cfg)
   if (!cfg)
     return;
 
-  g_free (cfg->appdir);
-  cfg->appdir = NULL;
-  g_free (cfg->saddr);
-  cfg->saddr = NULL;
-  g_free (cfg->protver);
-  cfg->protver = NULL;
-  g_free (cfg->dldir);
-  cfg->dldir = NULL;
-  g_free (cfg->scriptdir);
-  cfg->scriptdir = NULL;
+  g_clear_pointer (&cfg->appdir, g_free);
+  g_clear_pointer (&cfg->saddr, g_free);
+  g_clear_pointer (&cfg->protver, g_free);
+  g_clear_pointer (&cfg->dldir, g_free);
+  g_clear_pointer (&cfg->scriptdir, g_free);
 }
 
 static inline gchar *
