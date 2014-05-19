@@ -46,6 +46,8 @@ test_config_singleton (void)
   cfg = eam_config_get ();
   g_assert_null (cfg->appdir);
   g_slice_free (EamConfig, cfg);
+
+  eam_config_destroy (NULL);
 }
 
 int

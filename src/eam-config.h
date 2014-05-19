@@ -23,6 +23,8 @@ EamConfig      *eam_config_get                                    (void);
 
 void            eam_config_free                                   (EamConfig *cfg);
 
+void            eam_config_destroy                                (EamConfig *cfg);
+
 gboolean        eam_config_load                                   (EamConfig *cfg,
                                                                    GKeyFile *keyfile);
 

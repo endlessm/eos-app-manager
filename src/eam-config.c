@@ -67,6 +67,19 @@ eam_config_free (EamConfig *cfg)
   g_clear_pointer (&cfg->scriptdir, g_free);
 }
 
+void
+eam_config_destroy (EamConfig *cfg)
+{
+  if (!cfg)
+    cfg = eam_config_get ();
+
+  if (!cfg)
+    return;
+
+  eam_config_free (cfg);
+  g_slice_free (EamConfig, cfg);
+}
+
 static inline gchar *
 get_str (GKeyFile *keyfile, gchar *grp, gchar *key)
 {

@@ -129,7 +129,7 @@ main (int argc, gchar **argv)
     ret = EXIT_SUCCESS;
 
   g_object_unref (server);
-  eam_config_free (NULL);
+  eam_config_destroy (NULL);
 
   return ret;
 }
