@@ -12,7 +12,7 @@ static const gchar *METHODS_V1_FORMAT[] = {
 };
 
 static gchar *
-build_uri_v1 (EamRestMethod method, gchar *saddr, va_list args)
+build_uri_v1 (EamRestMethod method, const gchar *saddr, va_list args)
 {
   const gchar *osver = eam_os_get_version ();
 
@@ -76,12 +76,11 @@ gchar *
 eam_rest_build_uri (EamRestMethod method, ...)
 {
   va_list args;
-  EamConfig *cfg = eam_config_get ();
 
   va_start (args, method);
 
-  if (g_strcmp0 (cfg->protver, "v1") == 0)
-    return build_uri_v1 (method, cfg->saddr, args);
+  if (g_strcmp0 (eam_config_protver (), "v1") == 0)
+    return build_uri_v1 (method, eam_config_saddr (), args);
 
   return NULL;
 }

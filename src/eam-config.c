@@ -3,6 +3,14 @@
 #include <gio/gio.h>
 #include "eam-config.h"
 
+struct _EamConfig
+{
+#define GETTERS(p) gchar *p;
+  PARAMS_LIST(GETTERS)
+#undef GETTERS
+  guint timeout;
+};
+
 static gpointer
 eam_config_init (gpointer data)
 {
@@ -22,30 +30,15 @@ void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
   gchar *saddr, gchar *protver, gchar *scriptdir, guint timeout)
 {
-  if (appdir) {
-    g_free (cfg->appdir);
-    cfg->appdir = appdir;
-  }
+  if (!cfg)
+    cfg = eam_config_get ();
 
-  if (dldir) {
-    g_free (cfg->dldir);
-    cfg->dldir = dldir;
-  }
+  if (!cfg)
+    return;
 
-  if (saddr) {
-    g_free (cfg->saddr);
-    cfg->saddr = saddr;
-  }
-
-  if (protver) {
-    g_free (cfg->protver);
-    cfg->protver = protver;
-  }
-
-  if (scriptdir) {
-    g_free (cfg->scriptdir);
-    cfg->scriptdir = scriptdir;
-  }
+#define SETTERS(p) if (p) { g_free (cfg->p); cfg->p=p; }
+  PARAMS_LIST(SETTERS)
+#undef SETTERS
 
   if (timeout > 0)
     cfg->timeout = timeout;
@@ -60,11 +53,9 @@ eam_config_free (EamConfig *cfg)
   if (!cfg)
     return;
 
-  g_clear_pointer (&cfg->appdir, g_free);
-  g_clear_pointer (&cfg->saddr, g_free);
-  g_clear_pointer (&cfg->protver, g_free);
-  g_clear_pointer (&cfg->dldir, g_free);
-  g_clear_pointer (&cfg->scriptdir, g_free);
+#define CLEARERS(p) g_clear_pointer (&cfg->p, g_free);
+  PARAMS_LIST(CLEARERS)
+#undef CLEARERS
 }
 
 void
@@ -164,3 +155,14 @@ eam_config_dump (EamConfig *cfg)
     cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir,
     cfg->timeout);
 }
+
+guint
+eam_config_timeout ()
+{
+  return eam_config_get ()->timeout;
+}
+
+#define GETTERS(p) \
+  const gchar *eam_config_##p () { return eam_config_get ()->p; }
+PARAMS_LIST(GETTERS)
+#undef GETTERS

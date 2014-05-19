@@ -9,16 +9,6 @@ G_BEGIN_DECLS
 
 typedef struct _EamConfig EamConfig;
 
-struct _EamConfig
-{
-  gchar *appdir;
-  gchar *dldir;
-  gchar *saddr;
-  gchar *protver;
-  gchar *scriptdir;
-  guint timeout;
-};
-
 EamConfig      *eam_config_get                                    (void);
 
 void            eam_config_free                                   (EamConfig *cfg);
@@ -37,6 +27,19 @@ void            eam_config_set                                    (EamConfig *cf
                                                                    guint timeout);
 
 void            eam_config_dump                                   (EamConfig *cfg);
+
+guint           eam_config_timeout                                ();
+
+#define PARAMS_LIST(V) \
+  V(appdir) \
+  V(dldir)  \
+  V(saddr)  \
+  V(protver) \
+  V(scriptdir)
+
+#define GETTERS(p) const gchar *eam_config_##p ();
+PARAMS_LIST(GETTERS)
+#undef GETTERS
 
 G_END_DECLS
 

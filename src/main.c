@@ -113,7 +113,7 @@ main (int argc, gchar **argv)
   if (!eam_fs_sanity_check ())
     return EXIT_FAILURE;
 
-  EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_get()->appdir);
+  EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_appdir ());
 
   if (opt_dump_pkgdb) {
     if (dump_pkgdb (db))

@@ -23,16 +23,16 @@ test_config_basic (void)
   g_assert_true (eam_config_load (cfg, keyfile));
   g_key_file_unref (keyfile);
 
-  g_assert_cmpstr (cfg->appdir, ==, "/");
-  g_assert_cmpstr (cfg->dldir, ==, "/tmp");
+  g_assert_cmpstr (eam_config_appdir (), ==, "/");
+  g_assert_cmpstr (eam_config_dldir (), ==, "/tmp");
 
   eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, 0);
-  g_assert_cmpstr (cfg->appdir, ==, "/");
-  g_assert_cmpstr (cfg->dldir, ==, "/var/tmp");
-  g_assert_cmpstr (cfg->saddr, ==, "http://nohost");
-  g_assert_cmpstr (cfg->protver, ==, "v1000");
-  g_assert_cmpstr (cfg->scriptdir, ==, "/usr/libexec/eam");
-  g_assert_cmpint (cfg->timeout, ==, 0);
+  g_assert_cmpstr (eam_config_appdir (), ==, "/");
+  g_assert_cmpstr (eam_config_dldir (), ==, "/var/tmp");
+  g_assert_cmpstr (eam_config_saddr (), ==, "http://nohost");
+  g_assert_cmpstr (eam_config_protver (), ==, "v1000");
+  g_assert_cmpstr (eam_config_scriptdir (), ==, "/usr/libexec/eam");
+  g_assert_cmpint (eam_config_timeout (), ==, 0);
 }
 
 static void
@@ -40,12 +40,11 @@ test_config_singleton (void)
 {
   EamConfig *cfg = eam_config_get ();
   g_assert_nonnull (cfg);
-  g_assert_cmpstr (cfg->protver, ==, "v1000");
+  g_assert_cmpstr (eam_config_protver (), ==, "v1000");
   eam_config_free (NULL);
 
   cfg = eam_config_get ();
-  g_assert_null (cfg->appdir);
-  g_slice_free (EamConfig, cfg);
+  g_assert_null (eam_config_appdir ());
 
   eam_config_destroy (NULL);
 }
