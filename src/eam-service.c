@@ -41,6 +41,14 @@ enum
   PROP_DB = 1,
 };
 
+enum
+{
+  QUIT_REQUESTED,
+  SIGNAL_MAX
+};
+
+static guint signals[SIGNAL_MAX];
+
 static void
 eam_service_dispose (GObject *obj)
 {
@@ -102,6 +110,10 @@ eam_service_class_init (EamServiceClass *class)
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  signals[QUIT_REQUESTED] = g_signal_new ("quit-requested",
+    G_TYPE_FROM_CLASS(class), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
 
 static void
@@ -605,6 +617,22 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
 }
 
 static void
+eam_service_quit (EamService *service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  g_signal_emit (service, signals[QUIT_REQUESTED], 0);
+  g_dbus_method_invocation_return_value (invocation, NULL);
+}
+
+
+static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
   GDBusMethodInvocation *invocation, gpointer data)
@@ -626,6 +654,8 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     eam_service_uninstall (service, appid, invocation);
   } else if (!g_strcmp0 (method, "ListAvailable")) {
     eam_service_list_avail (service, invocation);
+  } else if (!g_strcmp0 (method, "Quit")) {
+    eam_service_quit (service, invocation);
   }
 }
 

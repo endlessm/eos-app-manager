@@ -21,6 +21,7 @@ struct _EamDbusServerPrivate {
   guint terminate;
   guint interrupt;
 
+  guint quit_id;
   EamService *service;
 };
 
@@ -50,9 +51,17 @@ eam_dbus_server_finalize (GObject *obj)
   if (priv->interrupt > 0)
     g_source_remove (priv->interrupt);
 
+  if (priv->quit_id)
+    g_signal_handler_disconnect (priv->service, priv->quit_id);
   g_clear_object (&priv->service);
 
   G_OBJECT_CLASS (eam_dbus_server_parent_class)->finalize (obj);
+}
+
+static void
+quit_request_cb (EamDbusServer *server, gpointer data)
+{
+  eam_dbus_server_quit (server);
 }
 
 static void
@@ -64,6 +73,8 @@ eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
   switch (prop_id) {
   case PROP_DB:
     priv->service = eam_service_new (g_value_get_object (value));
+    priv->quit_id = g_signal_connect_swapped (priv->service, "quit-requested",
+      G_CALLBACK (quit_request_cb), obj);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);

@@ -82,5 +82,13 @@
 	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
+
+    <!--
+	Quit:
+
+	Suggest to the daemon to quit.
+    -->
+    <method name="Quit" />
+
   </interface>
 </node>

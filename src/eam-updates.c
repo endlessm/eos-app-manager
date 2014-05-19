@@ -33,7 +33,7 @@ enum {
   SIGNAL_MAX
 };
 
-guint signals[SIGNAL_MAX];
+static guint signals[SIGNAL_MAX];
 
 static void
 eam_updates_reset_lists (EamUpdates *self)
