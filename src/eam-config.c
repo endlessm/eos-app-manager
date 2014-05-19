@@ -6,7 +6,7 @@
 static gpointer
 eam_config_init (gpointer data)
 {
-  EamConfig *cfg = g_new0 (EamConfig, 1);
+  EamConfig *cfg = g_slice_new0 (EamConfig);
   eam_config_load (cfg, NULL);
   return cfg;
 }
