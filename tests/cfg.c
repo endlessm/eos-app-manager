@@ -26,12 +26,13 @@ test_config_basic (void)
   g_assert_cmpstr (cfg->appdir, ==, "/");
   g_assert_cmpstr (cfg->dldir, ==, "/tmp");
 
-  eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL);
+  eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, 0);
   g_assert_cmpstr (cfg->appdir, ==, "/");
   g_assert_cmpstr (cfg->dldir, ==, "/var/tmp");
   g_assert_cmpstr (cfg->saddr, ==, "http://nohost");
   g_assert_cmpstr (cfg->protver, ==, "v1000");
   g_assert_cmpstr (cfg->scriptdir, ==, "/usr/libexec/eam");
+  g_assert_cmpint (cfg->timeout, ==, 0);
 }
 
 static void

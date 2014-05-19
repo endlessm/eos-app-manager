@@ -16,6 +16,7 @@ struct _EamConfig
   gchar *saddr;
   gchar *protver;
   gchar *scriptdir;
+  guint timeout;
 };
 
 EamConfig      *eam_config_get                                    (void);
@@ -30,7 +31,8 @@ void            eam_config_set                                    (EamConfig *cf
                                                                    gchar *dldir,
                                                                    gchar *saddr,
                                                                    gchar *protver,
-                                                                   gchar *scriptdir);
+                                                                   gchar *scriptdir,
+                                                                   guint timeout);
 
 void            eam_config_dump                                   (EamConfig *cfg);
 

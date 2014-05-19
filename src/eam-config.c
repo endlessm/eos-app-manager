@@ -20,7 +20,7 @@ eam_config_get (void)
 
 void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
-  gchar *saddr, gchar *protver, gchar *scriptdir)
+  gchar *saddr, gchar *protver, gchar *scriptdir, guint timeout)
 {
   if (appdir) {
     g_free (cfg->appdir);
@@ -46,6 +46,9 @@ eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
     g_free (cfg->scriptdir);
     cfg->scriptdir = scriptdir;
   }
+
+  if (timeout > 0)
+    cfg->timeout = timeout;
 }
 
 void
@@ -109,6 +112,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   gboolean ret = FALSE;
   gboolean own = FALSE;
   gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir;
+  guint timeout;
 
   if (!keyfile) {
     if (!(keyfile = load_default ()))
@@ -122,8 +126,9 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   dldir = get_str (keyfile, grp, "downloaddir");
   protver = get_str (keyfile, grp, "protocolversion");
   scriptdir = get_str (keyfile, grp, "scriptdir");
+  timeout = g_key_file_get_integer (keyfile, grp, "timeout", NULL);
 
-  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir);
+  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir, timeout);
 
   ret = TRUE;
 
@@ -142,10 +147,12 @@ eam_config_dump (EamConfig *cfg)
     cfg = eam_config_get ();
 
   g_print ("EAM Configuration:\n\n"
-           "\tAppDir = %s\n"
-           "\tServerAddress = %s\n"
-           "\tDownloadDir = %s\n"
-           "\tProtocolVersion = %s\n"
-           "\tScriptDir = %s\n",
-           cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir);
+    "\tAppDir = %s\n"
+    "\tServerAddress = %s\n"
+    "\tDownloadDir = %s\n"
+    "\tProtocolVersion = %s\n"
+    "\tScriptDir = %s\n"
+    "\tTimeOut = %d\n",
+    cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir,
+    cfg->timeout);
 }
