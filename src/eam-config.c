@@ -19,6 +19,11 @@ eam_config_init (gpointer data)
   return cfg;
 }
 
+/**
+ * eam_config_get:
+ *
+ * Returns: the #EamConfig singleton.
+ **/
 EamConfig *
 eam_config_get (void)
 {
@@ -26,6 +31,18 @@ eam_config_get (void)
   return g_once (&once_init, eam_config_init, NULL);
 }
 
+/**
+ * eam_config_set:
+ * @cfg: a #EamConfig of %NULL for singleton
+ * @appdir: the new appdir or %NULL
+ * @dldir: the new dldir or %NULL
+ * @saddr: the new saddr or %NULL
+ * @protver: the new protver or %NULL
+ * @scriptdir: the new scriptdir or %NULL
+ * @timeout: the new timeout or %0
+ *
+ * Updates the values of the configurations if they are not %NULL or %0
+ **/
 void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
   gchar *saddr, gchar *protver, gchar *scriptdir, guint timeout)
@@ -44,6 +61,12 @@ eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
     cfg->timeout = timeout;
 }
 
+/**
+ * eam_config_free:
+ * @cfg: a #EamConfig of %NULL for singleton
+ *
+ * Frees all the memory allocated by each configuration string.
+ **/
 void
 eam_config_free (EamConfig *cfg)
 {
@@ -58,6 +81,13 @@ eam_config_free (EamConfig *cfg)
 #undef CLEARERS
 }
 
+/**
+ * eam_config_destroy:
+ * @cfg: a #EamConfig of %NULL for singleton
+ *
+ * Frees all the memory allocated by each configuration string and the
+ * memory used by the configuration structure.
+ **/
 void
 eam_config_destroy (EamConfig *cfg)
 {
@@ -103,6 +133,15 @@ load_default (void)
   return keyfile;
 }
 
+/**
+ * eam_config_load:
+ * @cfg: a #EamConfig of %NULL for singleton
+ * @keyfile: a #GKeyFile
+ *
+ * Parses a configuration @keyfile and sets the @cfg structure.
+ *
+ * Returns: %TRUE if the @keyfile was parsed correctly.
+ **/
 gboolean
 eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 {
@@ -139,6 +178,12 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   return ret;
 }
 
+/**
+ * eam_config_dump:
+ * @cfg: a #EamConfig of %NULL for singleton
+ *
+ * Dumps to stdout the value of the configuration parameters.
+ **/
 void
 eam_config_dump (EamConfig *cfg)
 {
