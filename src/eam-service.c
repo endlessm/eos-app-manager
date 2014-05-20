@@ -492,9 +492,11 @@ install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   if (ret) {
-    /* if we installed, uninstalled or updated something we reload the database */
+    /* if we installed, uninstalled or updated something we reload the
+     * database */
     eam_service_set_reloaddb (service, TRUE);
-    eam_pkgdb_load_async (priv->db, priv->cancellable, reload_pkgdb_after_transaction_cb, service);
+    eam_pkgdb_load_async (priv->db, priv->cancellable,
+      reload_pkgdb_after_transaction_cb, service);
     return;
   }
 
