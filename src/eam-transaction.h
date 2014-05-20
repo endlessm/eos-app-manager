@@ -7,6 +7,23 @@
 
 G_BEGIN_DECLS
 
+/**
+ * EamTransactionError:
+ * @EAM_TRANSACTION_ERROR_PROTOCOL_ERROR: Invalid URI.
+ * @EAM_TRANSACTION_ERROR_INVALID_FILE: Invalid JSON file.
+ * @EAM_TRANSACTION_ERROR_NO_NETWORK: The network is not available.
+ *
+ * These constants identify all the available errors managed by
+ * the Endless Application Manager transactions.
+ */
+typedef enum {
+  EAM_TRANSACTION_ERROR_PROTOCOL_ERROR = 1,
+  EAM_TRANSACTION_ERROR_INVALID_FILE,
+  EAM_TRANSACTION_ERROR_NO_NETWORK,
+} EamTransactionError;
+
+#define EAM_TRANSACTION_ERROR eam_transaction_error_quark ()
+
 #define EAM_TYPE_TRANSACTION (eam_transaction_get_type ())
 
 #define EAM_TRANSACTION(o) \
@@ -60,6 +77,8 @@ void            eam_transaction_run_async                          (EamTransacti
 gboolean        eam_transaction_finish                             (EamTransaction *trans,
 								    GAsyncResult *res,
 								    GError **error);
+
+GQuark          eam_transaction_error_quark                        (void) G_GNUC_CONST;
 
 G_END_DECLS
 

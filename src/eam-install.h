@@ -7,23 +7,6 @@
 
 G_BEGIN_DECLS
 
-/**
- * EamInstallError:
- * @EAM_INSTALL_ERROR_PROTOCOL_ERROR: Invalid URI.
- * @EAM_INSTALL_ERROR_INVALID_FILE: Invalid install file.
- * @EAM_INSTALL_ERROR_NO_NETWORK: The network is not available.
- *
- * These constants identify all the available errors managed by
- * the Endless Application Manager Install.
- */
-typedef enum {
-  EAM_INSTALL_ERROR_PROTOCOL_ERROR = 1,
-  EAM_INSTALL_ERROR_INVALID_FILE,
-  EAM_INSTALL_ERROR_NO_NETWORK,
-} EamInstallError;
-
-#define EAM_INSTALL_ERROR eam_install_error_quark ()
-
 #define EAM_TYPE_INSTALL (eam_install_get_type())
 
 #define EAM_INSTALL(o) \

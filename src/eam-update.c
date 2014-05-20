@@ -7,146 +7,47 @@
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
 
-#include "eam-install.h"
-#include "eam-rest.h"
+#include "eam-update.h"
 #include "eam-spawner.h"
-#include "eam-wc.h"
 #include "eam-config.h"
+#include "eam-rest.h"
 #include "eam-os.h"
+#include "eam-wc.h"
 #include "eam-version.h"
 
-typedef struct _EamInstallPrivate	EamInstallPrivate;
+typedef struct _EamUpdatePrivate	EamUpdatePrivate;
 
-struct _EamInstallPrivate
+struct _EamUpdatePrivate
 {
   gchar *appid;
-  gchar *version;
   gchar *hash;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
-static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data);
-static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
-  GError **error);
 
-G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
-  G_ADD_PRIVATE (EamInstall));
+  G_ADD_PRIVATE (EamUpdate));
 
 enum
 {
   PROP_APPID = 1,
-  PROP_VERSION,
 };
 
-static void
-transaction_iface_init (EamTransactionInterface *iface)
+static gchar *
+build_sha256sum_filename (const gchar *appid)
 {
-  iface->run_async = eam_install_run_async;
-  iface->finish = eam_install_finish;
+  EamConfig *cfg = eam_config_get ();
+  gchar *fname = g_strconcat (appid, ".sha256", NULL);
+  gchar *ret = g_build_filename (cfg->dldir, fname, NULL);
+  g_free (fname);
+  return ret;
 }
 
-static void
-eam_install_reset (EamInstall *self)
+static gchar *
+build_sha256sum_contents (const gchar *hash, const gchar *fname)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->version, g_free);
-  g_clear_pointer (&priv->hash, g_free);
-}
-
-static void
-eam_install_finalize (GObject *obj)
-{
-  eam_install_reset (EAM_INSTALL (obj));
-  G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
-}
-
-static void
-eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
-  GParamSpec *pspec)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (EAM_INSTALL (obj));
-
-  switch (prop_id) {
-  case PROP_APPID:
-    priv->appid = g_value_dup_string (value);
-    break;
-  case PROP_VERSION:
-    priv->version = g_value_dup_string (value);
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-    break;
-  }
-}
-
-static void
-eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
-  GParamSpec *pspec)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (EAM_INSTALL (obj));
-
-  switch (prop_id) {
-  case PROP_APPID:
-    g_value_set_string (value, priv->appid);
-    break;
-  case PROP_VERSION:
-    g_value_set_string (value, priv->version);
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-    break;
-  }
-}
-
-static void
-eam_install_class_init (EamInstallClass *klass)
-{
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
-  object_class->finalize = eam_install_finalize;
-  object_class->get_property = eam_install_get_property;
-  object_class->set_property = eam_install_set_property;
-
-  /**
-   * EamInstall:appid:
-   *
-   * The application ID to install.
-   */
-  g_object_class_install_property (object_class, PROP_APPID,
-    g_param_spec_string ("appid", "App ID", "Application ID", NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamInstall:version:
-   *
-   * The application version to install.
-   */
-  g_object_class_install_property (object_class, PROP_VERSION,
-    g_param_spec_string ("version", "App version", "Application version", NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-}
-
-static void
-eam_install_init (EamInstall *self)
-{
-}
-
-/**
- * eam_install_new:
- * @appid: the application ID to install.
- * @version: the target application version to install.
- *
- * Returns: a new instance of #EamInstall with #EamTransaction interface.
- */
-EamTransaction *
-eam_install_new (const gchar *appid, const gchar *version)
-{
-  return g_object_new (EAM_TYPE_INSTALL, "appid", appid, "version", version,
-    NULL);
+  return g_strconcat (hash, "\t", fname, "\n", NULL);
 }
 
 static gchar *
@@ -163,10 +64,10 @@ static void
 rollback (GTask *task)
 {
   EamConfig *cfg = eam_config_get ();
-  char *dir = g_build_filename (cfg->scriptdir, "install_rollback", NULL);
+  char *dir = g_build_filename (cfg->scriptdir, "update", "rollback", NULL);
 
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
@@ -208,22 +109,6 @@ bail:
   g_object_unref (task);
 }
 
-static gchar *
-build_sha256sum_filename (const gchar *appid)
-{
-  EamConfig *cfg = eam_config_get ();
-  gchar *fname = g_strconcat (appid, ".sha256", NULL);
-  gchar *ret = g_build_filename (cfg->dldir, fname, NULL);
-  g_free (fname);
-  return ret;
-}
-
-static gchar *
-build_sha256sum_contents (const gchar *hash, const gchar *fname)
-{
-  return g_strconcat (hash, "\t", fname, "\n", NULL);
-}
-
 static void
 dl_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
@@ -239,8 +124,8 @@ dl_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
   g_assert (priv->hash);
 
   gchar *tarball = build_tarball_filename (priv->appid);
@@ -262,7 +147,7 @@ dl_cb (GObject *source, GAsyncResult *result, gpointer data)
   }
 
   EamConfig *cfg = eam_config_get ();
-  char *dir = g_build_filename (cfg->scriptdir, "install", NULL);
+  char *dir = g_build_filename (cfg->scriptdir, "update", "full_update", NULL);
 
   GStrv params = g_new0 (gchar *, 3);
   params[0] = g_strdup (priv->appid);
@@ -287,7 +172,7 @@ bail:
 }
 
 static JsonObject *
-find_pkg_version (JsonArray *array, const gchar *version)
+find_last_pkg_version (JsonArray *array)
 {
   GList *el = json_array_get_elements (array);
   if (!el)
@@ -305,13 +190,6 @@ find_pkg_version (JsonArray *array, const gchar *version)
     const gchar *verstr = json_object_get_string_member (json, "codeVersion");
     if (!verstr)
       continue;
-
-    /* do we have a version and does this json have this very version
-     * to install? */
-    if (version && !g_strcmp0 (verstr, version)) {
-      max = json;
-      goto bail;
-    }
 
     /* the fist element is our local max in the first iteration */
     if (!max) {
@@ -331,7 +209,6 @@ find_pkg_version (JsonArray *array, const gchar *version)
     eam_pkg_version_free (maxver);
   }
 
-bail:
   g_list_free (el);
   return max;
 }
@@ -368,12 +245,12 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   JsonNode *root = json_parser_get_root (parser);
 
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   JsonObject *json = NULL;
   if (JSON_NODE_HOLDS_ARRAY (root)) {
-    json = find_pkg_version (json_node_get_array (root), priv->version);
+    json = find_last_pkg_version (json_node_get_array (root));
   } else if (JSON_NODE_HOLDS_OBJECT (root)) {
     json = json_node_get_object (root);
   }
@@ -387,7 +264,8 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   const gchar *path = json_object_get_string_member (json, "downloadLink");
   const gchar *hash = json_object_get_string_member (json, "shaHash");
-  const gchar *version = json_object_get_string_member (json, "codeVersion");
+  /* @TODO: When the incremental updates are implemented, check the isDiff
+     value. For the moment, we only have full updates */
 
   if (!path || !hash) {
     g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
@@ -408,8 +286,6 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   {
     g_free (priv->hash);
     priv->hash = g_strdup (hash);
-    if (!priv->version)
-      priv->version = g_strdup (version);
   }
 
   GCancellable *cancellable = g_task_get_cancellable (task);
@@ -458,36 +334,39 @@ bail:
 }
 
 /**
- * 1. Download the update link
- * 1. Download the application and its sha256sum
- * 2. Set the envvars
- * 3. Run the scripts
- * 4. Rollback if something fails
+ * eam_update_run_async:
+ * @trans: a #EamUpdate instance with #EamTransaction interface.
+ * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore
+ * @callback: (scope async): callback to call when the request is satisfied
+ * @data: (closure): the data to pass to callback function
+ *
+ * Updates an application.
+ * TODO: Complete the info
  */
 static void
-eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
+eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
   GAsyncReadyCallback callback, gpointer data)
 {
-  g_return_if_fail (EAM_IS_INSTALL (trans));
+  g_return_if_fail (EAM_IS_UPDATE (trans));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
-  /* is it enough? */
+ /* is it enough? */
   if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
-    g_task_report_new_error (trans, callback, data, eam_install_run_async,
+    g_task_report_new_error (trans, callback, data, eam_update_run_async,
       EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_NO_NETWORK,
       _("Networking is not available"));
     return;
   }
 
-  EamInstall *self = EAM_INSTALL (trans);
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdate *self = EAM_UPDATE (trans);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
-    priv->appid, priv->version, NULL);
+    priv->appid, NULL, NULL);
 
   if (!uri) {
-    g_task_report_new_error (self, callback, data, eam_install_run_async,
+    g_task_report_new_error (self, callback, data, eam_update_run_async,
       EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_PROTOCOL_ERROR,
       _("Not valid method or protocol version"));
     return;
@@ -504,11 +383,108 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_object_unref (wc);
 }
 
+/*
+ * eam_update_finish:
+ * @trans:A #EamUpdate instance with #EamTransaction interface.
+ * @result: a #GAsyncResult.
+ * @error: a #GError location to store the error occurring, or %NULL to
+ * ignore.
+ *
+ * Finishes the update transaction.
+ *
+ * Returns: %TRUE if everything went well, %FALSE otherwise
+ **/
 static gboolean
-eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
+eam_update_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 {
-  g_return_val_if_fail (EAM_IS_INSTALL (trans), FALSE);
+  g_return_val_if_fail (EAM_IS_UPDATE (trans), FALSE);
   g_return_val_if_fail (g_task_is_valid (res, trans), FALSE);
 
   return g_task_propagate_boolean (G_TASK (res), error);
+}
+
+static void
+transaction_iface_init (EamTransactionInterface *iface)
+{
+  iface->run_async = eam_update_run_async;
+  iface->finish = eam_update_finish;
+}
+
+static void
+eam_update_finalize (GObject *obj)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (EAM_UPDATE (obj));
+
+  g_clear_pointer (&priv->appid, g_free);
+  g_clear_pointer (&priv->hash, g_free);
+
+  G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
+}
+
+static void
+eam_update_get_property (GObject *obj, guint prop_id, GValue *value,
+  GParamSpec *pspec)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (EAM_UPDATE (obj));
+
+  switch (prop_id) {
+  case PROP_APPID:
+    g_value_set_string (value, priv->appid);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+eam_update_set_property (GObject *obj, guint prop_id, const GValue *value,
+  GParamSpec *pspec)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (EAM_UPDATE (obj));
+
+  switch (prop_id) {
+  case PROP_APPID:
+    priv->appid = g_value_dup_string (value);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+eam_update_class_init (EamUpdateClass *klass)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+  object_class->finalize = eam_update_finalize;
+  object_class->get_property = eam_update_get_property;
+  object_class->set_property = eam_update_set_property;
+
+  /**
+   * EamUpdate:appid:
+   *
+   * The application ID to update.
+   */
+  g_object_class_install_property (object_class, PROP_APPID,
+    g_param_spec_string ("appid", "App ID", "Application ID", NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+}
+
+static void
+eam_update_init (EamUpdate *self)
+{
+}
+
+/**
+ * eam_update_new:
+ * @appid: the application ID to update.
+ *
+ * Returns: a new instance of #EamUpdate with #EamTransaction interface.
+ */
+EamTransaction *
+eam_update_new (const gchar *appid)
+{
+  return g_object_new (EAM_TYPE_UPDATE, "appid", appid, NULL);
 }

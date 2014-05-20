@@ -25,8 +25,6 @@ enum
   PROP_UPDATES
 };
 
-G_DEFINE_QUARK (eam-list-avail-error-quark, eam_list_avail_error)
-
 static void transaction_iface_init (EamTransactionInterface *iface);
 static void eam_list_avail_run_async (EamTransaction *trans, GCancellable *cancellable,
   GAsyncReadyCallback callback, gpointer data);

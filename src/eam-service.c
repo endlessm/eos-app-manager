@@ -11,6 +11,7 @@
 #include "eam-refresh.h"
 #include "eam-install.h"
 #include "eam-uninstall.h"
+#include "eam-update.h"
 #include "eam-list-avail.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
@@ -455,7 +456,7 @@ install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   if (ret) {
-    /* if we installed (or uninstalled) something we reload the database */
+    /* if we installed, uninstalled or updated something we reload the database */
     eam_service_set_reloaddb (service, TRUE);
     eam_pkgdb_load_async (priv->db, priv->cancellable, reload_pkgdb_after_transaction_cb, service);
     return;
@@ -476,10 +477,15 @@ run_service_install (EamService *service, const gchar *appid,
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   if (eam_pkgdb_get (priv->db, appid)) {
-    /* update */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_UNIMPLEMENTED, _("Method '%s' not implemented yet"),
-      "Update");
+    if (eam_updates_pkg_is_upgradable (get_eam_updates (service), appid)) {
+      /* update to the last version */
+      priv->trans = eam_update_new (appid);
+      run_eam_transaction (service, invocation, install_or_uninstall_cb);
+    } else {
+      g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+        EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' does not have any update available"),
+        appid);
+    }
   } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version (which is NULL) */
     priv->trans = eam_install_new (appid, NULL);
