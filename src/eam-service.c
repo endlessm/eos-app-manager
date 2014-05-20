@@ -315,7 +315,7 @@ eam_service_set_reloaddb (EamService *service, gboolean value)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   if (priv->reloaddb && !value)
-    eam_updates_filter (priv->updates, priv->db);
+    eam_updates_filter (get_eam_updates (service), priv->db);
 
   priv->reloaddb = value;
 }
