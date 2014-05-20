@@ -30,6 +30,8 @@ case "$1" in
 	;;
     quit) call "Quit"
 	;;
+    cancel) call "Cancel"
+	;;
     *) echo "invalid command \"$1\""
 	;;
 esac
