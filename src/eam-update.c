@@ -37,9 +37,8 @@ enum
 static gchar *
 build_sha256sum_filename (const gchar *appid)
 {
-  EamConfig *cfg = eam_config_get ();
   gchar *fname = g_strconcat (appid, ".sha256", NULL);
-  gchar *ret = g_build_filename (cfg->dldir, fname, NULL);
+  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
   g_free (fname);
   return ret;
 }
@@ -53,9 +52,8 @@ build_sha256sum_contents (const gchar *hash, const gchar *fname)
 static gchar *
 build_tarball_filename (const gchar *appid)
 {
-  EamConfig *cfg = eam_config_get ();
   gchar *fname = g_strconcat (appid, ".bundle", NULL);
-  gchar *ret = g_build_filename (cfg->dldir, fname, NULL);
+  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
   g_free (fname);
   return ret;
 }
@@ -63,8 +61,8 @@ build_tarball_filename (const gchar *appid)
 static void
 rollback (GTask *task)
 {
-  EamConfig *cfg = eam_config_get ();
-  char *dir = g_build_filename (cfg->scriptdir, "update", "rollback", NULL);
+  gchar *dir = g_build_filename (eam_config_scriptdir (), "update", "rollback",
+    NULL);
 
   EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
@@ -75,7 +73,7 @@ rollback (GTask *task)
   params[1] = build_tarball_filename (priv->appid);
 
   /* prefix environment */
-  g_setenv ("PREFIX", eam_config_get ()->appdir, FALSE);
+  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
   g_setenv ("TMP", g_get_tmp_dir (), FALSE);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
@@ -146,15 +144,15 @@ dl_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  EamConfig *cfg = eam_config_get ();
-  char *dir = g_build_filename (cfg->scriptdir, "update", "full_update", NULL);
+  gchar *dir = g_build_filename (eam_config_scriptdir (), "update",
+    "full_update", NULL);
 
   GStrv params = g_new0 (gchar *, 3);
   params[0] = g_strdup (priv->appid);
   params[1] = tarball;
 
   /* prefix environment */
-  g_setenv ("PREFIX", eam_config_get ()->appdir, FALSE);
+  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
   g_setenv ("TMP", g_get_tmp_dir (), FALSE);
 
   EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);

@@ -28,6 +28,10 @@ case "$1" in
 	;;
     list) call "ListAvailable"
 	;;
+    quit) call "Quit"
+	;;
+    cancel) call "Cancel"
+	;;
     *) echo "invalid command \"$1\""
 	;;
 esac

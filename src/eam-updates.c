@@ -33,7 +33,7 @@ enum {
   SIGNAL_MAX
 };
 
-guint signals[SIGNAL_MAX];
+static guint signals[SIGNAL_MAX];
 
 static void
 eam_updates_reset_lists (EamUpdates *self)
@@ -102,8 +102,7 @@ eam_updates_new ()
 static gchar *
 build_updates_filename ()
 {
-  EamConfig *cfg = eam_config_get ();
-  return g_build_filename (cfg->dldir, "updates.json", NULL);
+  return g_build_filename (eam_config_dldir (), "updates.json", NULL);
 }
 
 static void

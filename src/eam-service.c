@@ -29,6 +29,8 @@ struct _EamServicePrivate {
   gchar **available_updates;
   gboolean reloaddb;
 
+  GTimer *timer;
+
   GCancellable *cancellable;
 };
 
@@ -41,6 +43,14 @@ enum
   PROP_DB = 1,
 };
 
+enum
+{
+  QUIT_REQUESTED,
+  SIGNAL_MAX
+};
+
+static guint signals[SIGNAL_MAX];
+
 static void
 eam_service_dispose (GObject *obj)
 {
@@ -52,6 +62,7 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
+  g_clear_pointer (&priv->timer, g_timer_destroy);
   g_clear_pointer (&priv->available_updates, g_strfreev);
   g_clear_object (&priv->db);
 
@@ -102,6 +113,10 @@ eam_service_class_init (EamServiceClass *class)
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  signals[QUIT_REQUESTED] = g_signal_new ("quit-requested",
+    G_TYPE_FROM_CLASS(class), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
 
 static void
@@ -110,6 +125,7 @@ eam_service_init (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   priv->cancellable = g_cancellable_new ();
   priv->reloaddb = TRUE; /* initial state */
+  priv->timer = g_timer_new ();
 }
 
 /**
@@ -299,9 +315,19 @@ eam_service_set_reloaddb (EamService *service, gboolean value)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   if (priv->reloaddb && !value)
-    eam_updates_filter (priv->updates, priv->db);
+    eam_updates_filter (get_eam_updates (service), priv->db);
 
   priv->reloaddb = value;
+}
+
+static void
+eam_service_clear_transaction (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (priv->trans);
+
+  g_cancellable_reset (priv->cancellable);
+  g_clear_object (&priv->trans); /* we don't need you anymore */
 }
 
 static void
@@ -337,7 +363,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (clos->invocation, error);
-    g_clear_object (&priv->trans);
+    eam_service_clear_transaction (clos->service);
     goto out;
   }
 
@@ -394,13 +420,23 @@ refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation, value);
 
 out:
-  g_clear_object (&priv->trans); /* we don't need you anymore */
+  eam_service_clear_transaction (service);
+}
+
+static void
+eam_service_reset_timer (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  g_timer_reset (priv->timer);
 }
 
 static void
 eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -435,7 +471,7 @@ reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer 
   g_dbus_method_invocation_return_value (invocation, value);
 
 out:
-  g_clear_object (&priv->trans);
+  eam_service_clear_transaction (service);
 }
 
 static void
@@ -456,9 +492,11 @@ install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   if (ret) {
-    /* if we installed, uninstalled or updated something we reload the database */
+    /* if we installed, uninstalled or updated something we reload the
+     * database */
     eam_service_set_reloaddb (service, TRUE);
-    eam_pkgdb_load_async (priv->db, priv->cancellable, reload_pkgdb_after_transaction_cb, service);
+    eam_pkgdb_load_async (priv->db, priv->cancellable,
+      reload_pkgdb_after_transaction_cb, service);
     return;
   }
 
@@ -467,7 +505,7 @@ install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation, value);
 
 out:
-  g_clear_object (&priv->trans); /* we don't need you anymore */
+  eam_service_clear_transaction (service);
 }
 
 static void
@@ -476,16 +514,12 @@ run_service_install (EamService *service, const gchar *appid,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  if (eam_pkgdb_get (priv->db, appid)) {
-    if (eam_updates_pkg_is_upgradable (get_eam_updates (service), appid)) {
-      /* update to the last version */
-      priv->trans = eam_update_new (appid);
-      run_eam_transaction (service, invocation, install_or_uninstall_cb);
-    } else {
-      g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-        EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' does not have any update available"),
-        appid);
-    }
+  eam_service_reset_timer (service);
+
+  if (eam_updates_pkg_is_upgradable (get_eam_updates (service), appid)) {
+    /* update to the last version */
+    priv->trans = eam_update_new (appid);
+    run_eam_transaction (service, invocation, install_or_uninstall_cb);
   } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version (which is NULL) */
     priv->trans = eam_install_new (appid, NULL);
@@ -502,6 +536,8 @@ eam_service_install (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -547,6 +583,8 @@ eam_service_uninstall (EamService *service, const gchar *appid,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_service_reset_timer (service);
+
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
       EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
@@ -585,13 +623,15 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation,
     build_avail_pkg_list_variant (service));
 
-  g_clear_object (&priv->trans); /* we don't need you anymore */
+  eam_service_clear_transaction (service);
 }
 
 static void
 eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
 
   if (priv->trans) { /* are we running a transaction? */
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
@@ -602,6 +642,42 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
   priv->trans = eam_list_avail_new (priv->reloaddb, priv->db,
     get_eam_updates (service));
   run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
+}
+
+static void
+eam_service_quit (EamService *service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->trans) { /* are we running a transaction? */
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    return;
+  }
+
+  g_signal_emit (service, signals[QUIT_REQUESTED], 0);
+  g_dbus_method_invocation_return_value (invocation, NULL);
+}
+
+static void
+eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (!priv->trans) /* are we running a transaction? */
+    goto bail;
+
+  GError *error = NULL;
+  if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
+    g_dbus_method_invocation_return_gerror (invocation, error);
+    g_clear_error (&error);
+    return;
+  }
+
+  g_cancellable_cancel (priv->cancellable);
+
+bail:
+  g_dbus_method_invocation_return_value (invocation, NULL);
 }
 
 static void
@@ -626,6 +702,10 @@ handle_method_call (GDBusConnection *connection, const char *sender,
     eam_service_uninstall (service, appid, invocation);
   } else if (!g_strcmp0 (method, "ListAvailable")) {
     eam_service_list_avail (service, invocation);
+  } else if (!g_strcmp0 (method, "Cancel")) {
+    eam_service_cancel (service, invocation);
+  } else if (!g_strcmp0 (method, "Quit")) {
+    eam_service_quit (service, invocation);
   }
 }
 
@@ -635,6 +715,8 @@ handle_get_property (GDBusConnection *connection, const gchar *sender,
   gpointer data)
 {
   EamService *service = EAM_SERVICE (data);
+
+  eam_service_reset_timer (service);
 
   if (g_strcmp0 (interface, "com.Endless.AppManager"))
     return NULL;
@@ -706,4 +788,18 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
+}
+
+/**
+ * eam_service_get_idle:
+ * @service: a #EamService instance
+ *
+ * Returns: the idle elapsed time in seconds
+ **/
+guint
+eam_service_get_idle (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  return g_timer_elapsed (priv->timer, NULL);
 }

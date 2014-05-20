@@ -18,7 +18,7 @@ applications_directory_exists ()
 {
     gboolean retval;
 
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     gchar *dir =  g_build_filename (ROOT_DIR, appdir, NULL);
@@ -33,7 +33,7 @@ applications_directory_clear ()
 {
     gboolean retval;
 
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     gchar *dir = g_build_filename (ROOT_DIR, appdir, NULL);
@@ -48,7 +48,7 @@ applications_directory_create (void)
 {
     gboolean retval = TRUE;
 
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     /* Create the applications' directory structure under ROOT_DIR */
@@ -94,7 +94,7 @@ bail:
 static gboolean
 applications_directory_symlink_exists ()
 {
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     return g_file_test (appdir, G_FILE_TEST_EXISTS);
@@ -103,7 +103,7 @@ applications_directory_symlink_exists ()
 static gboolean
 applications_directory_symlink_clear ()
 {
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     return (g_remove (appdir) == 0);
@@ -114,7 +114,7 @@ applications_directory_symlink_create ()
 {
     gboolean retval = TRUE;
 
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     GFile *sym_link = g_file_new_for_path (appdir);
@@ -154,7 +154,7 @@ eam_fs_sanity_check (void)
 {
     gboolean retval = TRUE;
 
-    gchar *appdir = eam_config_get()->appdir;
+    const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
     /* Create the applications installation directory if it does not exist */

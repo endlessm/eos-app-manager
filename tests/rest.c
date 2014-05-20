@@ -22,7 +22,7 @@ load_config (const gchar *protver)
   eam_config_load (cfg, keyfile);
   g_key_file_unref (keyfile);
 
-  eam_config_set (cfg, NULL, NULL, NULL, g_strdup (protver), NULL);
+  eam_config_set (cfg, NULL, NULL, NULL, g_strdup (protver), NULL, 0);
 }
 
 static void

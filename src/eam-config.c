@@ -3,14 +3,27 @@
 #include <gio/gio.h>
 #include "eam-config.h"
 
+struct _EamConfig
+{
+#define GETTERS(p) gchar *p;
+  PARAMS_LIST(GETTERS)
+#undef GETTERS
+  guint timeout;
+};
+
 static gpointer
 eam_config_init (gpointer data)
 {
-  EamConfig *cfg = g_new0 (EamConfig, 1);
+  EamConfig *cfg = g_slice_new0 (EamConfig);
   eam_config_load (cfg, NULL);
   return cfg;
 }
 
+/**
+ * eam_config_get:
+ *
+ * Returns: the #EamConfig singleton.
+ **/
 EamConfig *
 eam_config_get (void)
 {
@@ -18,36 +31,42 @@ eam_config_get (void)
   return g_once (&once_init, eam_config_init, NULL);
 }
 
+/**
+ * eam_config_set:
+ * @cfg: a #EamConfig of %NULL for singleton
+ * @appdir: the new appdir or %NULL
+ * @dldir: the new dldir or %NULL
+ * @saddr: the new saddr or %NULL
+ * @protver: the new protver or %NULL
+ * @scriptdir: the new scriptdir or %NULL
+ * @timeout: the new timeout or %0
+ *
+ * Updates the values of the configurations if they are not %NULL or %0
+ **/
 void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
-  gchar *saddr, gchar *protver, gchar *scriptdir)
+  gchar *saddr, gchar *protver, gchar *scriptdir, guint timeout)
 {
-  if (appdir) {
-    g_free (cfg->appdir);
-    cfg->appdir = appdir;
-  }
+  if (!cfg)
+    cfg = eam_config_get ();
 
-  if (dldir) {
-    g_free (cfg->dldir);
-    cfg->dldir = dldir;
-  }
+  if (!cfg)
+    return;
 
-  if (saddr) {
-    g_free (cfg->saddr);
-    cfg->saddr = saddr;
-  }
+#define SETTERS(p) if (p) { g_free (cfg->p); cfg->p=p; }
+  PARAMS_LIST(SETTERS)
+#undef SETTERS
 
-  if (protver) {
-    g_free (cfg->protver);
-    cfg->protver = protver;
-  }
-
-  if (scriptdir) {
-    g_free (cfg->scriptdir);
-    cfg->scriptdir = scriptdir;
-  }
+  if (timeout > 0)
+    cfg->timeout = timeout;
 }
 
+/**
+ * eam_config_free:
+ * @cfg: a #EamConfig of %NULL for singleton
+ *
+ * Frees all the memory allocated by each configuration string.
+ **/
 void
 eam_config_free (EamConfig *cfg)
 {
@@ -57,16 +76,29 @@ eam_config_free (EamConfig *cfg)
   if (!cfg)
     return;
 
-  g_free (cfg->appdir);
-  cfg->appdir = NULL;
-  g_free (cfg->saddr);
-  cfg->saddr = NULL;
-  g_free (cfg->protver);
-  cfg->protver = NULL;
-  g_free (cfg->dldir);
-  cfg->dldir = NULL;
-  g_free (cfg->scriptdir);
-  cfg->scriptdir = NULL;
+#define CLEARERS(p) g_clear_pointer (&cfg->p, g_free);
+  PARAMS_LIST(CLEARERS)
+#undef CLEARERS
+}
+
+/**
+ * eam_config_destroy:
+ * @cfg: a #EamConfig of %NULL for singleton
+ *
+ * Frees all the memory allocated by each configuration string and the
+ * memory used by the configuration structure.
+ **/
+void
+eam_config_destroy (EamConfig *cfg)
+{
+  if (!cfg)
+    cfg = eam_config_get ();
+
+  if (!cfg)
+    return;
+
+  eam_config_free (cfg);
+  g_slice_free (EamConfig, cfg);
 }
 
 static inline gchar *
@@ -101,6 +133,15 @@ load_default (void)
   return keyfile;
 }
 
+/**
+ * eam_config_load:
+ * @cfg: a #EamConfig of %NULL for singleton
+ * @keyfile: a #GKeyFile
+ *
+ * Parses a configuration @keyfile and sets the @cfg structure.
+ *
+ * Returns: %TRUE if the @keyfile was parsed correctly.
+ **/
 gboolean
 eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 {
@@ -109,6 +150,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   gboolean ret = FALSE;
   gboolean own = FALSE;
   gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir;
+  guint timeout;
 
   if (!keyfile) {
     if (!(keyfile = load_default ()))
@@ -122,8 +164,9 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   dldir = get_str (keyfile, grp, "downloaddir");
   protver = get_str (keyfile, grp, "protocolversion");
   scriptdir = get_str (keyfile, grp, "scriptdir");
+  timeout = g_key_file_get_integer (keyfile, grp, "timeout", NULL);
 
-  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir);
+  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir, timeout);
 
   ret = TRUE;
 
@@ -135,6 +178,12 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   return ret;
 }
 
+/**
+ * eam_config_dump:
+ * @cfg: a #EamConfig of %NULL for singleton
+ *
+ * Dumps to stdout the value of the configuration parameters.
+ **/
 void
 eam_config_dump (EamConfig *cfg)
 {
@@ -142,10 +191,23 @@ eam_config_dump (EamConfig *cfg)
     cfg = eam_config_get ();
 
   g_print ("EAM Configuration:\n\n"
-           "\tAppDir = %s\n"
-           "\tServerAddress = %s\n"
-           "\tDownloadDir = %s\n"
-           "\tProtocolVersion = %s\n"
-           "\tScriptDir = %s\n",
-           cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir);
+    "\tAppDir = %s\n"
+    "\tServerAddress = %s\n"
+    "\tDownloadDir = %s\n"
+    "\tProtocolVersion = %s\n"
+    "\tScriptDir = %s\n"
+    "\tTimeOut = %d\n",
+    cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir,
+    cfg->timeout);
 }
+
+guint
+eam_config_timeout ()
+{
+  return eam_config_get ()->timeout;
+}
+
+#define GETTERS(p) \
+  const gchar *eam_config_##p () { return eam_config_get ()->p; }
+PARAMS_LIST(GETTERS)
+#undef GETTERS

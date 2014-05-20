@@ -70,9 +70,8 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  EamConfig *cfg = eam_config_get ();
-  char *dir = g_build_filename (cfg->scriptdir, "uninstall", NULL);
-  g_setenv ("PREFIX", eam_config_get ()->appdir, FALSE);
+  char *dir = g_build_filename (eam_config_scriptdir (), "uninstall", NULL);
+  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
   g_setenv ("TMP", g_get_tmp_dir (), FALSE);
 
   GStrv params = g_new0 (gchar *, 2);
