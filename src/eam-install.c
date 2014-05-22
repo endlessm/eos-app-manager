@@ -15,6 +15,9 @@
 #include "eam-os.h"
 #include "eam-version.h"
 
+#define DEFAULT_SCRIPTDIR "install"
+#define DEFAULT_ROLLBACK_SCRIPTDIR "install_rollback"
+
 typedef struct _EamInstallPrivate	EamInstallPrivate;
 
 struct _EamInstallPrivate
@@ -22,12 +25,14 @@ struct _EamInstallPrivate
   gchar *appid;
   gchar *version;
   gchar *hash;
+  gchar *scriptdir;
+  gchar *rollback_scriptdir;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
-static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
+static void eam_install_transaction_run_async (EamTransaction *trans, GCancellable *cancellable,
   GAsyncReadyCallback callback, gpointer data);
-static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
+static gboolean eam_install_transaction_finish (EamTransaction *trans, GAsyncResult *res,
   GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
@@ -38,13 +43,15 @@ enum
 {
   PROP_APPID = 1,
   PROP_VERSION,
+  PROP_SCRIPTDIR,
+  PROP_ROLLBACK_SCRIPTDIR,
 };
 
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
-  iface->run_async = eam_install_run_async;
-  iface->finish = eam_install_finish;
+  iface->run_async = eam_install_transaction_run_async;
+  iface->finish = eam_install_transaction_finish;
 }
 
 static void
@@ -55,6 +62,8 @@ eam_install_reset (EamInstall *self)
   g_clear_pointer (&priv->appid, g_free);
   g_clear_pointer (&priv->version, g_free);
   g_clear_pointer (&priv->hash, g_free);
+  g_clear_pointer (&priv->scriptdir, g_free);
+  g_clear_pointer (&priv->rollback_scriptdir, g_free);
 }
 
 static void
@@ -77,6 +86,12 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
   case PROP_VERSION:
     priv->version = g_value_dup_string (value);
     break;
+  case PROP_SCRIPTDIR:
+    priv->scriptdir = g_value_dup_string (value);
+    break;
+  case PROP_ROLLBACK_SCRIPTDIR:
+    priv->rollback_scriptdir = g_value_dup_string (value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
     break;
@@ -95,6 +110,12 @@ eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
     break;
   case PROP_VERSION:
     g_value_set_string (value, priv->version);
+    break;
+  case PROP_SCRIPTDIR:
+    g_value_set_string (value, priv->scriptdir);
+    break;
+  case PROP_ROLLBACK_SCRIPTDIR:
+    g_value_set_string (value, priv->rollback_scriptdir);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -128,6 +149,27 @@ eam_install_class_init (EamInstallClass *klass)
   g_object_class_install_property (object_class, PROP_VERSION,
     g_param_spec_string ("version", "App version", "Application version", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamInstall:scriptdir:
+   *
+   * The path to the directory where the scripts to run during the installation process are
+   */
+  g_object_class_install_property (object_class, PROP_SCRIPTDIR,
+    g_param_spec_string ("scriptdir", "Path to the installation scripts directory",
+      "Path to the directory that contains the scripts to be run during the installation",
+      DEFAULT_SCRIPTDIR, G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamInstall:rollback-scriptdir:
+   *
+   * The path to the directory where the scripts to run if the installation process goes wrong
+   * are.
+   */
+  g_object_class_install_property (object_class, PROP_ROLLBACK_SCRIPTDIR,
+    g_param_spec_string ("rollback-scriptdir", "Path to the rollback installation scripts directory",
+      "Path to the directory that contains the scripts to be run if the installation fails",
+      DEFAULT_ROLLBACK_SCRIPTDIR, G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -149,6 +191,54 @@ eam_install_new (const gchar *appid, const gchar *version)
     NULL);
 }
 
+/**
+ * eam_install_new_with_scripts:
+ * @appid: the application ID to install.
+ * @scriptdir: the path to the directory containing the installation scripts
+ * @rollbackdir: the path to the directory containing the rollback scripts
+ *
+ * Returns: a new instance of #EamInstall that will run the scripts in
+ * @scriptdir (and @rollbackdir if something goes wrong).
+ */
+EamInstall *
+eam_install_new_with_scripts (const gchar *appid, const gchar *scriptdir, const gchar *rollbackdir)
+{
+  return g_object_new (EAM_TYPE_INSTALL, "appid", appid,
+    "scriptdir", scriptdir, "rollback-scriptdir", rollbackdir, NULL);
+}
+
+/**
+ * eam_install_run_async:
+ * @install: a #GType supporting #EamInstall.
+ * @cancellable: (allow-none): optional #GCancellable object, %NULL to ignore.
+ * @callback: (scope async): callback to call when the resquest is satisfied.
+ * @data: (closure): the data to pass to callback function.
+ *
+ * Run the main method of the installation.
+ **/
+void
+eam_install_run_async (EamInstall *install, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer data)
+{
+  eam_install_transaction_run_async (EAM_TRANSACTION (install), cancellable, callback, data);
+}
+
+/**
+ * eam_install_finish:
+ * @trans: a #GType supporting #EamInstall.
+ * @res: a #GAsyncResult.
+ * @error: a #GError location to store the error occurring, or %NULL to
+ * ignore.
+ *
+ * Finishes the installation.
+ *
+ * Returns: %TRUE if everything went OK.
+ **/
+gboolean
+eam_install_finish (EamInstall *install, GAsyncResult *res, GError **error)
+{
+  return eam_install_transaction_finish (EAM_TRANSACTION (install), res, error);
+}
+
 static gchar *
 build_tarball_filename (const gchar *appid)
 {
@@ -161,10 +251,11 @@ build_tarball_filename (const gchar *appid)
 static void
 rollback (GTask *task)
 {
-  char *dir = g_build_filename (eam_config_scriptdir (), "install_rollback", NULL);
-
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  /* scripts directory path */
+  char *dir = g_build_filename (eam_config_scriptdir (), priv->rollback_scriptdir, NULL);
 
   /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
@@ -258,8 +349,10 @@ dl_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  char *dir = g_build_filename (eam_config_scriptdir (), "install", NULL);
+  /* scripts directory path */
+  char *dir = g_build_filename (eam_config_scriptdir (), priv->scriptdir, NULL);
 
+  /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
   params[0] = g_strdup (priv->appid);
   params[1] = tarball;
@@ -461,7 +554,7 @@ bail:
  * 4. Rollback if something fails
  */
 static void
-eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
+eam_install_transaction_run_async (EamTransaction *trans, GCancellable *cancellable,
   GAsyncReadyCallback callback, gpointer data)
 {
   g_return_if_fail (EAM_IS_INSTALL (trans));
@@ -501,7 +594,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
 }
 
 static gboolean
-eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
+eam_install_transaction_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 {
   g_return_val_if_fail (EAM_IS_INSTALL (trans), FALSE);
   g_return_val_if_fail (g_task_is_valid (res, trans), FALSE);
