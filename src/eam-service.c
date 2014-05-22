@@ -5,6 +5,7 @@
 #endif
 
 #include <glib/gi18n.h>
+#include <polkit/polkit.h>
 
 #include "eam-service.h"
 #include "eam-updates.h"
@@ -32,6 +33,9 @@ struct _EamServicePrivate {
   GTimer *timer;
 
   GCancellable *cancellable;
+
+  PolkitAuthority *authority;
+  gboolean authorizing;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
@@ -50,6 +54,56 @@ enum
 };
 
 static guint signals[SIGNAL_MAX];
+
+typedef enum {
+  EAM_SERVICE_METHOD_INSTALL,
+  EAM_SERVICE_METHOD_UNINSTALL,
+  EAM_SERVICE_METHOD_REFRESH,
+  EAM_SERVICE_METHOD_LIST,
+  EAM_SERVICE_METHOD_CANCEL,
+  EAM_SERVICE_METHOD_QUIT,
+} EamServiceMethod;
+
+typedef void (*EamServiceRun) (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+
+typedef struct  {
+  EamServiceMethod method;
+  const gchar *dbus_name;
+  EamServiceRun run;
+  const gchar *action_id;
+  const gchar *message;
+} EamServiceAuth;
+
+static void eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+static void eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+static void eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+static void eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
+
+#define AUTH_NAMESPACE "com.endlessm.app-installer."
+#define AUTH_MSG "Authentication is required to "
+#define AUTH_MSG_INSTALL AUTH_MSG "install or update software"
+#define AUTH_MSG_UNINSTALL AUTH_MSG "uninstall software"
+#define AUTH_MSG_REFRESH AUTH_MSG "refresh the list of available applications"
+#define AUTH_MSG_CANCEL AUTH_MSG "cancel the application manager ongoing task"
+
+static EamServiceAuth auth_action[] = {
+  {EAM_SERVICE_METHOD_INSTALL,   "Install",       eam_service_install,    AUTH_NAMESPACE "install-application",   AUTH_MSG_INSTALL},
+  {EAM_SERVICE_METHOD_UNINSTALL, "Uninstall",     eam_service_uninstall,  AUTH_NAMESPACE "uninstall-application", AUTH_MSG_UNINSTALL},
+  {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    AUTH_NAMESPACE "refresh-applications",  AUTH_MSG_REFRESH},
+  {EAM_SERVICE_METHOD_LIST,      "ListAvailable", eam_service_list_avail, NULL /* No auth required */,            ""},
+  {EAM_SERVICE_METHOD_CANCEL,    "Cancel",        eam_service_cancel,     AUTH_NAMESPACE "cancel-request",        AUTH_MSG_CANCEL},
+  {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
+};
+
 
 static void
 eam_service_dispose (GObject *obj)
@@ -77,6 +131,8 @@ eam_service_dispose (GObject *obj)
   g_clear_object (&priv->updates);
 
   g_clear_object (&priv->cancellable);
+
+  g_clear_object (&priv->authority);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
 }
@@ -123,6 +179,7 @@ static void
 eam_service_init (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
   priv->cancellable = g_cancellable_new ();
   priv->reloaddb = TRUE; /* initial state */
   priv->timer = g_timer_new ();
@@ -432,17 +489,10 @@ eam_service_reset_timer (EamService *service)
 }
 
 static void
-eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation)
+eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  eam_service_reset_timer (service);
-
-  if (priv->trans) { /* are we running a transaction? */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
-    return;
-  }
 
   priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
   run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
@@ -532,18 +582,13 @@ run_service_install (EamService *service, const gchar *appid,
 }
 
 static void
-eam_service_install (EamService *service, const gchar *appid,
-  GDBusMethodInvocation *invocation)
+eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
+  const gchar *appid = NULL;
+  g_variant_get (params, "(&s)", &appid);
+
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  eam_service_reset_timer (service);
-
-  if (priv->trans) { /* are we running a transaction? */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
-    return;
-  }
 
   if (priv->reloaddb) {
     struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
@@ -578,18 +623,13 @@ run_service_uninstall (EamService *service, const gchar *appid,
 }
 
 static void
-eam_service_uninstall (EamService *service, const gchar *appid,
-  GDBusMethodInvocation *invocation)
+eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
+  const gchar *appid = NULL;
+  g_variant_get (params, "(&s)", &appid);
+
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  eam_service_reset_timer (service);
-
-  if (priv->trans) { /* are we running a transaction? */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
-    return;
-  }
 
   if (priv->reloaddb) {
     struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
@@ -627,17 +667,10 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 }
 
 static void
-eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
+eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  eam_service_reset_timer (service);
-
-  if (priv->trans) { /* are we running a transaction? */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
-    return;
-  }
 
   priv->trans = eam_list_avail_new (priv->reloaddb, priv->db,
     get_eam_updates (service));
@@ -645,26 +678,21 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation)
 }
 
 static void
-eam_service_quit (EamService *service, GDBusMethodInvocation *invocation)
+eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->trans) { /* are we running a transaction? */
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
-    return;
-  }
-
   g_signal_emit (service, signals[QUIT_REQUESTED], 0);
   g_dbus_method_invocation_return_value (invocation, NULL);
 }
 
 static void
-eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation)
+eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  if (!priv->trans) /* are we running a transaction? */
+  if (!priv->trans || priv->authorizing) /* are we not running a transaction
+                                            or are we authorizing the user? */
     goto bail;
 
   GError *error = NULL;
@@ -680,33 +708,144 @@ bail:
   g_dbus_method_invocation_return_value (invocation, NULL);
 }
 
+struct _auth_closure {
+  EamService *service;
+  GDBusMethodInvocation *invocation;
+  EamServiceMethod method;
+  GVariant *params;
+};
+
+static void
+check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  PolkitAuthorizationResult *result;
+  GError *error = NULL;
+  struct _auth_closure *closure = data;
+
+  EamServicePrivate *priv = eam_service_get_instance_private (closure->service);
+  g_assert (source == G_OBJECT (priv->authority));
+
+  priv->authorizing = FALSE;
+
+  result = polkit_authority_check_authorization_finish (priv->authority, res, &error);
+
+  if (result == NULL) {
+    g_dbus_method_invocation_take_error (closure->invocation, error);
+    goto bail;
+  }
+
+  /* Check if the operation was cancelled */
+  if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
+    g_dbus_method_invocation_take_error (closure->invocation, error);
+    goto bail;
+  }
+
+  /* Did not auth */
+  if (!polkit_authorization_result_get_is_authorized (result)) {
+    g_dbus_method_invocation_return_error (closure->invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_NOT_AUTHORIZED, _("Not authorized to perform the operation"));
+    goto bail;
+  }
+
+  if (auth_action[closure->method].run)
+    auth_action[closure->method].run (closure->service, closure->invocation, closure->params);
+
+bail:
+  g_slice_free (struct _auth_closure, closure);
+  if (result)
+    g_object_unref (result);
+}
+
+static gboolean
+eam_service_check_authorization_async (EamService *service, GDBusMethodInvocation *invocation,
+  EamServiceMethod method, GVariant *params)
+{
+  PolkitDetails *details;
+
+  if (!auth_action[method].action_id) {
+    /* The service does not any require authorization */
+    auth_action[method].run (service, invocation, params);
+    return TRUE;
+  }
+
+  const gchar *sender = g_dbus_method_invocation_get_sender (invocation);
+
+  PolkitSubject *subject = polkit_system_bus_name_new (sender);
+  if (subject == NULL) {
+    g_warning ("Unable to create the Polkit subject for: %s", sender);
+
+    return FALSE;
+  }
+
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  priv->authorizing = TRUE;
+
+  details = polkit_details_new ();
+  polkit_details_insert (details, "polkit.message", N_(auth_action[method].message));
+  polkit_details_insert (details, "polkit.gettext_domain", GETTEXT_PACKAGE);
+
+  struct _auth_closure *closure = g_slice_new0 (struct _auth_closure);
+  closure->service = service;
+  closure->invocation = invocation;
+  closure->method = method;
+  closure->params = params;
+  polkit_authority_check_authorization (priv->authority, subject, auth_action[method].action_id,
+    details, POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, priv->cancellable,
+    (GAsyncReadyCallback) check_authorization_cb, closure);
+
+  g_object_unref (subject);
+  g_object_unref (details);
+
+  return TRUE;
+}
+
+static gboolean
+eam_service_is_busy (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  return (priv->trans || priv->authorizing);
+}
+
+static void
+eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
+                 EamServiceMethod method, GVariant *params)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  eam_service_reset_timer (service);
+
+  if (eam_service_is_busy (service) && method != EAM_SERVICE_METHOD_CANCEL) {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+
+      return;
+  }
+
+  /* Run the operation only if the user is authorized to perform the action */
+  if (!eam_service_check_authorization_async (service, invocation, method, params)) {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_AUTHORIZATION, _("An error happened during the authorization process"));
+    priv->authorizing = FALSE;
+  }
+}
+
 static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
   GDBusMethodInvocation *invocation, gpointer data)
 {
   EamService *service = EAM_SERVICE (data);
+  int method_i;
 
   if (g_strcmp0 (interface, "com.Endless.AppManager"))
     return;
 
-  if (!g_strcmp0 (method, "Refresh")) {
-    eam_service_refresh (service, invocation);
-  } else if (!g_strcmp0 (method, "Install")) {
-    const gchar *appid = NULL;
-    g_variant_get (params, "(&s)", &appid);
-    eam_service_install (service, appid, invocation);
-  } else if (!g_strcmp0 (method, "Uninstall")) {
-    const gchar *appid = NULL;
-    g_variant_get (params, "(&s)", &appid);
-    eam_service_uninstall (service, appid, invocation);
-  } else if (!g_strcmp0 (method, "ListAvailable")) {
-    eam_service_list_avail (service, invocation);
-  } else if (!g_strcmp0 (method, "Cancel")) {
-    eam_service_cancel (service, invocation);
-  } else if (!g_strcmp0 (method, "Quit")) {
-    eam_service_quit (service, invocation);
-  }
+  for (method_i = 0; method_i < G_N_ELEMENTS (auth_action); method_i++)
+    if (g_strcmp0 (method, auth_action[method_i].dbus_name) == 0) {
+      eam_service_run (service, invocation, method_i, params);
+      break;
+    }
 }
 
 static GVariant *
@@ -788,6 +927,22 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
+}
+
+/**
+ * eam_service_load_authority:
+ * @service: a #EamService instance
+ *
+ * Returns: %TRUE if the #PolkitAuthority was successfully obtained,
+ * %FALSE otherwise
+ **/
+gboolean
+eam_service_load_authority (EamService *service, GError **error)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  priv->authority = polkit_authority_get_sync (NULL, error);
+
+  return (priv->authority != NULL);
 }
 
 /**

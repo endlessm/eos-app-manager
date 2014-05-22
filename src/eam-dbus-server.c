@@ -196,7 +196,8 @@ print_peer_credentials (GDBusConnection *connection)
 static void
 on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
 {
-  EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (EAM_DBUS_SERVER (data));
+  EamDbusServer *server = EAM_DBUS_SERVER (data);
+  EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
   g_debug ("bus acquired: %s", name);
   print_peer_credentials (connection);
@@ -244,9 +245,16 @@ eam_dbus_server_run (EamDbusServer *server)
   g_return_val_if_fail (EAM_IS_DBUS_SERVER (server), FALSE);
 
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
+  GError *error = NULL;
 
   if (g_main_loop_is_running (priv->mainloop))
     return FALSE;
+
+  if (!eam_service_load_authority (priv->service, &error)) {
+    g_critical ("Error loading the authority: %s", error->message);
+    g_clear_error (&error);
+    return FALSE;
+  }
 
   priv->busowner = g_bus_own_name (G_BUS_TYPE_SYSTEM, "com.Endless.AppManager",
     G_BUS_NAME_OWNER_FLAGS_REPLACE | G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT,
