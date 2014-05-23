@@ -52,7 +52,7 @@ build_uri_v1 (EamRestMethod method, const gchar *saddr, va_list args)
   }
   case EAM_REST_API_V1_GET_APP_DOWNLOAD_LINK:{
     const gchar *path = va_arg (args, const gchar *);
-    return g_strconcat (saddr, path, NULL);
+    return g_strdup (path);
 
     break;
   }
