@@ -697,8 +697,7 @@ eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
 
   GError *error = NULL;
   if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
-    g_dbus_method_invocation_return_gerror (invocation, error);
-    g_clear_error (&error);
+    g_dbus_method_invocation_take_error (invocation, error);
     return;
   }
 
