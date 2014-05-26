@@ -956,5 +956,8 @@ eam_service_get_idle (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  if (eam_service_is_busy (service))
+      return 0;
+
   return g_timer_elapsed (priv->timer, NULL);
 }
