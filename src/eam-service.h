@@ -23,6 +23,8 @@ typedef enum {
   EAM_SERVICE_ERROR_BUSY = 1,
   EAM_SERVICE_ERROR_PKG_UNKNOWN,
   EAM_SERVICE_ERROR_UNIMPLEMENTED,
+  EAM_SERVICE_ERROR_AUTHORIZATION,
+  EAM_SERVICE_ERROR_NOT_AUTHORIZED,
 } EamServiceError;
 
 #define EAM_SERVICE_ERROR eam_service_error_quark ()
@@ -63,6 +65,9 @@ void            eam_service_dbus_register                         (EamService *s
 								   GDBusConnection *connection);
 
 guint           eam_service_get_idle                              (EamService *service);
+
+gboolean        eam_service_load_authority                        (EamService *service,
+                                                                   GError **error);
 
 G_END_DECLS
 

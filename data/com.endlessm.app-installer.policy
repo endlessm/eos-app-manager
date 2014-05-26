@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Endless Application Manager</vendor>
+  <vendor_url>https://endlessm.com/</vendor_url>
+  <!-- <icon_name></icon_name> -->
+
+  <action id="com.endlessm.app-installer.install-application">
+    <description>Install software</description>
+    <message>Authentication is required to install new software</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="com.endlessm.app-installer.cancel-request">
+    <description>Cancel request</description>
+    <message>Authentication is required to cancel the application manager ongoing task</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="com.endlessm.app-installer.uninstall-application">
+    <description>Uninstall software</description>
+    <message>Authentication is required to uninstall software</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="com.endlessm.app-installer.refresh-applications">
+    <description>Refresh the list of available applications</description>
+    <message>Authentication is required to refresh the list of available applications</message>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+</policyconfig>

@@ -299,6 +299,8 @@ eam_wc_assure_filename (EamWc *self, const gchar *filename,
   if (priv->return_instrm)
     return;
 
+  g_free (priv->filename);
+
   if (filename) {
     priv->filename = g_strdup (filename);
     return;

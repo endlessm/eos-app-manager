@@ -33,6 +33,14 @@ conf_DATA = $(conf_in_files:.cfg.in=.cfg)
 $(conf_DATA): $(conf_in_files) Makefile
 	@sed -e "s|\@pkglibexecdir\@|$(pkglibexecdir)|" -e "s|\@localstatedir\@|$(localstatedir)|" $< > $@
 
+polkit_rulesdir = $(datadir)/polkit-1/rules.d
+dist_polkit_rules_DATA =					\
+	com.endlessm.app-installer.rules
+
+polkit_policydir = $(datadir)/polkit-1/actions
+dist_polkit_policy_DATA =					\
+	com.endlessm.app-installer.policy
+
 EXTRA_DIST = \
 	$(RESOURCE_FILES) \
 	eam.gresource.xml \
@@ -41,6 +49,7 @@ EXTRA_DIST = \
 	$(dbusconf_in_files) \
 	$(conf_in_files) \
 	$(xsession_DATA) \
+	$(dist_polkit_policy_DATA) \
 	$(NULL)
 
 DISTCLEANFILES = \
