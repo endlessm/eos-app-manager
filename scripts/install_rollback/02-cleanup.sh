@@ -15,6 +15,8 @@
 # modification:
 # - The SHA256 file is in the same directory than the downloaded bundle and
 #   its name is <app_id>.sha256
+# - The GPG signature is in the same directory than the downloaded bundle and
+#   its name is <app_id>.asc
 
 # This script uses the configuration variables defined in
 # ../install-config.sh:
@@ -61,11 +63,14 @@ fi
 BUNDLE_FILE=$2
 BUNDLE_DIR=${BUNDLE_FILE%/*}
 SHA256_FILE="${BUNDLE_DIR}/${APP_ID}.sha256"
+GPG_FILE="${BUNDLE_DIR}/${APP_ID}.asc"
 
 $RM --force $SHA256_FILE
 if [ "$?" -ne 0 ]; then
   warning "Failed to remove the sha256file '${SHA256_FILE}'"
 fi
+
+$RM --force "${GPG_FILE}"
 
 $RM --force $BUNDLE_FILE
 if [ "$?" -ne 0 ]; then
