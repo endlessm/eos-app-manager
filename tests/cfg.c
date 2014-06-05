@@ -9,7 +9,8 @@
   "serveraddress = http://nohost\n" \
   "protocolversion = v1000\n" \
   "scriptdir = /usr/libexec/eam\n" \
-  "gpgdir = /var/lib/eam\n"
+  "gpgdir = /var/lib/eam\n" \
+  "timeout = 10\n"
 
 static void
 test_config_basic (void)
@@ -34,7 +35,7 @@ test_config_basic (void)
   g_assert_cmpstr (eam_config_saddr (), ==, "http://nohost");
   g_assert_cmpstr (eam_config_protver (), ==, "v1000");
   g_assert_cmpstr (eam_config_scriptdir (), ==, "/usr/libexec/eam");
-  g_assert_cmpint (eam_config_timeout (), ==, 0);
+  g_assert_cmpint (eam_config_timeout (), ==, 10);
 }
 
 static void
