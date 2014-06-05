@@ -8,7 +8,8 @@
   "downloaddir=/tmp\n" \
   "serveraddress = http://nohost\n" \
   "protocolversion = v1000\n" \
-  "scriptdir = /usr/libexec/eam\n"
+  "scriptdir = /usr/libexec/eam\n" \
+  "gpgdir = /var/lib/eam\n"
 
 static void
 test_config_basic (void)
@@ -25,8 +26,9 @@ test_config_basic (void)
 
   g_assert_cmpstr (eam_config_appdir (), ==, "/");
   g_assert_cmpstr (eam_config_dldir (), ==, "/tmp");
+  g_assert_cmpstr (eam_config_gpgdir (), ==, "/var/lib/eam");
 
-  eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, 0);
+  eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, NULL, 0);
   g_assert_cmpstr (eam_config_appdir (), ==, "/");
   g_assert_cmpstr (eam_config_dldir (), ==, "/var/tmp");
   g_assert_cmpstr (eam_config_saddr (), ==, "http://nohost");
