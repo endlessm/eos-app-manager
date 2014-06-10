@@ -118,11 +118,11 @@ Updates the locally stored list of application with data from the Endless
 server
 
 
-ListAvailable () -> as available_applications
+ListAvailable () -> (a(sss)a(sss))
 ---------------------------------------------
 
-Returns a list of all applications available (including those not yet
-installed on user’s machine)
+Returns the installable applications and the updatable applications, as
+two arrays of (id, name, version) tuples.
 
 
 GetState()

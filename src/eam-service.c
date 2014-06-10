@@ -216,15 +216,17 @@ build_avail_pkg_list_variant (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   GVariantBuilder builder;
 
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(sss)"));
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sss)a(sss))"));
 
-  append_pkg_list_to_variant_builder (&builder,
-    eam_updates_get_installables (priv->updates));
-  append_pkg_list_to_variant_builder (&builder,
-    eam_updates_get_upgradables (priv->updates));
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
+  append_pkg_list_to_variant_builder (&builder, eam_updates_get_installables (priv->updates));
+  g_variant_builder_close (&builder);
 
-  GVariant *value = g_variant_builder_end (&builder);
-  return g_variant_new_tuple (&value, 1);
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
+  append_pkg_list_to_variant_builder (&builder, eam_updates_get_upgradables (priv->updates));
+  g_variant_builder_close (&builder);
+
+  return g_variant_builder_end (&builder);
 }
 
 static GVariant *
@@ -660,8 +662,7 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   eam_transaction_finish (priv->trans, res, NULL);
 
-  g_dbus_method_invocation_return_value (invocation,
-    build_avail_pkg_list_variant (service));
+  g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
 
   eam_service_clear_transaction (service);
 }
@@ -672,8 +673,7 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db,
-    get_eam_updates (service));
+  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service));
   run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
 }
 

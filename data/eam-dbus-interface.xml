@@ -30,6 +30,7 @@
     -->
     <signal name="AvailableApplicationsChanged">
       <arg type="a(sss)" direction="out" />
+      <arg type="a(sss)" direction="out" />
     </signal>
 
     <!--
@@ -73,14 +74,13 @@
     <!--
 	ListAvailable:
 
-        Returns a list of all applications available (including those not yet
-        installed on user’s machine)
+        Returns a list of all applications available for installation
+        and for updates.
     -->
     <method name="ListAvailable" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="a(sss)" direction="out">
-	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
-      </arg>
+      <arg type="a(sss)" direction="out" />
+      <arg type="a(sss)" direction="out" />
     </method>
 
     <!--
