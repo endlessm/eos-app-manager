@@ -300,7 +300,7 @@ bail:
   g_object_unref (task);
 }
 
-static gchar *
+static inline gchar *
 build_sha256sum_filename (const gchar *appid)
 {
   gchar *fname = g_strconcat (appid, ".sha256", NULL);
@@ -309,10 +309,46 @@ build_sha256sum_filename (const gchar *appid)
   return ret;
 }
 
-static gchar *
-build_sha256sum_contents (const gchar *hash, const gchar *fname)
+static inline void
+create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
 {
-  return g_strconcat (hash, "\t", fname, "\n", NULL);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  g_assert (priv->hash);
+
+  gchar *filename = build_sha256sum_filename (priv->appid);
+  gchar *contents = g_strconcat (priv->hash, "\t", tarball, "\n", NULL);
+
+  g_file_set_contents (filename, contents, -1, error);
+
+  g_free (filename);
+  g_free (contents);
+}
+
+static inline void
+run_scripts (EamInstall *self, gchar *tarball, GTask *task)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  /* scripts directory path */
+  char *dir = g_build_filename (eam_config_scriptdir (), priv->scriptdir, NULL);
+
+  /* scripts parameters */
+  GStrv params = g_new0 (gchar *, 3);
+  params[0] = g_strdup (priv->appid);
+  params[1] = tarball;
+
+  /* prefix environment */
+  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
+  g_setenv ("TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_GPGDIR", eam_config_gpgdir (), FALSE);
+
+  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  eam_spawner_run_async (spawner, cancellable, run_cb, task);
+
+  g_free (dir);
+  g_strfreev (params);
+  g_object_unref (spawner);
 }
 
 static void
@@ -332,45 +368,16 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  g_assert (priv->hash);
-
   gchar *tarball = build_tarball_filename (priv->appid);
 
-  /* let's create check-sha256sum file */
-  {
-    gchar *fn = build_sha256sum_filename (priv->appid);
-    gchar *contents = build_sha256sum_contents (priv->hash, tarball);
-
-    g_file_set_contents (fn, contents, -1, &error);
-
-    g_free (fn);
-    g_free (contents);
-  }
+  create_sha256sum_file (self, tarball, &error);
   if (error) {
     g_free (tarball);
     g_task_return_error (task, error);
     goto bail;
   }
 
-  /* scripts directory path */
-  char *dir = g_build_filename (eam_config_scriptdir (), priv->scriptdir, NULL);
-
-  /* scripts parameters */
-  GStrv params = g_new0 (gchar *, 3);
-  params[0] = g_strdup (priv->appid);
-  params[1] = tarball;
-
-  /* prefix environment */
-  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("TMP", g_get_tmp_dir (), FALSE);
-
-  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_spawner_run_async (spawner, cancellable, run_cb, task);
-
-  g_free (dir);
-  g_strfreev (params);
-  g_object_unref (spawner);
+  run_scripts (self, tarball, task);
 
   return;
 
