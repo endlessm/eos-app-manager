@@ -125,6 +125,20 @@ Returns the installable applications and the updatable applications, as
 two arrays of (id, name, version) tuples.
 
 
+GetUserCapabilities () -> (a{sv})
+---------------------------------
+
+Returns a dictionary of available capabilities for the UID that connected
+to the service. The dictionary keys and value types are:
+
+ * 'CanInstall' -> b
+ * 'CanUpdate' -> b
+ * 'CanUninstall' -> b
+
+This method should be used by a service to check the capabilities of the
+current user when building its interface; the actual permissions are
+regulated through PolicyKit.
+
 GetState()
 ----------
 

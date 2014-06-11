@@ -7,6 +7,10 @@
 #include <glib/gi18n.h>
 #include <polkit/polkit.h>
 
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
+
 #include "eam-service.h"
 #include "eam-updates.h"
 #include "eam-refresh.h"
@@ -60,6 +64,7 @@ typedef enum {
   EAM_SERVICE_METHOD_UNINSTALL,
   EAM_SERVICE_METHOD_REFRESH,
   EAM_SERVICE_METHOD_LIST,
+  EAM_SERVICE_METHOD_USER_CAPS,
   EAM_SERVICE_METHOD_CANCEL,
   EAM_SERVICE_METHOD_QUIT,
 } EamServiceMethod;
@@ -83,6 +88,8 @@ static void eam_service_refresh (EamService *service, GDBusMethodInvocation *inv
   GVariant *params);
 static void eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
+static void eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
 static void eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
@@ -100,10 +107,12 @@ static EamServiceAuth auth_action[] = {
   {EAM_SERVICE_METHOD_UNINSTALL, "Uninstall",     eam_service_uninstall,  AUTH_NAMESPACE "uninstall-application", AUTH_MSG_UNINSTALL},
   {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    AUTH_NAMESPACE "refresh-applications",  AUTH_MSG_REFRESH},
   {EAM_SERVICE_METHOD_LIST,      "ListAvailable", eam_service_list_avail, NULL /* No auth required */,            ""},
+  {EAM_SERVICE_METHOD_USER_CAPS, "GetUserCapabilities", eam_service_get_user_caps, NULL, "" },
   {EAM_SERVICE_METHOD_CANCEL,    "Cancel",        eam_service_cancel,     AUTH_NAMESPACE "cancel-request",        AUTH_MSG_CANCEL},
   {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
 };
 
+#define ADMIN_GROUP_NAME "wheel"
 
 static void
 eam_service_dispose (GObject *obj)
@@ -124,14 +133,14 @@ eam_service_dispose (GObject *obj)
     g_signal_handler_disconnect (priv->updates, priv->updates_id);
     priv->updates_id = 0;
   }
+
   if (priv->updates && priv->filtered_id) {
     g_signal_handler_disconnect (priv->updates, priv->filtered_id);
     priv->filtered_id = 0;
   }
+
   g_clear_object (&priv->updates);
-
   g_clear_object (&priv->cancellable);
-
   g_clear_object (&priv->authority);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
@@ -665,6 +674,131 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
 
   eam_service_clear_transaction (service);
+}
+
+static uid_t
+get_uid_for_sender (GDBusConnection *connection, const char *sender)
+{
+  GError *error = NULL;
+  GVariant *value =
+    g_dbus_connection_call_sync (connection,
+                                 "org.freedesktop.DBus",
+                                 "/org/freedesktop/DBus",
+                                 "org.freedesktop.DBus", "GetConnectionUnixUser",
+                                 g_variant_new ("(s)", sender),
+                                 NULL,
+                                 G_DBUS_CALL_FLAGS_NONE,
+                                 -1,
+                                 NULL,
+                                 &error);
+  uid_t res = G_MAXUINT;
+
+  if (error != NULL)
+    {
+      g_critical ("Unable to retrieve the UID for '%s': %s",
+                  sender,
+                  error->message);
+      g_error_free (error);
+      goto out;
+    }
+
+  g_variant_get (value, "(u)", &res);
+
+out:
+  if (value != NULL)
+    g_variant_unref (value);
+
+  return res;
+}
+
+static gboolean
+has_admin_caps (uid_t user, const char *admin_group)
+{
+  if (user == G_MAXUINT)
+    return FALSE;
+
+  struct passwd *pw = getpwuid (user);
+  if (pw == NULL)
+    return FALSE;
+
+  int n_groups = 10;
+  gid_t *groups = g_new0 (gid_t, n_groups);
+
+  while (1)
+    {
+      int max_n_groups = n_groups;
+      int ret = getgrouplist (pw->pw_name, pw->pw_gid, groups, &max_n_groups);
+
+      if (ret >= 0)
+        {
+          n_groups = max_n_groups;
+          break;
+        }
+
+      /* some systems fail to update n_groups so we just grow it by approximation */
+      if (n_groups == max_n_groups)
+        n_groups = 2 * max_n_groups;
+      else
+        n_groups = max_n_groups;
+
+      groups = g_renew (gid_t, groups, n_groups);
+    }
+
+  gboolean retval = FALSE;
+  int i = 0;
+
+  for (i = 0; i < n_groups; i++)
+    {
+      struct group *gr = getgrgid (groups[i]);
+
+      if (gr != NULL && strcmp (gr->gr_name, admin_group) == 0)
+        {
+          retval = TRUE;
+          break;
+        }
+    }
+
+  g_free (groups);
+
+  return retval;
+}
+
+static void
+eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  const char *sender = g_dbus_method_invocation_get_sender (invocation);
+  uid_t user = get_uid_for_sender (priv->connection, sender);
+
+  gboolean can_install = FALSE;
+  gboolean can_update = FALSE;
+  gboolean can_uninstall = FALSE;
+
+  /* XXX: we want to have a separate configuration to decide the capabilities
+   * for each user, but for the time being we can use the 'wheel' group to
+   * decide if a user has the capabilities to install/update/remove apps.
+   */
+  if (has_admin_caps (user, ADMIN_GROUP_NAME))
+    {
+      can_install = TRUE;
+      can_update = TRUE;
+      can_uninstall = TRUE;
+    }
+
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a{sv})"));
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a{sv}"));
+
+  g_variant_builder_add (&builder, "{sv}", "CanInstall", g_variant_new_boolean (can_install));
+  g_variant_builder_add (&builder, "{sv}", "CanUpdate", g_variant_new_boolean (can_update));
+  g_variant_builder_add (&builder, "{sv}", "CanUninstall", g_variant_new_boolean (can_uninstall));
+
+  g_variant_builder_close (&builder);
+  GVariant *res = g_variant_builder_end (&builder);
+  g_dbus_method_invocation_return_value (invocation, res);
 }
 
 static void
