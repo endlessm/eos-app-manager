@@ -18,6 +18,7 @@
 #include "eam-uninstall.h"
 #include "eam-update.h"
 #include "eam-list-avail.h"
+#include "eam-dbus-utils.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -676,41 +677,6 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
   eam_service_clear_transaction (service);
 }
 
-static uid_t
-get_uid_for_sender (GDBusConnection *connection, const char *sender)
-{
-  GError *error = NULL;
-  GVariant *value =
-    g_dbus_connection_call_sync (connection,
-                                 "org.freedesktop.DBus",
-                                 "/org/freedesktop/DBus",
-                                 "org.freedesktop.DBus", "GetConnectionUnixUser",
-                                 g_variant_new ("(s)", sender),
-                                 NULL,
-                                 G_DBUS_CALL_FLAGS_NONE,
-                                 -1,
-                                 NULL,
-                                 &error);
-  uid_t res = G_MAXUINT;
-
-  if (error != NULL)
-    {
-      g_critical ("Unable to retrieve the UID for '%s': %s",
-                  sender,
-                  error->message);
-      g_error_free (error);
-      goto out;
-    }
-
-  g_variant_get (value, "(u)", &res);
-
-out:
-  if (value != NULL)
-    g_variant_unref (value);
-
-  return res;
-}
-
 static gboolean
 has_admin_caps (uid_t user, const char *admin_group)
 {
@@ -770,7 +736,7 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
-  uid_t user = get_uid_for_sender (priv->connection, sender);
+  uid_t user = eam_dbus_get_uid_for_sender (priv->connection, sender);
 
   gboolean can_install = FALSE;
   gboolean can_update = FALSE;
