@@ -40,6 +40,7 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 debug "Running '${BASH_SOURCE[0]}'"
 
 SHA256SUM=$(which sha256sum) || exit_error "Can't find sha256sum"
+GPG=$(which gpg) || exit_error "Can't find gpg"
 TAR=$(which tar) || exit_error "Can't find tar"
 MV=$(which mv)   || exit_error "Can't find mv"
 
@@ -66,6 +67,16 @@ fi
 cd $BUNDLE_DIR && $SHA256SUM --quiet --status --check $SHA256
 if [ "$?" -ne 0 ]; then
   exit_error "The downloaded bundle '${BUNDLE}' is corrupted (SHA256 does not match)"
+fi
+
+ASC="${APP_ID}.asc"
+if [ ! -e "${BUNDLE_DIR}/${ASC}" ]; then
+  exit_error "signature file '${BUNDLE_DIR}/${ASC}' does not exists"
+fi
+
+${GPG} --homedir="${EAM_GPGDIR}" --quiet --verify "${BUNDLE_DIR}/${ASC}" "${BUNDLE}"
+if [ "$?" -ne 0 ]; then
+  exit_error "The downloaded signature '${BUNDLE_DIR}/${ASC}' is corrupted (signature does not match)"
 fi
 
 # Untar the bundle to a temporary directory

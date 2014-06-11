@@ -24,6 +24,7 @@ void            eam_config_set                                    (EamConfig *cf
                                                                    gchar *saddr,
                                                                    gchar *protver,
                                                                    gchar *scriptdir,
+                                                                   gchar *gpgdir,
                                                                    guint timeout);
 
 void            eam_config_dump                                   (EamConfig *cfg);
@@ -35,7 +36,8 @@ guint           eam_config_timeout                                ();
   V(dldir)  \
   V(saddr)  \
   V(protver) \
-  V(scriptdir)
+  V(scriptdir) \
+  V(gpgdir)
 
 #define GETTERS(p) const gchar *eam_config_##p ();
 PARAMS_LIST(GETTERS)

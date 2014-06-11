@@ -8,6 +8,7 @@
 #define EAM_TEST_DIR "/tmp/eam-test"
 #define EAM_PREFIX EAM_TEST_DIR "/endless"
 #define EAM_TMP EAM_TEST_DIR "/tmp"
+#define EAM_GPGDIR EAM_TEST_DIR "/keyring"
 
 const gchar *script_args[3];
 
@@ -18,6 +19,7 @@ setup_filesystem (void)
   const gint mode = 0700;
   g_mkdir (EAM_TEST_DIR, mode);
   g_mkdir (EAM_TMP, mode);
+  g_mkdir (EAM_GPGDIR, mode);
   g_mkdir (EAM_PREFIX, mode);
   g_mkdir (EAM_PREFIX "/share", mode);
   g_mkdir (EAM_PREFIX "/share/applications", mode);
@@ -39,31 +41,56 @@ clear_filesystem (void)
     g_print ("Failure when cleaning the test files");
 }
 
+static gboolean
+copy_file (const gchar *fn, GError **error)
+{
+  gchar *filename = g_test_build_filename (G_TEST_DIST, "data", fn, NULL);
+  GFile *file = g_file_new_for_path (filename);
+  g_free (filename);
+
+  gchar *filename_tmp = g_build_filename (EAM_TMP, fn, NULL);
+  GFile *file_tmp = g_file_new_for_path (filename_tmp);
+  g_free (filename_tmp);
+
+  gboolean ret = g_file_copy (file, file_tmp, G_FILE_COPY_OVERWRITE, NULL, NULL,
+    NULL, error);
+
+  g_object_unref (file);
+  g_object_unref (file_tmp);
+
+  return ret;
+}
+
 static void
 setup_downloaded_files (void)
 {
   /* Copy the bundle and sha256 files to a temporary directory */
-  gchar *app_filename = g_test_build_filename (G_TEST_DIST, "data/test-app.tar.gz", NULL);
-  gchar *sha256_filename = g_test_build_filename (G_TEST_DIST, "data/test-app.sha256", NULL);
-  GFile *app_file = g_file_new_for_path (app_filename);
-  GFile *sha256_file = g_file_new_for_path (sha256_filename);
-  GFile *app_file_tmp = g_file_new_for_path (EAM_TMP "/test-app.tar.gz");
-  GFile *sha256_file_tmp = g_file_new_for_path (EAM_TMP "/test-app.sha256");
+  const gchar *files[] = { "test-app.tar.gz", "test-app.sha256",
+    "test-app.asc" };
+
+  int i;
   GError *error = NULL;
-
-  if ((!g_file_copy (app_file, app_file_tmp, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, &error)) ||
-      (!g_file_copy (sha256_file, sha256_file_tmp, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, &error))) {
-    g_print ("Failure in the test initialization: %s\n", error->message);
-    g_error_free (error);
-    g_assert_not_reached ();
+  for (i = 0; i < G_N_ELEMENTS (files); i++) {
+    if (!copy_file (files[i], &error)) {
+      g_print ("Failure in the test initialization: %s\n", error->message);
+      g_error_free (error);
+      g_assert_not_reached ();
+    }
   }
+}
 
-  g_free (app_filename);
-  g_free (sha256_filename);
-  g_object_unref (app_file);
-  g_object_unref (sha256_file);
-  g_object_unref (app_file_tmp);
-  g_object_unref (sha256_file_tmp);
+static void
+setup_gpg (void)
+{
+  gchar *key = g_test_build_filename (G_TEST_DIST, "data", "dummy.pub", NULL);
+  GSubprocess *gpg = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, NULL, "gpg",
+    "--homedir", EAM_GPGDIR, "--import", key, NULL);
+  g_free (key);
+
+  g_assert_nonnull (gpg);
+
+  g_assert_true (g_subprocess_wait_check (gpg, NULL, NULL));
+  g_object_unref (gpg);
 }
 
 static void
@@ -84,6 +111,7 @@ test_scripts_install (void)
 {
   setup_filesystem ();
   setup_downloaded_files ();
+  setup_gpg ();
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
 
@@ -127,6 +155,7 @@ test_scripts_install_rollback (void)
 {
   setup_filesystem ();
   setup_downloaded_files ();
+  setup_gpg ();
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
 
@@ -169,6 +198,7 @@ test_scripts_install_uninstall (void)
 {
   setup_filesystem ();
   setup_downloaded_files ();
+  setup_gpg ();
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
 
@@ -212,6 +242,7 @@ test_scripts_install_update (void)
 {
   setup_filesystem ();
   setup_downloaded_files ();
+  setup_gpg ();
 
   /* Pre-install the application */
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
@@ -278,6 +309,7 @@ test_scripts_install_update_rollback (void)
 {
   setup_filesystem ();
   setup_downloaded_files ();
+  setup_gpg ();
 
   /* Pre-install the application */
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
@@ -301,6 +333,7 @@ main (int argc, char *argv[])
   /* Set environment variables */
   g_setenv ("PREFIX", EAM_PREFIX, TRUE);
   g_setenv ("TMP", EAM_TMP, TRUE);
+  g_setenv ("EAM_GPGDIR", EAM_GPGDIR, TRUE);
 
   /* Initialize script arguments */
   script_args[0] = "test-app";

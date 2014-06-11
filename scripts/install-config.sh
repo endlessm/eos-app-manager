@@ -24,6 +24,13 @@ if [ -z ${TMP+x} ]; then
     TMP="/var/tmp"
 fi
 
+# Directory where the Endless OS GPG's keyring is stored.
+#
+# If EAM_GPGDIR is not set, it is set to a default value.
+if [ -z ${EAM_GPGDIR+x} ]; then
+    EAM_GPGDIR="/var/lib/eos-app-manager/keyring"
+fi
+
 # Subdirectories in each application's installation directory,
 # that contain certain metadata files used by the OS to
 # launch the application and identify the services it offers,

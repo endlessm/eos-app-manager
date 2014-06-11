@@ -15,6 +15,8 @@
 # modification:
 # - The SHA256 file is in the same directory than the downloaded bundle and
 #   its name is <app_id>.sha256
+# - The GPG signature is in the same directory than the downloaded bundle and
+#   its name is <app_id>.asc
 
 # Include utilities
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
@@ -34,11 +36,14 @@ APP_ID=$1
 BUNDLE_FILE=$2
 BUNDLE_DIR=${BUNDLE_FILE%/*}
 SHA256_FILE="${BUNDLE_DIR}/${APP_ID}.sha256"
+GPG_FILE="${BUNDLE_DIR}/${APP_ID}.asc"
 
 $RM $SHA256_FILE
 if [ "$?" -ne 0 ]; then
   warning "Failed to remove the sha256file '${SHA256_FILE}'"
 fi
+
+$RM --force "${GPG_FILE}"
 
 $RM $BUNDLE_FILE
 if [ "$?" -ne 0 ]; then

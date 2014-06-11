@@ -25,6 +25,7 @@ struct _EamInstallPrivate
   gchar *appid;
   gchar *version;
   gchar *hash;
+  gchar *signature_url;
   gchar *scriptdir;
   gchar *rollback_scriptdir;
 };
@@ -62,6 +63,7 @@ eam_install_reset (EamInstall *self)
   g_clear_pointer (&priv->appid, g_free);
   g_clear_pointer (&priv->version, g_free);
   g_clear_pointer (&priv->hash, g_free);
+  g_clear_pointer (&priv->signature_url, g_free);
   g_clear_pointer (&priv->scriptdir, g_free);
   g_clear_pointer (&priv->rollback_scriptdir, g_free);
 }
@@ -265,6 +267,7 @@ rollback (GTask *task)
   /* prefix environment */
   g_setenv ("PREFIX", eam_config_appdir (), FALSE);
   g_setenv ("TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_GPGDIR", eam_config_gpgdir (), FALSE);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
@@ -297,7 +300,7 @@ bail:
   g_object_unref (task);
 }
 
-static gchar *
+static inline gchar *
 build_sha256sum_filename (const gchar *appid)
 {
   gchar *fname = g_strconcat (appid, ".sha256", NULL);
@@ -306,14 +309,50 @@ build_sha256sum_filename (const gchar *appid)
   return ret;
 }
 
-static gchar *
-build_sha256sum_contents (const gchar *hash, const gchar *fname)
+static inline void
+create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
 {
-  return g_strconcat (hash, "\t", fname, "\n", NULL);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  g_assert (priv->hash);
+
+  gchar *filename = build_sha256sum_filename (priv->appid);
+  gchar *contents = g_strconcat (priv->hash, "\t", tarball, "\n", NULL);
+
+  g_file_set_contents (filename, contents, -1, error);
+
+  g_free (filename);
+  g_free (contents);
+}
+
+static inline void
+run_scripts (EamInstall *self, gchar *tarball, GTask *task)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  /* scripts directory path */
+  char *dir = g_build_filename (eam_config_scriptdir (), priv->scriptdir, NULL);
+
+  /* scripts parameters */
+  GStrv params = g_new0 (gchar *, 3);
+  params[0] = g_strdup (priv->appid);
+  params[1] = tarball;
+
+  /* prefix environment */
+  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
+  g_setenv ("TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_GPGDIR", eam_config_gpgdir (), FALSE);
+
+  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  eam_spawner_run_async (spawner, cancellable, run_cb, task);
+
+  g_free (dir);
+  g_strfreev (params);
+  g_object_unref (spawner);
 }
 
 static void
-dl_cb (GObject *source, GAsyncResult *result, gpointer data)
+dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
   GError *error = NULL;
@@ -329,45 +368,59 @@ dl_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  g_assert (priv->hash);
-
   gchar *tarball = build_tarball_filename (priv->appid);
 
-  /* let's create check-sha256sum file */
-  {
-    gchar *fn = build_sha256sum_filename (priv->appid);
-    gchar *contents = build_sha256sum_contents (priv->hash, tarball);
-
-    g_file_set_contents (fn, contents, -1, &error);
-
-    g_free (fn);
-    g_free (contents);
-  }
+  create_sha256sum_file (self, tarball, &error);
   if (error) {
     g_free (tarball);
     g_task_return_error (task, error);
     goto bail;
   }
 
-  /* scripts directory path */
-  char *dir = g_build_filename (eam_config_scriptdir (), priv->scriptdir, NULL);
+  run_scripts (self, tarball, task);
 
-  /* scripts parameters */
-  GStrv params = g_new0 (gchar *, 3);
-  params[0] = g_strdup (priv->appid);
-  params[1] = tarball;
+  return;
 
-  /* prefix environment */
-  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("TMP", g_get_tmp_dir (), FALSE);
+bail:
+  g_object_unref (task);
+}
 
-  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
+static gchar *
+build_sign_filename (const gchar *appid)
+{
+  gchar *fname = g_strconcat (appid, ".asc", NULL);
+  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
+  g_free (fname);
+  return ret;
+}
+
+static void
+dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
+{
+  GTask *task = data;
+  GError *error = NULL;
+
+  eam_wc_request_finish (EAM_WC (source), result, &error);
+  if (error) {
+    g_task_return_error (task, error);
+    goto bail;
+  }
+
+  if (g_task_return_error_if_cancelled (task))
+    goto bail;
+
+  /* download signature */
+  /* @TODO: make all downloads in parallel */
+  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  gchar *filename = build_sign_filename (priv->appid);
+
   GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_spawner_run_async (spawner, cancellable, run_cb, task);
-
-  g_free (dir);
-  g_strfreev (params);
-  g_object_unref (spawner);
+  EamWc *wc = eam_wc_new ();
+  eam_wc_request_async (wc, priv->signature_url, filename, cancellable,
+    dl_sign_cb, task);
+  g_object_unref (wc);
+  g_free (filename);
 
   return;
 
@@ -475,6 +528,7 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   }
 
   const gchar *path = json_object_get_string_member (json, "downloadLink");
+  const gchar *sign = json_object_get_string_member (json, "signatureLink");
   const gchar *hash = json_object_get_string_member (json, "shaHash");
   const gchar *version = json_object_get_string_member (json, "codeVersion");
 
@@ -482,6 +536,13 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
     g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
        EAM_TRANSACTION_ERROR_INVALID_FILE,
        _("Not valid application link"));
+    goto bail;
+  }
+
+  if (!sign) {
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+      EAM_TRANSACTION_ERROR_INVALID_FILE,
+      _("Not valid signature link"));
     goto bail;
   }
 
@@ -499,12 +560,13 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
     priv->hash = g_strdup (hash);
     if (!priv->version)
       priv->version = g_strdup (version);
+    priv->signature_url = g_strdup (sign);
   }
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   EamWc *wc = eam_wc_new ();
   gchar *filename = build_tarball_filename (priv->appid);
-  eam_wc_request_async (wc, uri, filename, cancellable, dl_cb, task);
+  eam_wc_request_async (wc, uri, filename, cancellable, dl_bundle_cb, task);
   g_object_unref (wc);
   g_free (filename);
   g_free (uri);
