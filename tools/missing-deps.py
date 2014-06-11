@@ -119,6 +119,10 @@ class DependencyChecker(object):
                 missing_deps.append(pkg_dep)
         return missing_deps
 
+    # Returns the size of the installed package, in bytes
+    def get_installed_size(self, pkg_name):
+        return self._cache[pkg_name].candidate.installed_size
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description = 'Recursively finds missing package dependencies')
@@ -171,13 +175,14 @@ if __name__ == '__main__':
         for dep in sorted(summary_deps.keys()):
             print(dep)
         print('')
-        print('Sorted by frequency:')
+        print('Sorted by frequency (package frequency bytes):')
         # Use a tricky sort key that will sort first by frequency
         # in reverse numeric order then alphabetically by package name
         for dep in sorted(summary_deps,
                           key = lambda key:
                               str(1000000 - summary_deps[key]) + key):
-            print(dep + ' ' + str(summary_deps[dep]))
+            print(dep + ' ' + str(summary_deps[dep]) + ' ' +
+                  str(dep_checker.get_installed_size(dep)))
     else:
         # Just check the missing dependencies for a single package
         missing_deps = dep_checker.find_missing_deps(args.deb_package)
