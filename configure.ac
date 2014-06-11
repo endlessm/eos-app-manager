@@ -20,6 +20,18 @@ LT_INIT([disable-static])
 AC_PROG_CC_C_O
 AC_PROG_CC_C99
 
+# Compiler warnings
+eam_ADD_CFLAGS([-Wall])
+eam_ADD_CFLAGS([-Werror=logical-op])
+eam_ADD_CFLAGS([-Werror=cast-align])
+eam_ADD_CFLAGS([-Werror=shadow])
+eam_ADD_CFLAGS([-Werror=format=2])
+eam_ADD_CFLAGS([-Werror=init-self])
+eam_ADD_CFLAGS([-Werror=empty-body])
+eam_ADD_CFLAGS([-Werror=implicit-function-declaration])
+eam_ADD_CFLAGS([-Werror=missing-declarations])
+eam_ADD_CFLAGS([-Werror=redundant-decls])
+
 IT_PROG_INTLTOOL([0.50.0])
 
 PKG_PROG_PKG_CONFIG
