@@ -28,6 +28,8 @@ typedef enum {
 
 typedef struct _EamPkg EamPkg;
 
+GQuark          eam_pkg_error_quark                              (void);
+
 GType           eam_pkg_get_type                                 (void) G_GNUC_CONST;
 
 EamPkg         *eam_pkg_copy                                     (EamPkg *pkg);

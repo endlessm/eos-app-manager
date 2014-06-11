@@ -50,6 +50,8 @@ struct _EamSpawnerClass
   GObjectClass parent_class;
 };
 
+GQuark          eam_spawner_error_quark                          (void);
+
 GType           eam_spawner_get_type                             (void) G_GNUC_CONST;
 
 EamSpawner     *eam_spawner_new                                  (const gchar *path,
