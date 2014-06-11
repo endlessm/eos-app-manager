@@ -133,6 +133,11 @@ if __name__ == '__main__':
         default = None)
 
     parser.add_argument(
+        '-l', '--list_mode',
+        help = 'Input is a file with a list of packages',
+        action = 'store_true')
+
+    parser.add_argument(
         '--version',
         action = 'version',
         version = '%(prog)s v' + VERSION)
@@ -140,5 +145,40 @@ if __name__ == '__main__':
     args = AttributeDict(vars(parser.parse_args()))
 
     dep_checker = DependencyChecker(args.core_names)
-    missing_deps = dep_checker.find_missing_deps(args.deb_package)
-    print(missing_deps)
+
+    if args.list_mode:
+        # Check the dependencies for each package specified in a text file,
+        # with one package per line (ignoring optional version specifier)
+        missing_deps = {}
+        with open(args.deb_package) as list_file:
+            for pkg in list_file:
+                # Remove the trailing newline
+                pkg = pkg.rstrip()
+                # Remove the optional version specification
+                pkg = pkg.split(' ')[0]
+                print(pkg + ':')
+                missing_deps[pkg] = dep_checker.find_missing_deps(pkg)
+                print(missing_deps[pkg])
+                print('')
+        summary_deps = {}
+        for pkg in missing_deps:
+            for dep in missing_deps[pkg]:
+                if dep in summary_deps:
+                    summary_deps[dep] += 1
+                else:
+                    summary_deps[dep] = 1
+        print('All dependencies:')
+        for dep in sorted(summary_deps.keys()):
+            print(dep)
+        print('')
+        print('Sorted by frequency:')
+        # Use a tricky sort key that will sort first by frequency
+        # in reverse numeric order then alphabetically by package name
+        for dep in sorted(summary_deps,
+                          key = lambda key:
+                              str(1000000 - summary_deps[key]) + key):
+            print(dep + ' ' + str(summary_deps[dep]))
+    else:
+        # Just check the missing dependencies for a single package
+        missing_deps = dep_checker.find_missing_deps(args.deb_package)
+        print(missing_deps)
