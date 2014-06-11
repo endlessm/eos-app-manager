@@ -57,6 +57,8 @@ struct _EamServiceClass {
   GObjectClass parent_class;
 };
 
+GQuark          eam_service_error_quark                           (void);
+
 GType           eam_service_get_type                              (void) G_GNUC_CONST;
 
 EamService     *eam_service_new                                   (EamPkgdb *db);
