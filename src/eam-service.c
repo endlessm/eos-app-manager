@@ -659,26 +659,8 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   run_service_uninstall (service, appid, invocation);
 }
 
-static void
-list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
-  g_assert (invocation);
-  g_object_set_data (source, "invocation", NULL);
-
-  EamService *service = EAM_SERVICE (data);
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_assert (source == G_OBJECT (priv->trans));
-
-  eam_transaction_finish (priv->trans, res, NULL);
-
-  g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
-
-  eam_service_clear_transaction (service);
-}
-
 static gboolean
-has_admin_caps (uid_t user, const char *admin_group)
+user_is_in_admin_group (uid_t user, const char *admin_group)
 {
   if (user == G_MAXUINT)
     return FALSE;
@@ -735,6 +717,8 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  GVariantBuilder builder;
+
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
   uid_t user = eam_dbus_get_uid_for_sender (priv->connection, sender);
 
@@ -746,15 +730,51 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
    * for each user, but for the time being we can use the 'wheel' group to
    * decide if a user has the capabilities to install/update/remove apps.
    */
-  if (has_admin_caps (user, ADMIN_GROUP_NAME))
+  if (user_is_in_admin_group (user, ADMIN_GROUP_NAME))
+    {
+      can_install = TRUE;
+      can_update = TRUE;
+      can_uninstall = TRUE;
+      goto out;
+    }
+
+  /* if the user is not in the ADMIN_GROUP_NAME then we go through
+   * a polkit check
+   */
+  PolkitSubject *subject = polkit_system_bus_name_new (sender);
+  if (subject == NULL)
+    {
+      g_warning ("Unable to create the Polkit subject for: %s", sender);
+      goto out;
+    }
+
+  PolkitAuthorizationResult *result;
+  GError *error = NULL;
+  result = polkit_authority_check_authorization_sync (priv->authority,
+                                                      subject,
+                                                      AUTH_NAMESPACE "get-capabilities",
+                                                      NULL,
+                                                      0,
+                                                      NULL,
+                                                      &error);
+
+  if (error != NULL)
+    {
+      g_warning ("Unable to check authorisation: %s", error->message);
+      g_error_free (error);
+      goto out;
+    }
+
+  if (polkit_authorization_result_get_is_authorized (result))
     {
       can_install = TRUE;
       can_update = TRUE;
       can_uninstall = TRUE;
     }
 
-  GVariantBuilder builder;
+  g_object_unref (result);
 
+out:
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a{sv})"));
   g_variant_builder_open (&builder, G_VARIANT_TYPE ("a{sv}"));
 
@@ -765,6 +785,24 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
   g_variant_builder_close (&builder);
   GVariant *res = g_variant_builder_end (&builder);
   g_dbus_method_invocation_return_value (invocation, res);
+}
+
+static void
+list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+  g_object_set_data (source, "invocation", NULL);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
+  eam_transaction_finish (priv->trans, res, NULL);
+
+  g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
+
+  eam_service_clear_transaction (service);
 }
 
 static void
