@@ -25,13 +25,16 @@ class AttributeDict(dict):
 
 # Dependency checker
 class DependencyChecker(object):
-    def __init__(self, core_name):
-        self._core_name = core_name
+    # Core names is a single string with comma-separated names
+    def __init__(self, core_names):
+        self._core_names = core_names
         self._cache = apt.Cache()
         self._core_deps = []
-        if self._core_name:
-            self._core_deps.append(self._core_name)
-            self._find_deps(self._core_deps, self._core_name)
+        if self._core_names:
+            names = self._core_names.split(',')
+            for name in names:
+                self._core_deps.append(name)
+                self._find_deps(self._core_deps, name)
             self._core_deps.sort()
 
     # Find the real package that provides the list of options,
@@ -113,8 +116,8 @@ if __name__ == '__main__':
         help = 'Debian package name or .deb file to analyze')
 
     parser.add_argument(
-        '-c', '--core_name',
-        help = 'Core package name for the installation (default = none)',
+        '-c', '--core_names',
+        help = 'Comma-separate core package name(s) (default = none)',
         default = None)
 
     parser.add_argument(
@@ -124,6 +127,6 @@ if __name__ == '__main__':
 
     args = AttributeDict(vars(parser.parse_args()))
 
-    dep_checker = DependencyChecker(args.core_name)
+    dep_checker = DependencyChecker(args.core_names)
     missing_deps = dep_checker.find_missing_deps(args.deb_package)
     print(missing_deps)
