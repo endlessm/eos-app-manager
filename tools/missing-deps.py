@@ -8,14 +8,6 @@ import sys
 
 VERSION = "0.1"
 
-# TODO Really should have a way to detect that we are unable to satisfy
-# dependencies for these packages and automatically choose a different
-# option from the list of candidate dependencies; for now, we just ignore
-# the ones that we know cause a problem for eos-core
-IGNORE_PKGS = ['gnome-shell',
-               'xserver-xorg-video-all',
-               'xserver-xorg-input-all']
-
 # Allows for invoking attributes as methods/functions
 class AttributeDict(dict):
     def __getattr__(self, attr):
@@ -39,7 +31,7 @@ class DependencyChecker(object):
 
     # Find the real package that provides the list of options,
     # which may include virtual packages
-    def _find_providing_pkg(self, pkg_list):
+    def _find_providing_pkg(self, deps, pkg_list):
         for pkg in pkg_list:
             try:
                 # For Cache providing packages and candidate dependencies,
@@ -49,16 +41,29 @@ class DependencyChecker(object):
                 # For DebPackage depends, each entry is a tuple
                 # with name as the first element
                 pkg_name = pkg[0]
-            if pkg_name in IGNORE_PKGS:
-                # Special cases that we know are not installable
-                # for which we should choose a different option
-                continue
+            if pkg_name in deps:
+                # We reached a circular dependency -- don't dive further
+                return pkg_name
             if self._cache.is_virtual_package(pkg_name):
                 providers = self._cache.get_providing_packages(pkg_name)
-                providing_pkg = self._find_providing_pkg(providers)
+                providing_pkg = self._find_providing_pkg(deps, providers)
                 if providing_pkg:
                     return providing_pkg
             elif self._cache.has_key(pkg_name):
+                # Check if all the dependencies of the candidate are available
+                # If so, use it -- if not, move on to the next candidate
+                try:
+                    # Make a copy of the dependency list
+                    # that will modified during this trial
+                    try_deps = deps.copy()
+                    # Include the current package in the trial dependency list,
+                    # so as to resolve circular dependencies
+                    try_deps.append(pkg_name)
+                    self._find_deps(try_deps, pkg_name)
+                except:
+                    # Not a valid candidate -- skip it
+                    continue
+                # All dependencies are available -- include it
                 return pkg_name
         return None
 
@@ -82,7 +87,7 @@ class DependencyChecker(object):
         for dep_list in direct_deps:
             # The dep_list is a list of possible packages,
             # real and/or virtual, only one of which is required
-            real_pkg = self._find_providing_pkg(dep_list)
+            real_pkg = self._find_providing_pkg(deps, dep_list)
             if not real_pkg:
                 raise Exception(pkg_name + ': no candidate found for any of ' +
                                 str(dep_list))
