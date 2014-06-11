@@ -50,6 +50,13 @@ class DependencyChecker(object):
                 if providing_pkg:
                     return providing_pkg
             elif self._cache.has_key(pkg_name):
+                if len(pkg_list) == 1:
+                    # This is the only candidate
+                    # Assume it is installable
+                    # (If not, we'll find out soon enough)
+                    # This is a significant performance improvement,
+                    # as it short-circuits a lot of nested recursion
+                    return pkg_name
                 # Check if all the dependencies of the candidate are available
                 # If so, use it -- if not, move on to the next candidate
                 try:
