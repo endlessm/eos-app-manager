@@ -10,6 +10,7 @@ source_c = \
 	eam-pkgdb.c \
 	eam-version.c \
 	eam-dbus-server.c \
+	eam-dbus-utils.c \
 	eam-resources.c \
 	eam-service.c \
 	eam-config.c \
@@ -33,6 +34,7 @@ source_h = \
 	eam-pkgdb.h \
 	eam-version.h \
 	eam-dbus-server.h \
+	eam-dbus-utils.h \
 	eam-service.h \
 	eam-config.h \
 	eam-wc.h \

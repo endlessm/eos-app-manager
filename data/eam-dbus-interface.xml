@@ -34,6 +34,26 @@
     </signal>
 
     <!--
+         GetUserCapabilities:
+
+         Retrieves a list of capabilities for the UID that called
+         this method.
+
+         The returned array of key, value pairs has the following
+         keys and value types:
+
+          * "CanInstall", bool
+          * "CanUpdate", bool
+          * "CanUninstall", bool
+    -->
+    <method name="GetUserCapabilities">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="a{sv}" name="capabilities" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      </arg>
+    </method>
+
+    <!--
 	Refresh:
 
         Refreshes the package database.
