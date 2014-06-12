@@ -52,3 +52,16 @@ verify_download ()
     sha256sum --quiet --status --check "${sha256file}"
     gpg --homedir="${EAM_GPGDIR}" --quiet --verify "${gpgfile}" "${file}"
 }
+
+# Deletes the downloaded file, its sha256file and GPG signature.
+# Receives the path to the downloaded file, the name of the sha256file
+# and the name of the GPG signature.
+delete_download ()
+{
+    file=$1
+    sha256file=$2
+    gpgfile=$3
+
+    DIR=${file%/*}
+    rm --force "${file}" "${DIR}/${sha256file}" "${DIR}/${gpgfile}"
+}

@@ -13,8 +13,8 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The SHA256 file is in the same directory than the downloaded bundle and
-#   its name is <app_id>.sha256
+# - The name of the SHA256 file and GPG signature are <app_id>.sha256 and
+# <app_id>.asc, respectively.
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../../config.sh
@@ -40,19 +40,7 @@ if [ -d "${EAM_TMP}/${APP_ID}" ]; then
   fi
 fi
 
-# Delete dowloaded files (the bundle and the SHA256 file)
 BUNDLE_FILE=$2
-BUNDLE_DIR=${BUNDLE_FILE%/*}
-SHA256_FILE="${BUNDLE_DIR}/${APP_ID}.sha256"
-
-$RM --force $SHA256_FILE
-if [ "$?" -ne 0 ]; then
-  warning "Failed to remove the sha256file '${SHA256_FILE}'"
-fi
-
-$RM --force $BUNDLE_FILE
-if [ "$?" -ne 0 ]; then
-  warning "Failed to remove the bundle file '${BUNDLE_FILE}'"
-fi
+delete_download "${BUNDLE_FILE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 
 exit 0
