@@ -2,9 +2,9 @@
 
 # Copyright 2014 Endless Mobile, Inc.
 #
-# This script checks the SHA256 integrity of a downloaded EndlessOS Bundle,
-# extracts the bundle into a temporary file and finally moves it to its
-# corresponding installation directory.
+# This script verifies the downloaded EndlessOS Bundle and checks its
+# integrity, extracts the bundle into a temporary file and finally moves
+# it to its corresponding installation directory.
 #
 # Usage:
 #
@@ -17,8 +17,8 @@
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
 # - The downloaded bundle is a tar.gz file.
-# - The SHA256 file is in the same directory than the downloaded bundle and
-#   its name is <app_id>.sha256
+# - The SHA256 file and the GPG signature are called <app_id>.sha256 and
+#   <app_id>.asc, respectively.
 # - The tar.gz file  is formed by a directory, called <app_id>, that contains
 #   the application data.
 # - The application installation directory will be ${EAM_PREFIX}/<app_id>
@@ -31,8 +31,6 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 debug "Running '${BASH_SOURCE[0]}'"
 
-SHA256SUM=$(which sha256sum) || exit_error "Can't find sha256sum"
-GPG=$(which gpg) || exit_error "Can't find gpg"
 TAR=$(which tar) || exit_error "Can't find tar"
 MV=$(which mv)   || exit_error "Can't find mv"
 
@@ -45,31 +43,7 @@ fi
 APP_ID=$1
 BUNDLE=$2
 
-# Check downloaded bundle integrity
-if [ ! -e "$BUNDLE" ]; then
-  exit_error "Bundle file '${BUNDLE}' does not exists"
-fi
-
-BUNDLE_DIR=${BUNDLE%/*}
-SHA256="${APP_ID}.sha256"
-if [ ! -e "${BUNDLE_DIR}/${SHA256}" ]; then
-  exit_error "SHA256 file '${BUNDLE_DIR}/${SHA256}' does not exists"
-fi
-
-cd $BUNDLE_DIR && $SHA256SUM --quiet --status --check $SHA256
-if [ "$?" -ne 0 ]; then
-  exit_error "The downloaded bundle '${BUNDLE}' is corrupted (SHA256 does not match)"
-fi
-
-ASC="${APP_ID}.asc"
-if [ ! -e "${BUNDLE_DIR}/${ASC}" ]; then
-  exit_error "signature file '${BUNDLE_DIR}/${ASC}' does not exists"
-fi
-
-${GPG} --homedir="${EAM_GPGDIR}" --quiet --verify "${BUNDLE_DIR}/${ASC}" "${BUNDLE}"
-if [ "$?" -ne 0 ]; then
-  exit_error "The downloaded signature '${BUNDLE_DIR}/${ASC}' is corrupted (signature does not match)"
-fi
+verify_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 
 # Untar the bundle to a temporary directory
 ${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$EAM_TMP
