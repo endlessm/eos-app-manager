@@ -34,7 +34,7 @@ update_scripts = \
 	update/rollback/02-move-back-installation-dir.sh \
 	update/rollback/03-regenerate-symlinks.sh \
 	update/rollback/04-desktop-updates.sh \
-	update/rollback/05-cleanup-downloads.sh \
+	update/rollback/05-cleanup.sh \
 	$(NULL)
 
 pkglibexec_SCRIPTS = \
