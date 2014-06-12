@@ -32,7 +32,7 @@ update_scripts = \
 	update/full/07-cleanup.sh \
 	update/rollback/01-delete-symlinks.sh \
 	update/rollback/02-move-back-installation-dir.sh \
-	update/rollback/03-regenerate-symlinks.sh \
+	update/rollback/03-symlinks.sh \
 	update/rollback/04-desktop-updates.sh \
 	update/rollback/05-cleanup.sh \
 	$(NULL)
