@@ -28,6 +28,8 @@ case "$1" in
 	;;
     list) call "ListAvailable"
 	;;
+    caps) call "GetUserCapabilities"
+	;;
     quit) call "Quit"
 	;;
     cancel) call "Cancel"
