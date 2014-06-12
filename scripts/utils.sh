@@ -32,6 +32,13 @@ debug ()
     printf "Debug: ${message}\n"
 }
 
+print_header ()
+{
+    message=$1
+
+    debug "Running: '${message}'"
+}
+
 # Downloaded files
 # ----------------
 # The functions under this section assume that the sha256 file and the
