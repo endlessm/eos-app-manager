@@ -18,17 +18,8 @@
 #
 # Returns 0 on success.
 
-# This script uses the configuration variables defined in
-# ../../install-config.sh:
-#  * PREFIX
-#  * TMP
-
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-
-# Include configuration variables
 . ${SCRIPT_DIR}/../../install-config.sh
-
-# # Include utilities
 . ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"

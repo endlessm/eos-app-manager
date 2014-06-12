@@ -18,7 +18,6 @@
 # - The GPG signature is in the same directory than the downloaded bundle and
 #   its name is <app_id>.asc
 
-# Include utilities
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../../utils.sh
 

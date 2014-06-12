@@ -29,24 +29,8 @@
 #  The symbolic links to the application metadata present on those
 #  directories will be deleted.
 
-# This script uses the configuration variables defined in
-# ../install-config.sh:
-#  * PREFIX
-#  * APP_DESKTOP_FILES_SUBDIR
-#  * APP_DESKTOP_ICONS_SUBDIR
-#  * APP_GSETTINGS_SUBDIR
-#  * APP_DBUS_SERVICES_SUBDIR
-#  * OS_DESKTOP_FILES_DIR
-#  * OS_DESKTOP_ICONS_DIR
-#  * OS_GSETTINGS_DIR
-#  * OS_DBUS_SERVICES_DIR
-
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-
-# Include configuration variables
 . ${SCRIPT_DIR}/../../install-config.sh
-
-# Include utilities
 . ${SCRIPT_DIR}/../../utils.sh
 
 print_installation_config

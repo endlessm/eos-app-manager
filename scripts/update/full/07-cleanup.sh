@@ -18,16 +18,9 @@
 #   its name is <app_id>.sha256
 # - The old version installation directory was moved and renamed as
 #   '${TMP}/${APP_ID}.old'
-# This script uses the configuration variables defined in
-# ../../install-config.sh:
-#  * TMP
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-
-# Include configuration variables
 . ${SCRIPT_DIR}/../../install-config.sh
-
-# Include utilities
 . ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"

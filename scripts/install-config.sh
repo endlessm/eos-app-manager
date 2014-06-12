@@ -5,9 +5,6 @@
 # This script sets some variables used by other scripts
 # in this directory. The scripts that need to use any of
 # these defined variables should include this one.
-# To include this script inside others write in the including
-# script:
-# ". ./install-config.sh" or "source ./install-config.sh".
 
 # Root directory for installing applications.
 # If PREFIX is not set (for example as an environment variable),

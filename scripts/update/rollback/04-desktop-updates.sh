@@ -9,18 +9,8 @@
 #
 # Usage: ./04-desktop-updates.sh ...
 
-# This script uses the configuration variables defined in
-# ../../install-config.sh:
-#  * OS_GSETTINGS_DIR
-#  * OS_DESKTOP_ICONS_DIR
-#  * OS_DESKTOP_FILES_DIR
-
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-
-# Include configuration variables
 . ${SCRIPT_DIR}/../../install-config.sh
-
-# Include utilities
 . ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"
