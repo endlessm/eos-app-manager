@@ -108,3 +108,34 @@ create_symbolic_links ()
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
 }
+
+# Internal
+# Deletes all the symbolic links present the links directory that point to files in the target
+# directory.
+symbolic_links_delete ()
+{
+    target_dir=$1
+    links_dir=$2
+
+    for file in `ls ${links_dir}`
+    do
+        if [ -L "${links_dir}/${file}" ]; then
+            if [ "${links_dir}/${file}" -ef "${target_dir}/${file}" ]; then
+                rm "${links_dir}/${file}"
+            fi
+        fi
+    done
+}
+
+# Deletes symbolic links that point to the application's metadata files.
+# It makes the assumption that the application is installed in
+# {EAM_PREFIX}/${appid}.
+delete_symbolic_links ()
+{
+    appid=$1
+
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
+}
