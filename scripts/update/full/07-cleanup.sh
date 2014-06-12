@@ -17,7 +17,7 @@
 # - The SHA256 file is in the same directory than the downloaded bundle and
 #   its name is <app_id>.sha256
 # - The old version installation directory was moved and renamed as
-#   '${TMP}/${APP_ID}.old'
+#   '${EAM_TMP}/${APP_ID}.old'
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../../config.sh
@@ -50,9 +50,9 @@ if [ "$?" -ne 0 ]; then
 fi
 
 # Delete the old version installation directory
-$RM --recursive --force "${TMP}/${APP_ID}.old"
+$RM --recursive --force "${EAM_TMP}/${APP_ID}.old"
 if [ "$?" -ne 0 ]; then
-  warning "To delete '${TMP}/${APP_ID}' failed"
+  warning "To delete '${EAM_TMP}/${APP_ID}' failed"
 fi
 
 exit 0

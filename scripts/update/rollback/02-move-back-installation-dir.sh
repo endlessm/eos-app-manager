@@ -12,7 +12,7 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The application installation directory is ${PREFIX}/<app_id>
+# - The application installation directory is ${EAM_PREFIX}/<app_id>
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../../config.sh
@@ -24,10 +24,10 @@ MV=$(which mv)   || exit_error "Can't find mv"
 
 APP_ID=$1
 
-if [ -d "${TMP}/${APP_ID}.old" ]; then
-  ${MV} --force "${TMP}/${APP_ID}.old" "${PREFIX}/${APP_ID}"
+if [ -d "${EAM_TMP}/${APP_ID}.old" ]; then
+  ${MV} --force "${EAM_TMP}/${APP_ID}.old" "${EAM_PREFIX}/${APP_ID}"
   if [ "$?" -ne 0 ]; then
-    exit_error "To move back the application from '${TMP}' to '${PREFIX}' failed"
+    exit_error "To move back the application from '${EAM_TMP}' to '${EAM_PREFIX}' failed"
   fi
 fi
 

@@ -21,7 +21,7 @@
 #   its name is <app_id>.sha256
 # - The tar.gz file  is formed by a directory, called <app_id>, that contains
 #   the application data.
-# - The application installation directory will be ${PREFIX}/<app_id>
+# - The application installation directory will be ${EAM_PREFIX}/<app_id>
 #
 # Returns 0 on success.
 
@@ -72,23 +72,23 @@ if [ "$?" -ne 0 ]; then
 fi
 
 # Untar the bundle to a temporary directory
-${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$TMP
+${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$EAM_TMP
 if [ "$?" -ne 0 ]; then
-  exit_error "To uncompress the bundle '${BUNDLE}' to directory '${TMP}' failed"
+  exit_error "To uncompress the bundle '${BUNDLE}' to directory '${EAM_TMP}' failed"
 fi
 
 # Move the uncompressed bundle to the installation directory
-if [ ! -d "${TMP}/${APP_ID}" ]; then
+if [ ! -d "${EAM_TMP}/${APP_ID}" ]; then
   exit_error "The extracted bundle is not a directory called '${APP_ID}'"
 fi
 
-if [ -d "${PREFIX}/${APP_ID}" ]; then
+if [ -d "${EAM_PREFIX}/${APP_ID}" ]; then
   # This should never happen.
   # If it does happen, there is an error in the installation/update process.
-  exit_error "A directory called '${PREFIX}/${APP_ID}' already exists"
+  exit_error "A directory called '${EAM_PREFIX}/${APP_ID}' already exists"
 fi
 
-${MV} --force "${TMP}/${APP_ID}" "${PREFIX}"
+${MV} --force "${EAM_TMP}/${APP_ID}" "${EAM_PREFIX}"
 if [ "$?" -ne 0 ]; then
-  exit_error "To move the application from '${TMP}' to '${PREFIX}' failed"
+  exit_error "To move the application from '${EAM_TMP}' to '${EAM_PREFIX}' failed"
 fi

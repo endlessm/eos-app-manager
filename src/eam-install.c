@@ -265,8 +265,8 @@ rollback (GTask *task)
   params[1] = build_tarball_filename (priv->appid);
 
   /* prefix environment */
-  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
+  g_setenv ("EAM_TMP", g_get_tmp_dir (), FALSE);
   g_setenv ("EAM_GPGDIR", eam_config_gpgdir (), FALSE);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
@@ -338,8 +338,8 @@ run_scripts (EamInstall *self, gchar *tarball, GTask *task)
   params[1] = tarball;
 
   /* prefix environment */
-  g_setenv ("PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
+  g_setenv ("EAM_TMP", g_get_tmp_dir (), FALSE);
   g_setenv ("EAM_GPGDIR", eam_config_gpgdir (), FALSE);
 
   EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);

@@ -14,7 +14,7 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The application installation directory id ${PREFIX}/<app_id>
+# - The application installation directory id ${EAM_PREFIX}/<app_id>
 #
 # Returns 0 on success.
 
@@ -35,9 +35,9 @@ fi
 APP_ID=$1
 
 # Move the old version installation dir
-${MV} --force "${PREFIX}/${APP_ID}" "${TMP}/${APP_ID}.old"
+${MV} --force "${EAM_PREFIX}/${APP_ID}" "${EAM_TMP}/${APP_ID}.old"
 if [ "$?" -ne 0 ]; then
-  exit_error "To move the old application directory '${PREFIX}/${APP_ID}' to '${TMP}/${APP_ID}.old' failed"
+  exit_error "To move the old application directory '${EAM_PREFIX}/${APP_ID}' to '${EAM_TMP}/${APP_ID}.old' failed"
 fi
 
 exit 0

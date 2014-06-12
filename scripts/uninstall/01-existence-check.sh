@@ -12,7 +12,7 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The application installation directory is named ${PREFIX}/<app-id>.
+# - The application installation directory is named ${EAM_PREFIX}/<app-id>.
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../config.sh
@@ -29,9 +29,9 @@ fi
 APP_ID=$1
 
 # Check if the application is installed
-if [ ! -d "${PREFIX}/${APP_ID}" ]; then
+if [ ! -d "${EAM_PREFIX}/${APP_ID}" ]; then
   exit_error "Application '${APP_ID}' not found. The installation directory \
-'${PREFIX}/${APP_ID}' does not exist."
+'${EAM_PREFIX}/${APP_ID}' does not exist."
 fi
 
 exit 0

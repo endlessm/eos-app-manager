@@ -7,18 +7,18 @@
 # these defined variables should include this one.
 
 # Root directory for installing applications.
-# If PREFIX is not set (for example as an environment variable),
+# If EAM_PREFIX is not set (for example as an environment variable),
 # set it to a default value.
-if [ -z ${PREFIX+x} ]; then
-    PREFIX="/endless"
+if [ -z ${EAM_PREFIX+x} ]; then
+    EAM_PREFIX="/endless"
 fi
 
 # Temporary directory where the Endless OS bundles are
 # extracted.
-# If TMP is not set (as an environment variable), set it to a
+# If EAM_TMP is not set (as an environment variable), set it to a
 # default value.
-if [ -z ${TMP+x} ]; then
-    TMP="/var/tmp"
+if [ -z ${EAM_TMP+x} ]; then
+    EAM_TMP="/var/tmp"
 fi
 
 # Directory where the Endless OS GPG's keyring is stored.
@@ -46,13 +46,13 @@ APP_DBUS_SERVICES_SUBDIR="share/dbus-1/services"
 # metadata files in the installation directory of every
 # application.
 # Desktop files
-OS_DESKTOP_FILES_DIR="${PREFIX}/share/applications"
+OS_DESKTOP_FILES_DIR="${EAM_PREFIX}/share/applications"
 # Desktop icons directories.
-OS_DESKTOP_ICONS_DIR="${PREFIX}/share/icons/EndlessOS"
+OS_DESKTOP_ICONS_DIR="${EAM_PREFIX}/share/icons/EndlessOS"
 # XML schemas directory.
-OS_GSETTINGS_DIR="${PREFIX}/share/glib-2.0/schemas"
+OS_GSETTINGS_DIR="${EAM_PREFIX}/share/glib-2.0/schemas"
 # D-Bus services directory.
-OS_DBUS_SERVICES_DIR="${PREFIX}/share/dbus-1/services"
+OS_DBUS_SERVICES_DIR="${EAM_PREFIX}/share/dbus-1/services"
 
 
 # Prints the value of the configuration variables
@@ -60,8 +60,8 @@ print_config ()
 {
     echo "Scripts configuration"
     echo "---------------------"
-    echo "PREFIX=$PREFIX"
-    echo "TMP=$TMP"
+    echo "EAM_PREFIX=$EAM_PREFIX"
+    echo "EAM_TMP=$EAM_TMP"
     echo "APP_DESKTOP_FILES_SUBDIR=$APP_DESKTOP_FILES_SUBDIR"
     echo "APP_DESKTOP_ICONS_SUBDIR=$APP_DESKTOP_ICONS_SUBDIR"
     echo "APP_GSETTINGS_SUBDIR=$APP_GSETTINGS_SUBDIR"

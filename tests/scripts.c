@@ -337,8 +337,8 @@ main (int argc, char *argv[])
   g_test_init (&argc, &argv, NULL);
 
   /* Set environment variables */
-  g_setenv ("PREFIX", EAM_PREFIX, TRUE);
-  g_setenv ("TMP", EAM_TMP, TRUE);
+  g_setenv ("EAM_PREFIX", EAM_PREFIX, TRUE);
+  g_setenv ("EAM_TMP", EAM_TMP, TRUE);
   g_setenv ("EAM_GPGDIR", EAM_GPGDIR, TRUE);
 
   /* Initialize script arguments */

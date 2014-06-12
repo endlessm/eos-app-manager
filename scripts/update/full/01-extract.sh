@@ -20,7 +20,7 @@
 #   its name is <app_id>.sha256
 # - The tar.gz file  is formed by a directory, called <app_id>, that contains
 #   the application data.
-# - The application installation directory will be ${PREFIX}/<app_id>
+# - The application installation directory will be ${EAM_PREFIX}/<app_id>
 #
 # Returns 0 on success.
 
@@ -71,7 +71,7 @@ if [ "$?" -ne 0 ]; then
 fi
 
 # Untar the bundle to a temporary directory
-${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$TMP
+${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$EAM_TMP
 if [ "$?" -ne 0 ]; then
-  exit_error "To uncompress the bundle '${BUNDLE}' to directory '${TMP}' failed"
+  exit_error "To uncompress the bundle '${BUNDLE}' to directory '${EAM_TMP}' failed"
 fi

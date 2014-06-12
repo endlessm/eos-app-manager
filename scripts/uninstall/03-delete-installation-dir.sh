@@ -11,7 +11,7 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The application intallation directory is named ${PREFIX}/<app_id>.
+# - The application intallation directory is named ${EAM_PREFIX}/<app_id>.
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../config.sh
@@ -29,9 +29,9 @@ fi
 APP_ID=$1
 
 # Delete the installation directory
-$RM --recursive --force "${PREFIX}/${APP_ID}"
+$RM --recursive --force "${EAM_PREFIX}/${APP_ID}"
 if [ "$?" -ne 0 ]; then
-  exit_error "To delete the installation directory '${PREFIX}/${APP_ID}' failed"
+  exit_error "To delete the installation directory '${EAM_PREFIX}/${APP_ID}' failed"
 fi
 
 exit 0

@@ -35,18 +35,18 @@ fi
 APP_ID=$1
 
 # Delete the installation directory
-if [ -d "${PREFIX}/${APP_ID}" ]; then
-  $RM --recursive --force "${PREFIX}/${APP_ID}"
+if [ -d "${EAM_PREFIX}/${APP_ID}" ]; then
+  $RM --recursive --force "${EAM_PREFIX}/${APP_ID}"
   if [ "$?" -ne 0 ]; then
-    exit_error "To delete the installation directory '${PREFIX}/${APP_ID}' failed"
+    exit_error "To delete the installation directory '${EAM_PREFIX}/${APP_ID}' failed"
   fi
 fi
 
 # Delete the temporary directory (if exists)
-if [ -d "${TMP}/${APP_ID}" ]; then
-  $RM --recursive --force "${TMP}/${APP_ID}"
+if [ -d "${EAM_TMP}/${APP_ID}" ]; then
+  $RM --recursive --force "${EAM_TMP}/${APP_ID}"
   if [ "$?" -ne 0 ]; then
-    warning "To delete '${TMP}/${APP_ID}' failed"
+    warning "To delete '${EAM_TMP}/${APP_ID}' failed"
   fi
 fi
 

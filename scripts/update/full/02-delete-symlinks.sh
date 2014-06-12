@@ -13,7 +13,7 @@
 #
 # IMPORTANT: This script makes some assumptions that could
 # be subject of modification:
-# - The application is installed in ${PREFIX}/<app_id>, i.e
+# - The application is installed in ${EAM_PREFIX}/<app_id>, i.e
 # the APP_PREFIX.
 # - The application metadata lives in the directories:
 #   * ${APP_PREFIX}/${APP_DESKTOP_FILES_SUBDIR} (.desktop files).
@@ -44,7 +44,7 @@ then
 fi
 
 APP_ID=$1
-APP_PREFIX="${PREFIX}/${APP_ID}"
+APP_PREFIX="${EAM_PREFIX}/${APP_ID}"
 
 if [ ! -d "${APP_PREFIX}" ]; then
   exit_error "The '${APP_PREFIX}' directory does not exist"
