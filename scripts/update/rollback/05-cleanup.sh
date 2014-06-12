@@ -17,7 +17,6 @@
 # <app_id>.asc, respectively.
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../../config.sh
 . ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"
