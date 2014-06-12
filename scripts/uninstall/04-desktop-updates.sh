@@ -26,9 +26,7 @@ if [ "$?" -ne 0 ]; then
 fi
 
 # Update the icon theme cache.
-# The directory $OS_DESKTOP_ICONS_DIR must contain a
-# .index.theme file.
-$GTK_UPDATE_ICON_CACHE $OS_DESKTOP_ICONS_DIR
+$GTK_UPDATE_ICON_CACHE --ignore-theme-index $OS_DESKTOP_ICONS_DIR
 if [ "$?" -ne 0 ]; then
   warning "gtk-update-icon-cache '${OS_DESKTOP_ICONS_DIR}' failed"
 fi
