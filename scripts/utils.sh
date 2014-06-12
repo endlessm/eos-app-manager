@@ -65,3 +65,15 @@ delete_download ()
     DIR=${file%/*}
     rm --force "${file}" "${DIR}/${sha256file}" "${DIR}/${gpgfile}"
 }
+
+# Desktop updates
+# ---------------
+# Refreshes the system metadata: compiles the settings XML schema files,
+# updates the icon theme cache and the cache database of
+# the MIME types handled by the .desktop files.
+desktop_updates ()
+{
+    glib-compile-schemas $OS_GSETTINGS_DIR
+    gtk-update-icon-cache --ignore-theme-index $OS_DESKTOP_ICONS_DIR
+    update-desktop-database $OS_DESKTOP_FILES_DIR
+}
