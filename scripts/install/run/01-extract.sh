@@ -29,7 +29,6 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 . ${SCRIPT_DIR}/../../config.sh
 . ${SCRIPT_DIR}/../../utils.sh
 
-print_installation_config
 debug "Running '${BASH_SOURCE[0]}'"
 
 SHA256SUM=$(which sha256sum) || exit_error "Can't find sha256sum"
