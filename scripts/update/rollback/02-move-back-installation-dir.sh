@@ -15,7 +15,7 @@
 # - The application installation directory is ${PREFIX}/<app_id>
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../../install-config.sh
+. ${SCRIPT_DIR}/../../config.sh
 . ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"

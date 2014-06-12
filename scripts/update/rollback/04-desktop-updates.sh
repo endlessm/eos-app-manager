@@ -10,7 +10,7 @@
 # Usage: ./04-desktop-updates.sh ...
 
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../../install-config.sh
+. ${SCRIPT_DIR}/../../config.sh
 . ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"

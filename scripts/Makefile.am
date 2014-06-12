@@ -2,7 +2,7 @@ INSTALL_SCRIPT = ${INSTALL} -m 750
 
 common_scripts = \
 	utils.sh \
-	install-config.sh \
+	config.sh \
 	$(NULL)
 
 install_scripts = \
