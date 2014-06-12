@@ -10,6 +10,12 @@
 #define EAM_TMP EAM_TEST_DIR "/tmp"
 #define EAM_GPGDIR EAM_TEST_DIR "/keyring"
 
+#define SCRIPTDIR_INSTALL "../scripts/install/run"
+#define SCRIPTDIR_INSTALL_ROLLBACK "../scripts/install/rollback"
+#define SCRIPTDIR_UNINSTALL "../scripts/uninstall"
+#define SCRIPTDIR_FULL_UPDATE "../scripts/update/full"
+#define SCRIPTDIR_FULL_UPDATE_ROLLBACK "../scripts/update/rollback"
+
 const gchar *script_args[3];
 
 static void
@@ -113,7 +119,7 @@ test_scripts_install (void)
   setup_downloaded_files ();
   setup_gpg ();
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
@@ -143,7 +149,7 @@ install_rollback_cb (GObject *source, GAsyncResult *res, gpointer data)
     return;
   }
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install_rollback", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL_ROLLBACK, NULL);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
@@ -157,7 +163,7 @@ test_scripts_install_rollback (void)
   setup_downloaded_files ();
   setup_gpg ();
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
@@ -186,7 +192,7 @@ install_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
     return;
   }
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/uninstall", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_UNINSTALL, NULL);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
@@ -200,7 +206,7 @@ test_scripts_install_uninstall (void)
   setup_downloaded_files ();
   setup_gpg ();
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
@@ -230,7 +236,7 @@ install_update_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   setup_downloaded_files ();
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/update/full_update", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_FULL_UPDATE, NULL);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
@@ -245,7 +251,7 @@ test_scripts_install_update (void)
   setup_gpg ();
 
   /* Pre-install the application */
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
@@ -273,7 +279,7 @@ update_cb (GObject *source, GAsyncResult *res, gpointer data)
     return;
   }
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/update/rollback", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_FULL_UPDATE_ROLLBACK, NULL);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
@@ -297,7 +303,7 @@ install_update_rollback_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   setup_downloaded_files ();
 
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/update/full_update", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_FULL_UPDATE, NULL);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
 
   eam_spawner_run_async (spawner, NULL, update_cb, data);
@@ -312,7 +318,7 @@ test_scripts_install_update_rollback (void)
   setup_gpg ();
 
   /* Pre-install the application */
-  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, "../scripts/install", NULL);
+  const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
   EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);

@@ -15,8 +15,8 @@
 #include "eam-os.h"
 #include "eam-version.h"
 
-#define DEFAULT_SCRIPTDIR "install"
-#define DEFAULT_ROLLBACK_SCRIPTDIR "install_rollback"
+#define DEFAULT_SCRIPTDIR "install/run"
+#define DEFAULT_ROLLBACK_SCRIPTDIR "install/rollback"
 
 typedef struct _EamInstallPrivate	EamInstallPrivate;
 

@@ -10,7 +10,7 @@
 #include "eam-update.h"
 #include "eam-install.h"
 
-#define SCRIPTDIR "update/full_update"
+#define SCRIPTDIR "update/full"
 #define ROLLBACKDIR "update/rollback"
 
 typedef struct _EamUpdatePrivate	EamUpdatePrivate;
