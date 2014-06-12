@@ -139,3 +139,15 @@ delete_symbolic_links ()
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
 }
+
+
+# 'tar' utilities
+# ---------------
+# Extracts files from a .tar file to the given directory.
+extract_file_to ()
+{
+    file=$1
+    dir=$2
+
+    tar --no-same-owner --extract --file="${file}" --directory="${dir}"
+}

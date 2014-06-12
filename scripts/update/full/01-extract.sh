@@ -15,10 +15,9 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The downloaded bundle is a tar.gz file.
 # - The SHA256 file and the GPG signature are called <app_id>.sha256 and
 #   <app_id>.asc, respectively.
-# - The tar.gz file  is formed by a directory, called <app_id>, that contains
+# - The bundle is formed by a directory, called <app_id>, that contains
 #   the application data.
 # - The application installation directory will be ${EAM_PREFIX}/<app_id>
 #
@@ -30,9 +29,6 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 debug "Running '${BASH_SOURCE[0]}'"
 
-TAR=$(which tar) || exit_error "Can't find tar"
-MV=$(which mv)   || exit_error "Can't find mv"
-
 ARGS=2
 if [ $# -lt "$ARGS" ]
 then
@@ -43,9 +39,4 @@ APP_ID=$1
 BUNDLE=$2
 
 verify_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
-
-# Untar the bundle to a temporary directory
-${TAR} --no-same-owner --extract --file=$BUNDLE  --directory=$EAM_TMP
-if [ "$?" -ne 0 ]; then
-  exit_error "To uncompress the bundle '${BUNDLE}' to directory '${EAM_TMP}' failed"
-fi
+extract_file_to "${BUNDLE}" "${EAM_TMP}"
