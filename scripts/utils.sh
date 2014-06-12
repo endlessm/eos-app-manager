@@ -77,3 +77,34 @@ desktop_updates ()
     gtk-update-icon-cache --ignore-theme-index $OS_DESKTOP_ICONS_DIR
     update-desktop-database $OS_DESKTOP_FILES_DIR
 }
+
+# Symbolic links
+# --------------
+
+# Internal function
+# Creates symbolic links to all the files contained in the directory.
+symbolic_links () {
+    target_dir=$1
+    links_dir=$2
+
+    if [ -d "${target_dir}" ]; then
+        for file in `ls ${target_dir}`; do
+            ln --symbolic "${target_dir}/${file}" "${links_dir}/${file}"
+        done
+    fi
+}
+
+# Creates symbolic links, on common OS directories, for the application
+# metadata files: .desktop files, desktop icons, gsettings and D-Bus
+# services.
+# It makes the assumption that the application is installed in
+# {EAM_PREFIX}/${appid}.
+create_symbolic_links ()
+{
+    appid=$1
+
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
+}
