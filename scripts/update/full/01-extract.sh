@@ -23,8 +23,7 @@
 #
 # Returns 0 on success.
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../../utils.sh
+. ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
 check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"

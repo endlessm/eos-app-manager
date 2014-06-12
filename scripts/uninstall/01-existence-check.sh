@@ -14,8 +14,7 @@
 # modification:
 # - The application installation directory is named ${EAM_PREFIX}/<app-id>.
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../utils.sh
+. ${BASH_SOURCE[0]%/*}/../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
 check_args_minimum_number "${#}" 1 "<app_id>"

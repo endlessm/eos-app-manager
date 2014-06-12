@@ -9,8 +9,7 @@
 #
 # Usage: ./04-desktop-updates.sh ...
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../../utils.sh
+. ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
 desktop_updates

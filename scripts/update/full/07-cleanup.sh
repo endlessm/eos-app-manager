@@ -19,8 +19,7 @@
 # - The old version installation directory was moved and renamed as
 #   '${EAM_TMP}/${APP_ID}.old'
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../../utils.sh
+. ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
 

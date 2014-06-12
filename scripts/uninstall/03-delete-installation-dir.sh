@@ -13,8 +13,7 @@
 # modification:
 # - The application intallation directory is named ${EAM_PREFIX}/<app_id>.
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/../utils.sh
+. ${BASH_SOURCE[0]%/*}/../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
 

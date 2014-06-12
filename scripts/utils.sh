@@ -4,8 +4,7 @@
 #
 # This script contains function utilities.
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-. ${SCRIPT_DIR}/config.sh
+. ${BASH_SOURCE[0]%/*}/config.sh
 
 # Log
 # ---
