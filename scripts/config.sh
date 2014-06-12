@@ -56,10 +56,10 @@ OS_DBUS_SERVICES_DIR="${PREFIX}/share/dbus-1/services"
 
 
 # Prints the value of the configuration variables
-print_installation_config()
+print_config ()
 {
-    echo "Applications installation configuration"
-    echo "---------------------------------------"
+    echo "Scripts configuration"
+    echo "---------------------"
     echo "PREFIX=$PREFIX"
     echo "TMP=$TMP"
     echo "APP_DESKTOP_FILES_SUBDIR=$APP_DESKTOP_FILES_SUBDIR"
@@ -70,4 +70,3 @@ print_installation_config()
     echo "OS_DESKTOP_ICONS_DIR=$OS_DESKTOP_ICONS_DIR"
     echo "OS_DESKTOP_FILES_DIR=$OS_DESKTOP_FILES_DIR"
 }
-
