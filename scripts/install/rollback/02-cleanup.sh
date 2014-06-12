@@ -26,10 +26,10 @@
 SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 # Include configuration variables
-. ${SCRIPT_DIR}/../install-config.sh
+. ${SCRIPT_DIR}/../../install-config.sh
 
 # Include utilities
-. ${SCRIPT_DIR}/../utils.sh
+. ${SCRIPT_DIR}/../../utils.sh
 
 debug "Running '${BASH_SOURCE[0]}'"
 
