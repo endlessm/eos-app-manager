@@ -26,12 +26,7 @@ debug "Running '${BASH_SOURCE[0]}'"
 
 RM=$(which rm) || exit_error "Can't find rm"
 
-ARGS=2
-if [ $# -lt "$ARGS" ]
-then
-  exit_error "Usage: `basename $0` <app_id> <bundle_path>"
-fi
-
+check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
 BUNDLE_FILE=$2
 

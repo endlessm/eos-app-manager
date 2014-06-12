@@ -25,12 +25,7 @@ debug "Running '${BASH_SOURCE[0]}'"
 
 MV=$(which mv) || exit_error "Can't find mv"
 
-ARGS=1
-if [ $# -lt "$ARGS" ]
-then
-  exit_error "Usage: `basename $0` <app_id> .."
-fi
-
+check_args_minimum_number "${#}" 1 "<app_id>"
 APP_ID=$1
 
 # Move the old version installation dir

@@ -21,6 +21,7 @@ debug "Running '${BASH_SOURCE[0]}'"
 
 MV=$(which mv)   || exit_error "Can't find mv"
 
+check_args_minimum_number "${#}" 1 "<app_id>"
 APP_ID=$1
 
 if [ -d "${EAM_TMP}/${APP_ID}.old" ]; then

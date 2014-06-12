@@ -15,11 +15,6 @@ SCRIPT_DIR=${BASH_SOURCE[0]%/*}
 
 debug "Running '${BASH_SOURCE[0]}'"
 
-ARGS=1
-if [ $# -lt "$ARGS" ]
-then
-  exit_error "Usage: `basename $0` <app_id> .."
-fi
-
+check_args_minimum_number "${#}" 1 "<app_id>"
 create_symbolic_links $1
 exit 0

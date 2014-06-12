@@ -151,3 +151,17 @@ extract_file_to ()
 
     tar --no-same-owner --extract --file="${file}" --directory="${dir}"
 }
+
+# Arguments
+# ---------
+# Checks the minimun number of arguments required
+check_args_minimum_number ()
+{
+    n_args=$1
+    min_n_args=$2
+    args_desc=$3
+
+    if [ "${n_args}" -lt "${min_n_args}" ]; then
+        exit_error "Usage: `basename $0` ${args_desc} ..."
+    fi
+}
