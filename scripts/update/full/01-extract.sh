@@ -30,5 +30,5 @@ check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
 BUNDLE=$2
 
-verify_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+verify_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 extract_file_to "${BUNDLE}" "${EAM_TMP}"

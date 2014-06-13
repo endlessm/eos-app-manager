@@ -46,7 +46,7 @@ print_header ()
 # Verifies and checks the integrity of a downloaded file. Receives the
 # path to the downloaded file, the name of sha256file and the name of
 # the GPG signature.
-verify_download ()
+verify_downloaded_file ()
 {
     file=$1
     sha256file=$2
