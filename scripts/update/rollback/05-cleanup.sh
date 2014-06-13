@@ -24,4 +24,4 @@ APP_ID=$1
 BUNDLE=$2
 
 delete_dir "${EAM_TMP}/${APP_ID}"
-delete_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+delete_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"

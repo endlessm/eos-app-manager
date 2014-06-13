@@ -62,7 +62,7 @@ verify_downloaded_file ()
 # Deletes the downloaded file, its sha256file and GPG signature.
 # Receives the path to the downloaded file, the name of the sha256file
 # and the name of the GPG signature.
-delete_download ()
+delete_downloaded_file ()
 {
     file=$1
     sha256file=$2
