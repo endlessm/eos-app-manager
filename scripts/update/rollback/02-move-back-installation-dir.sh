@@ -29,5 +29,3 @@ if [ -d "${EAM_TMP}/${APP_ID}.old" ]; then
     exit_error "To move back the application from '${EAM_TMP}' to '${EAM_PREFIX}' failed"
   fi
 fi
-
-exit 0

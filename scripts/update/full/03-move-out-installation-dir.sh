@@ -33,5 +33,4 @@ if [ "$?" -ne 0 ]; then
   exit_error "To move the old application directory '${EAM_PREFIX}/${APP_ID}' to '${EAM_TMP}/${APP_ID}.old' failed"
 fi
 
-exit 0
 

@@ -13,4 +13,3 @@
 
 print_header "${BASH_SOURCE[0]}"
 desktop_updates
-exit 0

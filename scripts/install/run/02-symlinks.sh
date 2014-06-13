@@ -15,4 +15,3 @@
 print_header "${BASH_SOURCE[0]}"
 check_args_minimum_number "${#}" 1 "<app_id> <bundle_path>"
 create_symbolic_links $1
-exit 0

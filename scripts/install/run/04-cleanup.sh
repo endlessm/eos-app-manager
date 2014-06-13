@@ -24,4 +24,3 @@ APP_ID=$1
 BUNDLE=$2
 
 delete_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
-exit 0

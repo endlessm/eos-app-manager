@@ -25,5 +25,3 @@ if [ ! -d "${EAM_PREFIX}/${APP_ID}" ]; then
   exit_error "Application '${APP_ID}' not found. The installation directory \
 '${EAM_PREFIX}/${APP_ID}' does not exist."
 fi
-
-exit 0

@@ -27,4 +27,3 @@ delete_dir "${EAM_PREFIX}/${APP_ID}"
 delete_dir "${EAM_TMP}/${APP_ID}"
 delete_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 
-exit 0

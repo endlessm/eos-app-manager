@@ -27,5 +27,3 @@ $RM --recursive --force "${EAM_PREFIX}/${APP_ID}"
 if [ "$?" -ne 0 ]; then
   exit_error "To delete the installation directory '${EAM_PREFIX}/${APP_ID}' failed"
 fi
-
-exit 0
