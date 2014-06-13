@@ -48,6 +48,10 @@ print_header ()
 # the GPG signature.
 verify_downloaded_file ()
 {
+    if [ "$#" -ne 3 ]; then
+        exit_error "verify_downloaded_file: incorrect number of arguments"
+    fi
+
     file=$1
     sha256file=$2
     gpgfile=$3
@@ -64,6 +68,10 @@ verify_downloaded_file ()
 # and the name of the GPG signature.
 delete_downloaded_file ()
 {
+    if [ "$#" -ne 3 ]; then
+        exit_error "delete_downloaded_file: incorrect number of arguments"
+    fi
+
     file=$1
     sha256file=$2
     gpgfile=$3
@@ -89,7 +97,12 @@ desktop_updates ()
 
 # Internal function
 # Creates symbolic links to all the files contained in the directory
-symbolic_links () {
+symbolic_links ()
+{
+    if [ "$#" -ne 2 ]; then
+        exit_error "symbolic_links: incorrect number of arguments"
+    fi
+
     target_dir=$1
     links_dir=$2
 
@@ -107,6 +120,10 @@ symbolic_links () {
 # {EAM_PREFIX}/${appid}.
 create_symbolic_links ()
 {
+    if [ "$#" -ne 1 ]; then
+        exit_error "create_symbolic_links: incorrect number of arguments"
+    fi
+
     appid=$1
 
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
@@ -120,6 +137,10 @@ create_symbolic_links ()
 # directory.
 symbolic_links_delete ()
 {
+    if [ "$#" -ne 2 ]; then
+        exit_error "symbolic_links_delete: incorrect number of arguments"
+    fi
+
     target_dir=$1
     links_dir=$2
 
@@ -135,6 +156,10 @@ symbolic_links_delete ()
 # {EAM_PREFIX}/${appid}.
 delete_symbolic_links ()
 {
+    if [ "$#" -ne 1 ]; then
+        exit_error "delete_symbolic_links: incorrect number of arguments"
+    fi
+
     appid=$1
 
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
@@ -149,6 +174,10 @@ delete_symbolic_links ()
 # Extracts files from a .tar file to the given directory.
 extract_file_to_dir ()
 {
+    if [ "$#" -ne 2 ]; then
+        exit_error "extract_file_to_dir: incorrect number of arguments"
+    fi
+
     file=$1
     dir=$2
 
@@ -160,6 +189,10 @@ extract_file_to_dir ()
 # Checks the minimun number of arguments required
 check_args_minimum_number ()
 {
+    if [ "$#" -ne 3 ]; then
+        exit_error "check_args_minimum_number: incorrect number of arguments"
+    fi
+
     n_args=$1
     min_n_args=$2
     args_desc=$3
@@ -175,6 +208,10 @@ check_args_minimum_number ()
 # (no error is raised).
 delete_dir ()
 {
+    if [ "$#" -ne 1 ]; then
+        exit_error "delete_dir: incorrect number of arguments"
+    fi
+
     dir=$1
 
     rm --recursive --force "${dir}"
