@@ -21,9 +21,9 @@
 print_header "${BASH_SOURCE[0]}"
 check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
-BUNDLE_FILE=$2
+BUNDLE=$2
 
 delete_dir "${EAM_TMP}/${APP_ID}"
-delete_download "${BUNDLE_FILE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+delete_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 
 exit 0
