@@ -21,16 +21,8 @@
 . ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
-
-MV=$(which mv) || exit_error "Can't find mv"
-
 check_args_minimum_number "${#}" 1 "<app_id>"
 APP_ID=$1
 
-# Move the old version installation dir
-${MV} --force "${EAM_PREFIX}/${APP_ID}" "${EAM_TMP}/${APP_ID}.old"
-if [ "$?" -ne 0 ]; then
-  exit_error "To move the old application directory '${EAM_PREFIX}/${APP_ID}' to '${EAM_TMP}/${APP_ID}.old' failed"
-fi
-
-
+delete_dir "${EAM_TMP}/${APP_ID}.old"
+mv "${EAM_PREFIX}/${APP_ID}" "${EAM_TMP}/${APP_ID}.old"
