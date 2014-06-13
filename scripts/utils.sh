@@ -88,7 +88,7 @@ desktop_updates ()
 # --------------
 
 # Internal function
-# Creates symbolic links to all the files contained in the directory.
+# Creates symbolic links to all the files contained in the directory
 symbolic_links () {
     target_dir=$1
     links_dir=$2
@@ -123,14 +123,11 @@ symbolic_links_delete ()
     target_dir=$1
     links_dir=$2
 
-    for file in `ls ${links_dir}`
-    do
-        if [ -L "${links_dir}/${file}" ]; then
-            if [ "${links_dir}/${file}" -ef "${target_dir}/${file}" ]; then
-                rm "${links_dir}/${file}"
-            fi
-        fi
-    done
+    if [ -d "${target_dir}" ]; then
+        for file in `ls ${target_dir}`; do
+            find -L "${links_dir}" -samefile "${target_dir}/${file}" | xargs rm
+        done
+    fi
 }
 
 # Deletes symbolic links that point to the application's metadata files.
