@@ -444,6 +444,12 @@ find_pkg_version (JsonArray *array, const gchar *version)
       continue;
 
     JsonObject *json = json_node_get_object (node);
+
+    /* check wheter it is a bundle or a diff file */
+    gboolean is_diff = json_object_get_boolean_member (json, "isDiff");
+    if (is_diff)
+      continue;
+
     const gchar *verstr = json_object_get_string_member (json, "codeVersion");
     if (!verstr)
       continue;
