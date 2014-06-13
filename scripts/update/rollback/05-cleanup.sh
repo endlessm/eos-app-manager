@@ -19,19 +19,10 @@
 . ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
-
-RM=$(which rm) || exit_error "Can't find rm"
-
 check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
 
-# Delete the temporary directory (if exists)
-if [ -d "${EAM_TMP}/${APP_ID}" ]; then
-  $RM --recursive --force "${EAM_TMP}/${APP_ID}"
-  if [ "$?" -ne 0 ]; then
-    warning "To delete '${EAM_TMP}/${APP_ID}' failed"
-  fi
-fi
+delete_dir "${EAM_TMP}/${APP_ID}"
 
 BUNDLE_FILE=$2
 delete_download "${BUNDLE_FILE}" "${APP_ID}.sha256" "${APP_ID}.asc"

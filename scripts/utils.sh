@@ -171,3 +171,14 @@ check_args_minimum_number ()
         exit_error "Usage: `basename $0` ${args_desc} ..."
     fi
 }
+
+# Directories
+# -----------
+# Deletes a directory recursively. Nonexistent directories are ignored
+# (no error is raised).
+delete_dir ()
+{
+    dir=$1
+
+    rm --recursive --force "${dir}"
+}
