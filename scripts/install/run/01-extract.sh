@@ -27,28 +27,10 @@
 . ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
-
-MV=$(which mv)   || exit_error "Can't find mv"
-
 check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
 BUNDLE=$2
 
 verify_download "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 extract_file_to "${BUNDLE}" "${EAM_TMP}"
-
-# Move the uncompressed bundle to the installation directory
-if [ ! -d "${EAM_TMP}/${APP_ID}" ]; then
-  exit_error "The extracted bundle is not a directory called '${APP_ID}'"
-fi
-
-if [ -d "${EAM_PREFIX}/${APP_ID}" ]; then
-  # This should never happen.
-  # If it does happen, there is an error in the installation/update process.
-  exit_error "A directory called '${EAM_PREFIX}/${APP_ID}' already exists"
-fi
-
-${MV} --force "${EAM_TMP}/${APP_ID}" "${EAM_PREFIX}"
-if [ "$?" -ne 0 ]; then
-  exit_error "To move the application from '${EAM_TMP}' to '${EAM_PREFIX}' failed"
-fi
+mv "${EAM_TMP}/${APP_ID}" "${EAM_PREFIX}"
