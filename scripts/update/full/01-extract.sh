@@ -31,4 +31,4 @@ APP_ID=$1
 BUNDLE=$2
 
 verify_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
-extract_file_to "${BUNDLE}" "${EAM_TMP}"
+extract_file_to_dir "${BUNDLE}" "${EAM_TMP}"

@@ -150,7 +150,7 @@ delete_symbolic_links ()
 # 'tar' utilities
 # ---------------
 # Extracts files from a .tar file to the given directory.
-extract_file_to ()
+extract_file_to_dir ()
 {
     file=$1
     dir=$2
