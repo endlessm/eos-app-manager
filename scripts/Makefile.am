@@ -16,10 +16,9 @@ install_scripts = \
 	$(NULL)
 
 uninstall_scripts = \
-	uninstall/01-existence-check.sh \
-	uninstall/02-delete-symlinks.sh \
-	uninstall/03-delete-installation-dir.sh \
-	uninstall/04-desktop-updates.sh \
+	uninstall/01-delete-symlinks.sh \
+	uninstall/02-delete-installation-dir.sh \
+	uninstall/03-desktop-updates.sh \
 	$(NULL)
 
 update_scripts = \
