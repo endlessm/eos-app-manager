@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import apt_inst
 import tarfile
 import fileinput
 from os import path, mkdir, listdir, getcwd, rmdir, makedirs, walk
@@ -163,8 +164,8 @@ class BundleConverter(object):
         print("Using", get_color_str(extraction_dir, Color.GREEN), "as staging area")
 
         print("Extracting...")
-        # TODO: Convert this to native python
-        system_exec("dpkg --extract %s %s" % (self.args.deb_package, extraction_dir))
+        deb = apt_inst.DebFile(self.args.deb_package)
+        deb.data.extractall(extraction_dir)
 
         print("Moving /usr/* one level up")
         user_dir = path.join(extraction_dir, 'usr')
