@@ -143,9 +143,7 @@ symbolic_links_delete ()
     links_dir=$2
 
     if [ -d "${target_dir}" ]; then
-        for file in `ls ${target_dir}`; do
-            find -L "${links_dir}" -samefile "${target_dir}/${file}" | xargs rm
-        done
+        find  "${target_dir}" -mindepth 1 -print0 | xargs -0 -I '{.}' find -L "${links_dir}" -samefile '{.}' -exec rm '{}' \;
     fi
 }
 
