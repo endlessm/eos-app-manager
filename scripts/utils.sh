@@ -107,9 +107,7 @@ symbolic_links ()
     links_dir=$2
 
     if [ -d "${target_dir}" ]; then
-        for file in `ls ${target_dir}`; do
-            ln --symbolic "${target_dir}/${file}" "${links_dir}/${file}"
-        done
+        find "${target_dir}" -mindepth 1 -exec ln --symbolic '{}' "${links_dir}" \;
     fi
 }
 
