@@ -4,6 +4,11 @@
 #
 # This script deletes symbolic links that point
 # to the application's metadata files.
+#
+# Usage: ./02-delete-symlinks.sh <app_id> ...
+#
+# Parameters:
+# <app_id>: ID of the application to update.
 
 . ${BASH_SOURCE[0]%/*}/../../utils.sh
 

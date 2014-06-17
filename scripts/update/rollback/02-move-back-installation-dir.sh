@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Copyright 2014 Endless Mobile, Inc.
 #
@@ -12,32 +12,15 @@
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The application installation directory is ${PREFIX}/<app_id>
+# - The application installation directory is ${EAM_PREFIX}/<app_id>
 
-# This script uses the configuration variables defined in
-# ../../install-config.sh:
-#  * PREFIX
-#  * TMP
+. ${BASH_SOURCE[0]%/*}/../../utils.sh
 
-SCRIPT_DIR=${BASH_SOURCE[0]%/*}
-
-# Include configuration variables
-. ${SCRIPT_DIR}/../../install-config.sh
-
-# Include utilities
-. ${SCRIPT_DIR}/../../utils.sh
-
-debug "Running '${BASH_SOURCE[0]}'"
-
-MV=$(which mv)   || exit_error "Can't find mv"
-
+print_header "${BASH_SOURCE[0]}"
+check_args_minimum_number "${#}" 1 "<app_id>"
 APP_ID=$1
 
-if [ -d "${TMP}/${APP_ID}.old" ]; then
-  ${MV} --force "${TMP}/${APP_ID}.old" "${PREFIX}/${APP_ID}"
-  if [ "$?" -ne 0 ]; then
-    exit_error "To move back the application from '${TMP}' to '${PREFIX}' failed"
-  fi
+if [ -d "${EAM_TMP}/${APP_ID}.old" ]; then
+  delete_dir "${EAM_PREFIX}/${APP_ID}"
+  mv "${EAM_TMP}/${APP_ID}.old" "${EAM_PREFIX}/${APP_ID}"
 fi
-
-exit 0
