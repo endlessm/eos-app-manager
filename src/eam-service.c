@@ -19,6 +19,7 @@
 #include "eam-update.h"
 #include "eam-list-avail.h"
 #include "eam-dbus-utils.h"
+#include "eam-version.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -607,8 +608,16 @@ run_service_install (EamService *service, const gchar *appid,
   eam_service_reset_timer (service);
 
   if (eam_updates_pkg_is_upgradable (get_eam_updates (service), appid)) {
-    /* update to the last version */
-    priv->trans = eam_update_new (appid);
+    /* update from the current version to the last version */
+    const EamPkg *pkg = eam_pkgdb_get (priv->db, appid);
+    g_assert (pkg);
+
+    EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
+    gchar *from_version = eam_pkg_version_as_string (pkg_version);
+
+    priv->trans = eam_update_new (appid, from_version);
+    g_free (from_version);
+
     run_eam_transaction (service, invocation, install_or_uninstall_cb);
   } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version (which is NULL) */

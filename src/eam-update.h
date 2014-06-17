@@ -39,7 +39,8 @@ struct _EamUpdateClass
 
 GType           eam_update_get_type                               (void) G_GNUC_CONST;
 
-EamTransaction *eam_update_new                                    (const gchar *appid);
+EamTransaction *eam_update_new                                    (const gchar *appid,
+                                                                   const gchar *from_version);
 
 G_END_DECLS
 

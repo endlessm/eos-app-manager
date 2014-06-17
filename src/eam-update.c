@@ -18,6 +18,7 @@ typedef struct _EamUpdatePrivate	EamUpdatePrivate;
 struct _EamUpdatePrivate
 {
   gchar *appid;
+  gchar *from_version;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -29,6 +30,7 @@ G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
 enum
 {
   PROP_APPID = 1,
+  PROP_FROM_VERSION,
 };
 
 static void
@@ -113,6 +115,7 @@ eam_update_finalize (GObject *obj)
   EamUpdatePrivate *priv = eam_update_get_instance_private (EAM_UPDATE (obj));
 
   g_clear_pointer (&priv->appid, g_free);
+  g_clear_pointer (&priv->from_version, g_free);
 
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
@@ -126,6 +129,9 @@ eam_update_get_property (GObject *obj, guint prop_id, GValue *value,
   switch (prop_id) {
   case PROP_APPID:
     g_value_set_string (value, priv->appid);
+    break;
+  case PROP_FROM_VERSION:
+    g_value_set_string (value, priv->from_version);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -142,6 +148,9 @@ eam_update_set_property (GObject *obj, guint prop_id, const GValue *value,
   switch (prop_id) {
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
+    break;
+  case PROP_FROM_VERSION:
+    priv->from_version = g_value_dup_string (value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -166,6 +175,16 @@ eam_update_class_init (EamUpdateClass *klass)
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamUpdate:from-version:
+   *
+   * The application's version to update from.
+   */
+  g_object_class_install_property (object_class, PROP_FROM_VERSION,
+    g_param_spec_string ("from-version", "App's version to update from",
+      "Application's version to update from", NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -176,11 +195,13 @@ eam_update_init (EamUpdate *self)
 /**
  * eam_update_new:
  * @appid: the application ID to update.
+ * @from_version: the application's version to update from.
  *
  * Returns: a new instance of #EamUpdate with #EamTransaction interface.
  */
 EamTransaction *
-eam_update_new (const gchar *appid)
+eam_update_new (const gchar *appid, const gchar *from_version)
 {
-  return g_object_new (EAM_TYPE_UPDATE, "appid", appid, NULL);
+  return g_object_new (EAM_TYPE_UPDATE, "appid", appid,
+    "from-version", from_version, NULL);
 }
