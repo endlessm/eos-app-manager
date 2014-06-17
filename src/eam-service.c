@@ -113,8 +113,6 @@ static EamServiceAuth auth_action[] = {
   {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
 };
 
-#define ADMIN_GROUP_NAME "wheel"
-
 static void
 eam_service_dispose (GObject *obj)
 {
@@ -730,7 +728,7 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
    * for each user, but for the time being we can use the 'wheel' group to
    * decide if a user has the capabilities to install/update/remove apps.
    */
-  if (user_is_in_admin_group (user, ADMIN_GROUP_NAME))
+  if (user_is_in_admin_group (user, EAM_ADMIN_GROUP_NAME))
     {
       can_install = TRUE;
       can_update = TRUE;
