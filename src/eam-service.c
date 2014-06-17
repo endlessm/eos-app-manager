@@ -709,6 +709,35 @@ user_is_in_admin_group (uid_t user, const char *admin_group)
   return retval;
 }
 
+static gboolean
+eam_service_check_auth_by_method (EamService *service, PolkitSubject *subject,
+  EamServiceMethod method)
+{
+  GError *error = NULL;
+  gboolean ret = FALSE;
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  const gchar *action = auth_action[method].action_id;
+  PolkitAuthorizationResult *result =
+    polkit_authority_check_authorization_sync (priv->authority, subject,
+      action, NULL, 0, NULL, &error);
+
+  if (error) {
+    g_warning ("Unable to check authorisation for %s: %s", action,
+      error->message);
+    g_clear_error (&error);
+    goto bail;
+  }
+
+  ret = polkit_authorization_result_get_is_authorized (result) ||
+    polkit_authorization_result_get_is_challenge (result);
+
+bail:
+  g_object_unref (result);
+
+  return ret;
+}
+
 static void
 eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
@@ -721,64 +750,43 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
   uid_t user = eam_dbus_get_uid_for_sender (priv->connection, sender);
 
   gboolean can_install = FALSE;
-  gboolean can_update = FALSE;
   gboolean can_uninstall = FALSE;
+  gboolean can_refresh = FALSE;
 
   /* XXX: we want to have a separate configuration to decide the capabilities
    * for each user, but for the time being we can use the 'wheel' group to
    * decide if a user has the capabilities to install/update/remove apps.
    */
-  if (user_is_in_admin_group (user, EAM_ADMIN_GROUP_NAME))
-    {
-      can_install = TRUE;
-      can_update = TRUE;
-      can_uninstall = TRUE;
-      goto out;
-    }
+  if (user_is_in_admin_group (user, EAM_ADMIN_GROUP_NAME)) {
+    can_install = TRUE;
+    can_uninstall = TRUE;
+    can_refresh = TRUE;
+    goto out;
+  }
 
   /* if the user is not in the ADMIN_GROUP_NAME then we go through
    * a polkit check
    */
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
-  if (subject == NULL)
-    {
-      g_warning ("Unable to create the Polkit subject for: %s", sender);
-      goto out;
-    }
+  if (!subject) {
+    g_warning ("Unable to create the Polkit subject for: %s", sender);
+    goto out;
+  }
 
-  PolkitAuthorizationResult *result;
-  GError *error = NULL;
-  result = polkit_authority_check_authorization_sync (priv->authority,
-                                                      subject,
-                                                      AUTH_NAMESPACE "get-capabilities",
-                                                      NULL,
-                                                      0,
-                                                      NULL,
-                                                      &error);
-
-  if (error != NULL)
-    {
-      g_warning ("Unable to check authorisation: %s", error->message);
-      g_error_free (error);
-      goto out;
-    }
-
-  if (polkit_authorization_result_get_is_authorized (result))
-    {
-      can_install = TRUE;
-      can_update = TRUE;
-      can_uninstall = TRUE;
-    }
-
-  g_object_unref (result);
+  can_install = eam_service_check_auth_by_method (service, subject,
+    EAM_SERVICE_METHOD_INSTALL);
+  can_uninstall = eam_service_check_auth_by_method (service, subject,
+    EAM_SERVICE_METHOD_UNINSTALL);
+  can_refresh = eam_service_check_auth_by_method (service, subject,
+    EAM_SERVICE_METHOD_REFRESH);
 
 out:
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a{sv})"));
   g_variant_builder_open (&builder, G_VARIANT_TYPE ("a{sv}"));
 
   g_variant_builder_add (&builder, "{sv}", "CanInstall", g_variant_new_boolean (can_install));
-  g_variant_builder_add (&builder, "{sv}", "CanUpdate", g_variant_new_boolean (can_update));
   g_variant_builder_add (&builder, "{sv}", "CanUninstall", g_variant_new_boolean (can_uninstall));
+  g_variant_builder_add (&builder, "{sv}", "CanRefresh", g_variant_new_boolean (can_refresh));
 
   g_variant_builder_close (&builder);
   GVariant *res = g_variant_builder_end (&builder);
