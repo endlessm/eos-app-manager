@@ -1,7 +1,7 @@
 polkit.addRule(function(action, subject) {
     if (action.id.indexOf("com.endlessm.app-installer.") == 0 &&
         subject.active == true && subject.local == true &&
-        subject.isInGroup("adm")) {
+        subject.isInGroup("@EAM_ADMIN_GROUP@")) {
         return polkit.Result.YES;
     }
 });

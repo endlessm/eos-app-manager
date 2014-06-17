@@ -68,6 +68,10 @@ AM_GLIB_GNU_GETTEXT
 EAM_USER=root
 AC_SUBST(EAM_USER)
 
+EAM_ADMIN_GROUP=adm
+AC_SUBST(EAM_ADMIN_GROUP)
+AC_DEFINE_UNQUOTED([EAM_ADMIN_GROUP_NAME],["$EAM_ADMIN_GROUP"],[System group with administration permissions])
+
 AC_CONFIG_FILES([
 Makefile
 data/Makefile
