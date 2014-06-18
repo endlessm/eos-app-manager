@@ -104,6 +104,16 @@
     </method>
 
     <!--
+	ListInstalled:
+
+        Returns a list of all the installed applications.
+    -->
+    <method name="ListInstalled" >
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="a(sss)" direction="out" />
+    </method>
+
+    <!--
 	Quit:
 
 	Suggest to the daemon to quit.
