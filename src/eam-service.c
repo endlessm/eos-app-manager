@@ -412,13 +412,16 @@ run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
   eam_transaction_run_async (priv->trans, priv->cancellable, callback, service);
 }
 
+typedef void (*EamRunService) (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation);
+
 struct _load_pkgdb_clos {
   EamService *service;
   GDBusMethodInvocation *invocation;
   GAsyncReadyCallback callback;
 
   gchar *appid;
-  void (*run_service) (EamService*, const gchar*, GDBusMethodInvocation*);
+  EamRunService run_service;
 };
 
 static void
@@ -448,6 +451,29 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 out:
   g_free (clos->appid);
   g_slice_free (struct _load_pkgdb_clos, clos);
+}
+
+static void
+run_eam_service_with_load_pkgdb (EamService *service, const gchar *appid,
+  EamRunService run_service, GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->reloaddb) {
+    struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
+    clos->service = service;
+    clos->invocation = invocation;
+    clos->appid = g_strdup (appid);
+    clos->run_service = run_service;
+
+    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
+
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
+    return;
+  }
+
+  if (run_service)
+    run_service (service, appid, invocation);
 }
 
 static void
@@ -602,22 +628,8 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   const gchar *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->reloaddb) {
-    struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
-    clos->service = service;
-    clos->invocation = invocation;
-    clos->appid = g_strdup (appid);
-    clos->run_service = run_service_install;
-
-    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
-
-    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
-    return;
-  }
-
-  run_service_install (service, appid, invocation);
+  run_eam_service_with_load_pkgdb (service, appid, run_service_install,
+    invocation);
 }
 
 static void
@@ -643,22 +655,8 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   const gchar *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->reloaddb) {
-    struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
-    clos->service = service;
-    clos->invocation = invocation;
-    clos->appid = g_strdup (appid);
-    clos->run_service = run_service_uninstall;
-
-    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
-
-    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
-    return;
-  }
-
-  run_service_uninstall (service, appid, invocation);
+  run_eam_service_with_load_pkgdb (service, appid, run_service_uninstall,
+    invocation);
 }
 
 static gboolean
@@ -858,21 +856,8 @@ static void
 eam_service_list_installed (EamService *service,
   GDBusMethodInvocation *invocation, GVariant *params)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->reloaddb) {
-    struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
-    clos->service = service;
-    clos->invocation = invocation;
-    clos->run_service = build_list_installed;
-
-    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
-
-    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
-    return;
-  }
-
-  build_list_installed (service, NULL, invocation);
+  run_eam_service_with_load_pkgdb (service, NULL, build_list_installed,
+    invocation);
 }
 
 static void
