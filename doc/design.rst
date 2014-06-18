@@ -125,6 +125,13 @@ Returns the installable applications and the updatable applications, as
 two arrays of (id, name, version) tuples.
 
 
+ListInstalled () -> (a(sss))
+---------------------------------------------
+
+Returns the installed applications as an array of (id, name, version)
+tuples.
+
+
 GetUserCapabilities () -> (a{sv})
 ---------------------------------
 

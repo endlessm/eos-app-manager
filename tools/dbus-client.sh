@@ -26,7 +26,9 @@ case "$1" in
 	;;
     uninstall) call "Uninstall" "$2"
 	;;
-    list) call "ListAvailable"
+    list-available) call "ListAvailable"
+	;;
+    list-installed) call "ListInstalled"
 	;;
     caps) call "GetUserCapabilities"
 	;;

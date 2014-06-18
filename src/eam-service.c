@@ -64,7 +64,8 @@ typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
   EAM_SERVICE_METHOD_UNINSTALL,
   EAM_SERVICE_METHOD_REFRESH,
-  EAM_SERVICE_METHOD_LIST,
+  EAM_SERVICE_METHOD_LIST_AVAILABLE,
+  EAM_SERVICE_METHOD_LIST_INSTALLED,
   EAM_SERVICE_METHOD_USER_CAPS,
   EAM_SERVICE_METHOD_CANCEL,
   EAM_SERVICE_METHOD_QUIT,
@@ -89,6 +90,8 @@ static void eam_service_refresh (EamService *service, GDBusMethodInvocation *inv
   GVariant *params);
 static void eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
+static void eam_service_list_installed (EamService *service,
+  GDBusMethodInvocation *invocation, GVariant *params);
 static void eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
@@ -107,7 +110,8 @@ static EamServiceAuth auth_action[] = {
   {EAM_SERVICE_METHOD_INSTALL,   "Install",       eam_service_install,    AUTH_NAMESPACE "install-application",   AUTH_MSG_INSTALL},
   {EAM_SERVICE_METHOD_UNINSTALL, "Uninstall",     eam_service_uninstall,  AUTH_NAMESPACE "uninstall-application", AUTH_MSG_UNINSTALL},
   {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    AUTH_NAMESPACE "refresh-applications",  AUTH_MSG_REFRESH},
-  {EAM_SERVICE_METHOD_LIST,      "ListAvailable", eam_service_list_avail, NULL /* No auth required */,            ""},
+  {EAM_SERVICE_METHOD_LIST_AVAILABLE, "ListAvailable", eam_service_list_avail, NULL, ""},
+  {EAM_SERVICE_METHOD_LIST_INSTALLED, "ListInstalled", eam_service_list_installed, NULL, ""},
   {EAM_SERVICE_METHOD_USER_CAPS, "GetUserCapabilities", eam_service_get_user_caps, NULL, "" },
   {EAM_SERVICE_METHOD_CANCEL,    "Cancel",        eam_service_cancel,     AUTH_NAMESPACE "cancel-request",        AUTH_MSG_CANCEL},
   {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
@@ -819,6 +823,56 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
 
   priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service));
   run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
+}
+
+static void
+build_list_installed (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GVariantBuilder builder;
+  EamPkg *pkg = NULL;
+
+  eam_service_reset_timer (service);
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sss))"));
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
+
+  while (eam_pkgdb_iter_next (priv->db, &pkg)) {
+    if (!pkg)
+      continue;
+
+    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (&builder, "(sss)", eam_pkg_get_id (pkg),
+      eam_pkg_get_name (pkg), version);
+    g_free (version);
+  }
+  eam_pkgdb_iter_reset (priv->db);
+
+  g_variant_builder_close (&builder);
+  g_dbus_method_invocation_return_value (invocation,
+    g_variant_builder_end (&builder));
+}
+
+static void
+eam_service_list_installed (EamService *service,
+  GDBusMethodInvocation *invocation, GVariant *params)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->reloaddb) {
+    struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
+    clos->service = service;
+    clos->invocation = invocation;
+    clos->run_service = build_list_installed;
+
+    priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
+
+    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
+    return;
+  }
+
+  build_list_installed (service, NULL, invocation);
 }
 
 static void
