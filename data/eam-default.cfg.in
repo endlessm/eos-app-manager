@@ -1,7 +1,7 @@
 [eam]
 appdir = /endless
 downloaddir = @localstatedir@/cache/eos-app-manager
-serveraddress = http://staging-dev.endlessm-sf.com
+serveraddress = http://appupdates.endlessm.com
 protocolversion = v1
 scriptdir = @pkglibexecdir@
 gpgdir = @localstatedir@/lib/eos-app-manager/keyring
