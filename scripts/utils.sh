@@ -212,3 +212,24 @@ delete_dir ()
 
     rm --recursive --force "${dir}"
 }
+
+# .info
+#------
+# Parses the a ini-like file
+parse_ini ()
+{
+    if [ "$#" -ne 2 ]; then
+        exit_error "parse_ini: incorrect number of arguments"
+    fi
+
+    config_file=$1
+    section=$2
+
+    eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
+      -e 's/;.*$//' \
+      -e 's/[[:space:]]*$//' \
+      -e 's/^[[:space:]]*//' \
+      -e "s/^\(.*\)=\([^\"']*\)$/\1=\"\2\"/" \
+     < ${config_file} \
+      | sed -n -e "/^\[${section}\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
+}
