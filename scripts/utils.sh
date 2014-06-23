@@ -212,3 +212,36 @@ delete_dir ()
 
     rm --recursive --force "${dir}"
 }
+
+# .info
+#------
+# Get an array with all the sections available in a ini-like file
+parse_ini_get_sections ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "parse_ini_get_sections: incorrect number of arguments"
+    fi
+
+    config_file=$1
+
+    eval sections=(`grep "^\[" ${config_file} | tr '\[' '"' | tr '\]' '"' `)
+}
+
+# Parses the section from a ini-like file
+parse_ini_section ()
+{
+    if [ "$#" -ne 2 ]; then
+        exit_error "parse_ini_section: incorrect number of arguments"
+    fi
+
+    config_file=$1
+    section=$2
+
+    eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
+      -e 's/;.*$//' \
+      -e 's/[[:space:]]*$//' \
+      -e 's/^[[:space:]]*//' \
+      -e "s/^\(.*\)=\([^\"']*\)$/\1=\"\2\"/" \
+     < ${config_file} \
+      | sed -n -e "/^\[${section}\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
+}

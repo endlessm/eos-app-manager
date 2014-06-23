@@ -8,7 +8,7 @@
 #
 # Usage:
 #
-# $ ./01-extract.sh <app_id> <bundle_file_path> ...
+# $ ./10-extract.sh <app_id> <bundle_file_path> ...
 #
 # Parameters:
 # <app_id>: ID of the application to install.
@@ -33,4 +33,3 @@ BUNDLE=$2
 
 verify_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
 extract_file_to_dir "${BUNDLE}" "${EAM_TMP}"
-mv "${EAM_TMP}/${APP_ID}" "${EAM_PREFIX}"
