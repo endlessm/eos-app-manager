@@ -105,12 +105,6 @@ uninstalls an application. Removes all symlinks in `/endless/share` and
 removes the application directory from `/endless/`
 
 
-HasUpdate (string app_id) -> b update_available
------------------------------------------------
-
-Checks to see if an app has an update available
-
-
 Refresh ()
 ----------
 
