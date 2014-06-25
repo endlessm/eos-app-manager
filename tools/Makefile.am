@@ -6,6 +6,6 @@ wclient_LIBS = $(DEPENDENCIES_LIBS)
 wclient_LDADD = $(top_builddir)/src/libeam-1.0.la
 wclient_SOURCE = wclient.c
 
-EXTRA_DIST = dbus-client.sh deb2bundle.py
+EXTRA_DIST = dbus-client.sh
 
 -include $(top_srcdir)/git.mk
