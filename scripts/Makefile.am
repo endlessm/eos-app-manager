@@ -6,10 +6,12 @@ common_scripts = \
 	$(NULL)
 
 install_scripts = \
-	install/run/01-extract.sh \
-	install/run/02-symlinks.sh \
-	install/run/03-desktop-updates.sh \
-	install/run/04-cleanup.sh \
+	install/run/10-extract.sh \
+	install/run/20-external.sh\
+	install/run/30-install.sh \
+	install/run/40-symlinks.sh \
+	install/run/50-desktop-updates.sh \
+	install/run/60-cleanup.sh \
 	install/rollback/01-delete-symlinks.sh \
 	install/rollback/02-cleanup.sh \
 	install/rollback/03-desktop-updates.sh \
