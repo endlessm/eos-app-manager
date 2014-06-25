@@ -359,10 +359,13 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   }
 
   if (!json) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-       EAM_TRANSACTION_ERROR_INVALID_FILE,
-       _("Not valid stream with xdelta update link"));
-    goto bail;
+    /* No xdelta updates available. Try the full update */
+    GCancellable *cancellable = g_task_get_cancellable (task);
+    EamInstall *install = eam_install_new_with_scripts (priv->appid,
+      FULL_UPDATE_SCRIPTDIR, ROLLBACK_SCRIPTDIR);
+    eam_install_run_async (install, cancellable, fallback_cb, task);
+
+    return;
   }
 
   const gchar *path = json_object_get_string_member (json, "downloadLink");
