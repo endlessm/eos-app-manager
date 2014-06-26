@@ -9,10 +9,11 @@ install_scripts = \
 	install/run/10-extract.sh \
 	install/run/20-external.sh \
 	install/run/30-custom-installer.sh \
-	install/run/40-install.sh \
-	install/run/50-symlinks.sh \
-	install/run/60-desktop-updates.sh \
-	install/run/70-cleanup.sh \
+	install/run/40-cleanup-external.sh \
+	install/run/50-install.sh \
+	install/run/60-symlinks.sh \
+	install/run/70-desktop-updates.sh \
+	install/run/80-cleanup.sh \
 	install/rollback/01-delete-symlinks.sh \
 	install/rollback/02-cleanup.sh \
 	install/rollback/03-desktop-updates.sh \
