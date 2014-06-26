@@ -7,7 +7,7 @@
 #
 # Usage:
 #
-# $ ./01-extract.sh <app_id> <bundle_file_path> ...
+# $ ./10-extract.sh <app_id> <bundle_file_path> ...
 #
 # Parameters:
 # <app_id>: ID of the application.

@@ -26,13 +26,16 @@ uninstall_scripts = \
 	$(NULL)
 
 update_scripts = \
-	update/full/01-extract.sh \
-	update/full/02-delete-symlinks.sh \
-	update/full/03-move-out-installation-dir.sh \
-	update/full/04-move-update-to-prefix.sh \
-	update/full/05-symlinks.sh \
-	update/full/06-desktop-updates.sh \
-	update/full/07-cleanup.sh \
+	update/full/10-extract.sh \
+	update/full/15-external.sh \
+	update/full/20-custom-installer.sh \
+	update/full/25-cleanup-external.sh \
+	update/full/30-delete-symlinks.sh \
+	update/full/35-move-out-installation-dir.sh \
+	update/full/40-move-update-to-prefix.sh \
+	update/full/45-symlinks.sh \
+	update/full/50-desktop-updates.sh \
+	update/full/55-cleanup.sh \
 	update/rollback/01-delete-symlinks.sh \
 	update/rollback/02-move-back-installation-dir.sh \
 	update/rollback/03-symlinks.sh \

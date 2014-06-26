@@ -2,18 +2,19 @@
 
 # Copyright 2014 Endless Mobile, Inc.
 #
-# This script moves the uncompressed bundle to ${EAM_PREFIX}
+# This script moves the previous version installation directory
+# to a temporary file.
 #
 # Usage:
 #
-# $ ./04-move-update-to-prefix.sh <app_id> ...
+# $ ./35-move-out-installation-dir.sh <app_id> ...
 #
 # Parameters:
 # <app_id>: ID of the application.
 #
 # IMPORTANT: This script makes some assumptions that could be subject of
 # modification:
-# - The application installation directory will be ${EAM_PREFIX}/<app_id>
+# - The application installation directory id ${EAM_PREFIX}/<app_id>
 #
 # Returns 0 on success.
 
@@ -23,4 +24,5 @@ print_header "${BASH_SOURCE[0]}"
 check_args_minimum_number "${#}" 1 "<app_id>"
 APP_ID=$1
 
-mv "${EAM_TMP}/${APP_ID}" "${EAM_PREFIX}"
+delete_dir "${EAM_TMP}/${APP_ID}.old"
+mv "${EAM_PREFIX}/${APP_ID}" "${EAM_TMP}/${APP_ID}.old"
