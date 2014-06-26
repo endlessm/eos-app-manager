@@ -7,7 +7,7 @@
 #
 # Usage:
 #
-# $ ./40-apply-xdelta.sh <app_id> <bundle_file_path>...
+# $ ./20-apply-xdelta.sh <app_id> <bundle_file_path>...
 #
 # Parameters:
 # <app_id>: ID of the application
@@ -24,4 +24,5 @@ check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
 BUNDLE=$2
 
-xdelta3-dir-patcher apply "${EAM_PREFIX}/${APP_ID}" "${BUNDLE}"
+delete_dir "${EAM_TMP}/${APP_ID}" && mkdir "${EAM_TMP}/${APP_ID}"
+xdelta3-dir-patcher apply "${EAM_PREFIX}/${APP_ID}" "${BUNDLE}" "${EAM_TMP}/${APP_ID}"
