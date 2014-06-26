@@ -8,7 +8,7 @@
 #
 # Usage:
 #
-# $ ./30-install.sh <app_id>
+# $ ./40-install.sh <app_id>
 #
 # Parameters:
 # <app_id>: ID of the application to install.

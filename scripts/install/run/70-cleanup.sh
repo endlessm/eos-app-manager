@@ -5,7 +5,7 @@
 # This script cleans temporary files created
 # during an application installation.
 #
-# Usage: ./60-clean.sh <app_id> <bundle_path> ...
+# Usage: ./70-clean.sh <app_id> <bundle_path> ...
 #
 # Parameters:
 # <app_id>: ID of the application to install.
