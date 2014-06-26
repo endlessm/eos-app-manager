@@ -7,7 +7,7 @@
 # updates the icon theme cache and the cache database of
 # the MIME types handled by the .desktop files.
 #
-# Usage: ./06-desktop-updates.sh ...
+# Usage: ./50-desktop-updates.sh ...
 
 . ${BASH_SOURCE[0]%/*}/../../utils.sh
 

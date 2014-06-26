@@ -6,7 +6,7 @@
 # during an application update, including the
 # moved old version installation directory.
 #
-# Usage: ./07-cleanup.sh <app_id> <bundle_path> ...
+# Usage: ./55-cleanup.sh <app_id> <bundle_path> ...
 #
 # Parameters:
 # <app_id>: ID of the application.

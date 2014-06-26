@@ -5,7 +5,7 @@
 # This script creates symbolic links, on common OS
 # directories, for the application metadata files.
 #
-# Usage: ./05-symlinks.sh <app_id> ...
+# Usage: ./45-symlinks.sh <app_id> ...
 #
 # Parameters:
 # <app_id>: ID of the application.
