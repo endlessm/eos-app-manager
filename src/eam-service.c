@@ -320,12 +320,12 @@ do_signal:
     g_variant_builder_add (&changed, "{sv}", "AvailableUpdates",
       build_available_updates_variant (service));
 
-    GVariant *params = g_variant_new ("(sa{sv}as)", "com.Endless.AppManager",
+    GVariant *params = g_variant_new ("(sa{sv}as)", "com.endlessm.AppManager",
       &changed, &invalidated);
 
     GError *error = NULL;
     g_dbus_connection_emit_signal (priv->connection, NULL,
-      "/com/Endless/AppManager", "org.freedesktop.DBus.Properties",
+      "/com/endlessm/AppManager", "org.freedesktop.DBus.Properties",
       "PropertiesChanged", params, &error);
 
     if (error) {
@@ -346,7 +346,7 @@ avails_changed_cb (EamService *service, gpointer data)
 
   GError *error = NULL;
   g_dbus_connection_emit_signal (priv->connection, NULL,
-    "/com/Endless/AppManager", "com.Endless.AppManager",
+    "/com/endlessm/AppManager", "com.endlessm.AppManager",
     "AvailableApplicationsChanged", build_avail_pkg_list_variant (service),
     &error);
 
@@ -1029,7 +1029,7 @@ handle_method_call (GDBusConnection *connection, const char *sender,
   EamService *service = EAM_SERVICE (data);
   int method_i;
 
-  if (g_strcmp0 (interface, "com.Endless.AppManager"))
+  if (g_strcmp0 (interface, "com.endlessm.AppManager"))
     return;
 
   for (method_i = 0; method_i < G_N_ELEMENTS (auth_action); method_i++)
@@ -1048,7 +1048,7 @@ handle_get_property (GDBusConnection *connection, const gchar *sender,
 
   eam_service_reset_timer (service);
 
-  if (g_strcmp0 (interface, "com.Endless.AppManager"))
+  if (g_strcmp0 (interface, "com.endlessm.AppManager"))
     return NULL;
 
   if (!g_strcmp0 (name, "AvailableUpdates"))
@@ -1069,7 +1069,7 @@ static GDBusNodeInfo*
 load_introspection (GError **error)
 {
   GDBusNodeInfo *info = NULL;
-  GBytes *data = g_resources_lookup_data ("/com/Endless/AppManager/eam-dbus-interface.xml",
+  GBytes *data = g_resources_lookup_data ("/com/endlessm/AppManager/eam-dbus-interface.xml",
     G_RESOURCE_LOOKUP_FLAGS_NONE, error);
 
   if (!data)
@@ -1107,7 +1107,7 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
   }
 
   priv->registration_id = g_dbus_connection_register_object (connection,
-    "/com/Endless/AppManager", introspection->interfaces[0], &interface_vtable,
+    "/com/endlessm/AppManager", introspection->interfaces[0], &interface_vtable,
     service, NULL, &error);
 
   if (!priv->registration_id) {

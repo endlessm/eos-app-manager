@@ -1,4 +1,4 @@
 [D-BUS Service]
-Name=com.Endless.AppManager
+Name=com.endlessm.AppManager
 Exec=@bindir@/eam
 User=@EAM_USER@

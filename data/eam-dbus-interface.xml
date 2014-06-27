@@ -5,12 +5,12 @@
 
 <node>
   <!--
-      com.Endless.AppManager:
+      com.endlessm.AppManager:
       @short_description: The EOS Application Manager service
 
       This is the interface you use to talk with the EOS Application Manager.
   -->
-  <interface name="com.Endless.AppManager">
+  <interface name="com.endlessm.AppManager">
 
     <!--
 	AvailableUpdates as read-only:

@@ -1,11 +1,11 @@
 #!/bin/sh
 
 GDBUS=`which gdbus`
-PARAMS="--system --dest com.Endless.AppManager --object-path /com/Endless/AppManager"
+PARAMS="--system --dest com.endlessm.AppManager --object-path /com/endlessm/AppManager"
 
 call() {
     method=$1; shift
-    ${GDBUS} call ${PARAMS} --method com.Endless.AppManager.${method} $*
+    ${GDBUS} call ${PARAMS} --method com.endlessm.AppManager.${method} $*
 }
 
 introspect() {
