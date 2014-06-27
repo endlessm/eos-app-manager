@@ -16,7 +16,6 @@
 #include "eam-os.h"
 #include "eam-version.h"
 
-#define FULL_UPDATE_SCRIPTDIR "update/full"
 #define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
 #define ROLLBACK_SCRIPTDIR "update/rollback"
 
@@ -104,8 +103,7 @@ rollback_cb (GObject *source, GAsyncResult *result, gpointer data)
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
   GCancellable *cancellable = g_task_get_cancellable (task);
 
-  EamInstall *install = eam_install_new_with_scripts (priv->appid,
-    FULL_UPDATE_SCRIPTDIR, ROLLBACK_SCRIPTDIR);
+  EamInstall *install = eam_install_new_update (priv->appid);
   eam_install_run_async (install, cancellable, fallback_cb, task);
 }
 
@@ -361,8 +359,7 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (!json) {
     /* No xdelta updates available. Try the full update */
     GCancellable *cancellable = g_task_get_cancellable (task);
-    EamInstall *install = eam_install_new_with_scripts (priv->appid,
-      FULL_UPDATE_SCRIPTDIR, ROLLBACK_SCRIPTDIR);
+    EamInstall *install = eam_install_new_update (priv->appid);
     eam_install_run_async (install, cancellable, fallback_cb, task);
 
     return;

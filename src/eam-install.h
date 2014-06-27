@@ -41,9 +41,7 @@ GType           eam_install_get_type                               (void) G_GNUC
 
 EamTransaction *eam_install_new                                    (const gchar *appid);
 
-EamInstall     *eam_install_new_with_scripts                       (const gchar *appid,
-                                                                    const gchar *scriptdir,
-                                                                    const gchar *rollbackdir);
+EamInstall     *eam_install_new_update                             (const gchar *appid);
 
 void            eam_install_run_async                              (EamInstall *install,
                                                                     GCancellable *cancellable,

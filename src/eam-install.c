@@ -15,8 +15,10 @@
 #include "eam-os.h"
 #include "eam-version.h"
 
-#define DEFAULT_SCRIPTDIR "install/run"
-#define DEFAULT_ROLLBACK_SCRIPTDIR "install/rollback"
+#define INSTALL_SCRIPTDIR "install/run"
+#define INSTALL_ROLLBACKDIR "install/rollback"
+#define UPDATE_SCRIPTDIR "update/full"
+#define UPDATE_ROLLBACKDIR "update/rollback"
 
 typedef struct _EamBundle        EamBundle;
 
@@ -27,14 +29,40 @@ struct _EamBundle
   gchar *hash;
 };
 
+typedef enum {
+  EAM_ACTION_INSTALL, /* Install */
+  EAM_ACTION_UPDATE,  /* Update downloading the complete bundle */
+} EamAction;
+
+/* EamAction GType definition */
+#define EAM_TYPE_ACTION	(eam_action_get_type())
+GType eam_action_get_type (void) G_GNUC_CONST;
+
+GType
+eam_action_get_type (void)
+{
+  static GType type = 0;
+
+  if (type == 0)
+  {
+    static const GEnumValue values[] = {
+      { EAM_ACTION_INSTALL, "EAM_ACTION_INSTALL", "install" },
+      { EAM_ACTION_UPDATE, "EAM_ACTION_UPATE", "update" },
+      { 0, NULL, NULL }
+    };
+    type = g_enum_register_static (
+      g_intern_static_string ("EamAction"),
+      values);
+  }
+  return type;
+}
+
 typedef struct _EamInstallPrivate	EamInstallPrivate;
 
 struct _EamInstallPrivate
 {
   gchar *appid;
-  gchar *scriptdir;
-  gchar *rollback_scriptdir;
-
+  EamAction action;
   EamBundle *bundle;
 };
 
@@ -51,8 +79,7 @@ G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
 enum
 {
   PROP_APPID = 1,
-  PROP_SCRIPTDIR,
-  PROP_ROLLBACK_SCRIPTDIR,
+  PROP_ACTION,
 };
 
 static void
@@ -107,8 +134,6 @@ eam_install_reset (EamInstall *self)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->scriptdir, g_free);
-  g_clear_pointer (&priv->rollback_scriptdir, g_free);
   g_clear_pointer (&priv->bundle, eam_bundle_free);
 }
 
@@ -129,11 +154,8 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
     break;
-  case PROP_SCRIPTDIR:
-    priv->scriptdir = g_value_dup_string (value);
-    break;
-  case PROP_ROLLBACK_SCRIPTDIR:
-    priv->rollback_scriptdir = g_value_dup_string (value);
+  case PROP_ACTION:
+    priv->action = g_value_get_enum (value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -151,11 +173,8 @@ eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
   case PROP_APPID:
     g_value_set_string (value, priv->appid);
     break;
-  case PROP_SCRIPTDIR:
-    g_value_set_string (value, priv->scriptdir);
-    break;
-  case PROP_ROLLBACK_SCRIPTDIR:
-    g_value_set_string (value, priv->rollback_scriptdir);
+  case PROP_ACTION:
+    g_value_set_enum (value, priv->action);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -175,32 +194,20 @@ eam_install_class_init (EamInstallClass *klass)
   /**
    * EamInstall:appid:
    *
-   * The application ID to install.
+   * The application ID to install or update.
    */
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   /**
-   * EamInstall:scriptdir:
+   * EamInstall:action:
    *
-   * The path to the directory where the scripts to run during the installation process are
+   * The action type to perform: install or update.
    */
-  g_object_class_install_property (object_class, PROP_SCRIPTDIR,
-    g_param_spec_string ("scriptdir", "Path to the installation scripts directory",
-      "Path to the directory that contains the scripts to be run during the installation",
-      DEFAULT_SCRIPTDIR, G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamInstall:rollback-scriptdir:
-   *
-   * The path to the directory where the scripts to run if the installation process goes wrong
-   * are.
-   */
-  g_object_class_install_property (object_class, PROP_ROLLBACK_SCRIPTDIR,
-    g_param_spec_string ("rollback-scriptdir", "Path to the rollback installation scripts directory",
-      "Path to the directory that contains the scripts to be run if the installation fails",
-      DEFAULT_ROLLBACK_SCRIPTDIR, G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (object_class, PROP_ACTION,
+    g_param_spec_enum ("action", "Action type", "Action type", EAM_TYPE_ACTION,
+      EAM_ACTION_INSTALL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_PRIVATE));
 }
 
 static void
@@ -221,19 +228,17 @@ eam_install_new (const gchar *appid)
 }
 
 /**
- * eam_install_new_with_scripts:
- * @appid: the application ID to install.
- * @scriptdir: the path to the directory containing the installation scripts
- * @rollbackdir: the path to the directory containing the rollback scripts
+ * eam_install_new_update:
+ * @appid: the application ID to update.
  *
- * Returns: a new instance of #EamInstall that will run the scripts in
- * @scriptdir (and @rollbackdir if something goes wrong).
+ * Returns: a new instance of #EamInstall that will perform a full update of
+ * the @appid application.
  */
 EamInstall *
-eam_install_new_with_scripts (const gchar *appid, const gchar *scriptdir, const gchar *rollbackdir)
+eam_install_new_update (const gchar *appid)
 {
   return g_object_new (EAM_TYPE_INSTALL, "appid", appid,
-    "scriptdir", scriptdir, "rollback-scriptdir", rollbackdir, NULL);
+    "action", EAM_ACTION_UPDATE, NULL);
 }
 
 /**
@@ -277,6 +282,36 @@ build_tarball_filename (const gchar *appid)
   return ret;
 }
 
+static const gchar *
+get_rollback_scriptdir (EamInstall *self)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  switch (priv->action) {
+  case EAM_ACTION_INSTALL:
+    return INSTALL_ROLLBACKDIR;
+  case EAM_ACTION_UPDATE:
+    return UPDATE_ROLLBACKDIR;
+  default:
+    g_assert_not_reached ();
+  }
+}
+
+static const gchar *
+get_scriptdir (EamInstall *self)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  switch (priv->action) {
+  case EAM_ACTION_INSTALL:
+    return INSTALL_SCRIPTDIR;
+  case EAM_ACTION_UPDATE:
+    return UPDATE_SCRIPTDIR;
+  default:
+    g_assert_not_reached ();
+  }
+}
+
 static void
 rollback (GTask *task)
 {
@@ -284,7 +319,8 @@ rollback (GTask *task)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   /* scripts directory path */
-  char *dir = g_build_filename (eam_config_scriptdir (), priv->rollback_scriptdir, NULL);
+  char *dir = g_build_filename (eam_config_scriptdir (),
+    get_rollback_scriptdir (self), NULL);
 
   /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
@@ -358,7 +394,8 @@ run_scripts (EamInstall *self, gchar *tarball, GTask *task)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   /* scripts directory path */
-  char *dir = g_build_filename (eam_config_scriptdir (), priv->scriptdir, NULL);
+  char *dir = g_build_filename (eam_config_scriptdir (),
+    get_scriptdir (self), NULL);
 
   /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
