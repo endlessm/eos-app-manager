@@ -18,15 +18,24 @@
 #define DEFAULT_SCRIPTDIR "install/run"
 #define DEFAULT_ROLLBACK_SCRIPTDIR "install/rollback"
 
+typedef struct _EamBundle        EamBundle;
+
+struct _EamBundle
+{
+  gchar *download_url;
+  gchar *signature_url;
+  gchar *hash;
+};
+
 typedef struct _EamInstallPrivate	EamInstallPrivate;
 
 struct _EamInstallPrivate
 {
   gchar *appid;
-  gchar *hash;
-  gchar *signature_url;
   gchar *scriptdir;
   gchar *rollback_scriptdir;
+
+  EamBundle *bundle;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -53,16 +62,54 @@ transaction_iface_init (EamTransactionInterface *iface)
   iface->finish = eam_install_transaction_finish;
 }
 
+static EamBundle *
+eam_bundle_new_from_json_object (JsonObject *json, GError **error)
+{
+  g_return_val_if_fail (json, NULL);
+
+  const gchar *downl = json_object_get_string_member (json, "downloadLink");
+  const gchar *sign = json_object_get_string_member (json, "signatureLink");
+  const gchar *hash = json_object_get_string_member (json, "shaHash");
+
+  if (!downl || !hash) {
+    g_set_error (error, EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_INVALID_FILE,
+       _("Not valid application link"));
+    return NULL;
+  }
+
+  if (!sign) {
+    g_set_error (error, EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_INVALID_FILE,
+       _("Not valid signature link"));
+    return NULL;
+  }
+
+  EamBundle *bundle = g_slice_new (EamBundle);
+  bundle->download_url = g_strdup (downl);
+  bundle->signature_url = g_strdup (sign);
+  bundle->hash = g_strdup (hash);
+
+  return bundle;
+}
+
+static void
+eam_bundle_free (EamBundle *bundle)
+{
+  g_free (bundle->download_url);
+  g_free (bundle->signature_url);
+  g_free (bundle->hash);
+
+  g_slice_free (EamBundle, bundle);
+}
+
 static void
 eam_install_reset (EamInstall *self)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->hash, g_free);
-  g_clear_pointer (&priv->signature_url, g_free);
   g_clear_pointer (&priv->scriptdir, g_free);
   g_clear_pointer (&priv->rollback_scriptdir, g_free);
+  g_clear_pointer (&priv->bundle, eam_bundle_free);
 }
 
 static void
@@ -293,10 +340,11 @@ static inline void
 create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  g_assert (priv->hash);
+  g_assert (priv->bundle);
+  g_assert (priv->bundle->hash);
 
   gchar *filename = build_sha256sum_filename (priv->appid);
-  gchar *contents = g_strconcat (priv->hash, "\t", tarball, "\n", NULL);
+  gchar *contents = g_strconcat (priv->bundle->hash, "\t", tarball, "\n", NULL);
 
   g_file_set_contents (filename, contents, -1, error);
 
@@ -397,7 +445,7 @@ dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   EamWc *wc = eam_wc_new ();
-  eam_wc_request_async (wc, priv->signature_url, filename, cancellable,
+  eam_wc_request_async (wc, priv->bundle->signature_url, filename, cancellable,
     dl_sign_cb, task);
   g_object_unref (wc);
   g_free (filename);
@@ -505,34 +553,17 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  const gchar *uri = json_object_get_string_member (json, "downloadLink");
-  const gchar *sign = json_object_get_string_member (json, "signatureLink");
-  const gchar *hash = json_object_get_string_member (json, "shaHash");
-
-  if (!uri || !hash) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-       EAM_TRANSACTION_ERROR_INVALID_FILE,
-       _("Not valid application link"));
+  priv->bundle = eam_bundle_new_from_json_object (json, &error);
+  if (!priv->bundle) {
+    g_task_return_error (task, error);
     goto bail;
-  }
-
-  if (!sign) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-      EAM_TRANSACTION_ERROR_INVALID_FILE,
-      _("Not valid signature link"));
-    goto bail;
-  }
-
-  {
-    g_free (priv->hash);
-    priv->hash = g_strdup (hash);
-    priv->signature_url = g_strdup (sign);
   }
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   EamWc *wc = eam_wc_new ();
   gchar *filename = build_tarball_filename (priv->appid);
-  eam_wc_request_async (wc, uri, filename, cancellable, dl_bundle_cb, task);
+  eam_wc_request_async (wc, priv->bundle->download_url, filename,
+    cancellable, dl_bundle_cb, task);
   g_object_unref (wc);
   g_free (filename);
   return;
