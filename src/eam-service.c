@@ -675,8 +675,8 @@ run_service_install (EamService *service, const gchar *appid,
 
     run_eam_transaction (service, invocation, install_or_uninstall_cb);
   } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
-    /* install the latest version (which is NULL) */
-    priv->trans = eam_install_new (appid, NULL);
+    /* install the latest version */
+    priv->trans = eam_install_new (appid);
     run_eam_transaction (service, invocation, install_or_uninstall_cb);
   } else {
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,

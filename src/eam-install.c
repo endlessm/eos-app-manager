@@ -23,7 +23,6 @@ typedef struct _EamInstallPrivate	EamInstallPrivate;
 struct _EamInstallPrivate
 {
   gchar *appid;
-  gchar *version;
   gchar *hash;
   gchar *signature_url;
   gchar *scriptdir;
@@ -43,7 +42,6 @@ G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
 enum
 {
   PROP_APPID = 1,
-  PROP_VERSION,
   PROP_SCRIPTDIR,
   PROP_ROLLBACK_SCRIPTDIR,
 };
@@ -61,7 +59,6 @@ eam_install_reset (EamInstall *self)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->version, g_free);
   g_clear_pointer (&priv->hash, g_free);
   g_clear_pointer (&priv->signature_url, g_free);
   g_clear_pointer (&priv->scriptdir, g_free);
@@ -85,9 +82,6 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
     break;
-  case PROP_VERSION:
-    priv->version = g_value_dup_string (value);
-    break;
   case PROP_SCRIPTDIR:
     priv->scriptdir = g_value_dup_string (value);
     break;
@@ -109,9 +103,6 @@ eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
   switch (prop_id) {
   case PROP_APPID:
     g_value_set_string (value, priv->appid);
-    break;
-  case PROP_VERSION:
-    g_value_set_string (value, priv->version);
     break;
   case PROP_SCRIPTDIR:
     g_value_set_string (value, priv->scriptdir);
@@ -144,15 +135,6 @@ eam_install_class_init (EamInstallClass *klass)
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   /**
-   * EamInstall:version:
-   *
-   * The application version to install.
-   */
-  g_object_class_install_property (object_class, PROP_VERSION,
-    g_param_spec_string ("version", "App version", "Application version", NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
    * EamInstall:scriptdir:
    *
    * The path to the directory where the scripts to run during the installation process are
@@ -182,15 +164,13 @@ eam_install_init (EamInstall *self)
 /**
  * eam_install_new:
  * @appid: the application ID to install.
- * @version: the target application version to install.
  *
  * Returns: a new instance of #EamInstall with #EamTransaction interface.
  */
 EamTransaction *
-eam_install_new (const gchar *appid, const gchar *version)
+eam_install_new (const gchar *appid)
 {
-  return g_object_new (EAM_TYPE_INSTALL, "appid", appid, "version", version,
-    NULL);
+  return g_object_new (EAM_TYPE_INSTALL, "appid", appid, NULL);
 }
 
 /**
@@ -429,7 +409,7 @@ bail:
 }
 
 static JsonObject *
-find_pkg_version (JsonArray *array, const gchar *version)
+find_pkg_version (JsonArray *array)
 {
   GList *el = json_array_get_elements (array);
   if (!el)
@@ -454,13 +434,6 @@ find_pkg_version (JsonArray *array, const gchar *version)
     if (!verstr)
       continue;
 
-    /* do we have a version and does this json have this very version
-     * to install? */
-    if (version && !g_strcmp0 (verstr, version)) {
-      max = json;
-      goto bail;
-    }
-
     /* the fist element is our local max in the first iteration */
     if (!max) {
       max = json;
@@ -479,7 +452,6 @@ find_pkg_version (JsonArray *array, const gchar *version)
     eam_pkg_version_free (maxver);
   }
 
-bail:
   g_list_free (el);
   return max;
 }
@@ -521,7 +493,7 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   JsonObject *json = NULL;
   if (JSON_NODE_HOLDS_ARRAY (root)) {
-    json = find_pkg_version (json_node_get_array (root), priv->version);
+    json = find_pkg_version (json_node_get_array (root));
   } else if (JSON_NODE_HOLDS_OBJECT (root)) {
     json = json_node_get_object (root);
   }
@@ -536,7 +508,6 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   const gchar *path = json_object_get_string_member (json, "downloadLink");
   const gchar *sign = json_object_get_string_member (json, "signatureLink");
   const gchar *hash = json_object_get_string_member (json, "shaHash");
-  const gchar *version = json_object_get_string_member (json, "codeVersion");
 
   if (!path || !hash) {
     g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
@@ -564,8 +535,6 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   {
     g_free (priv->hash);
     priv->hash = g_strdup (hash);
-    if (!priv->version)
-      priv->version = g_strdup (version);
     priv->signature_url = g_strdup (sign);
   }
 
@@ -641,7 +610,7 @@ eam_install_transaction_run_async (EamTransaction *trans, GCancellable *cancella
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
-    priv->appid, priv->version, NULL);
+    priv->appid, NULL, NULL);
 
   if (!uri) {
     g_task_report_new_error (self, callback, data, eam_install_run_async,
