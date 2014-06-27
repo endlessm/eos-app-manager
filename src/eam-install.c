@@ -505,11 +505,11 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  const gchar *path = json_object_get_string_member (json, "downloadLink");
+  const gchar *uri = json_object_get_string_member (json, "downloadLink");
   const gchar *sign = json_object_get_string_member (json, "signatureLink");
   const gchar *hash = json_object_get_string_member (json, "shaHash");
 
-  if (!path || !hash) {
+  if (!uri || !hash) {
     g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
        EAM_TRANSACTION_ERROR_INVALID_FILE,
        _("Not valid application link"));
@@ -520,15 +520,6 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
     g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
       EAM_TRANSACTION_ERROR_INVALID_FILE,
       _("Not valid signature link"));
-    goto bail;
-  }
-
-  gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_DOWNLOAD_LINK, path,
-    NULL);
-  if (!uri) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-      EAM_TRANSACTION_ERROR_PROTOCOL_ERROR,
-      _("Not valid method or protocol version"));
     goto bail;
   }
 
@@ -544,7 +535,6 @@ parse_cb (GObject *source, GAsyncResult *result, gpointer data)
   eam_wc_request_async (wc, uri, filename, cancellable, dl_bundle_cb, task);
   g_object_unref (wc);
   g_free (filename);
-  g_free (uri);
   return;
 
 bail:
