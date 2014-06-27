@@ -31,7 +31,7 @@ confdir = $(sysconfdir)/eos-app-manager
 conf_DATA = $(conf_in_files:.cfg.in=.cfg)
 
 $(conf_DATA): $(conf_in_files) Makefile
-	@sed -e "s|\@pkglibexecdir\@|$(pkglibexecdir)|" -e "s|\@localstatedir\@|$(localstatedir)|" $< > $@
+	@sed -e "s|\@pkglibexecdir\@|$(pkglibexecdir)|" -e "s|\@localstatedir\@|$(localstatedir)|" -e "s|\@pkgdatadir\@|$(pkgdatadir)|" $< > $@
 
 polkit_rules_in_files = com.endlessm.app-installer.rules.in
 polkit_rulesdir = $(datadir)/polkit-1/rules.d

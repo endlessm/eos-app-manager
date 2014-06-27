@@ -9,7 +9,7 @@
   "serveraddress = http://nohost\n" \
   "protocolversion = v1000\n" \
   "scriptdir = /usr/libexec/eam\n" \
-  "gpgdir = /var/lib/eam\n" \
+  "gpgkeyring = /usr/share/eam/keyr.gpg\n" \
   "timeout = 10\n"
 
 static void
@@ -27,7 +27,7 @@ test_config_basic (void)
 
   g_assert_cmpstr (eam_config_appdir (), ==, "/");
   g_assert_cmpstr (eam_config_dldir (), ==, "/tmp");
-  g_assert_cmpstr (eam_config_gpgdir (), ==, "/var/lib/eam");
+  g_assert_cmpstr (eam_config_gpgkeyring (), ==, "/usr/share/eam/keyr.gpg");
 
   eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, NULL, 0);
   g_assert_cmpstr (eam_config_appdir (), ==, "/");

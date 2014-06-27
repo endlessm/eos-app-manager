@@ -4,5 +4,5 @@ downloaddir = @localstatedir@/cache/eos-app-manager
 serveraddress = http://appupdates.endlessm.com
 protocolversion = v1
 scriptdir = @pkglibexecdir@
-gpgdir = @localstatedir@/lib/eos-app-manager/keyring
+gpgkeyring = @pkgdatadir@/eos-keyring.gpg
 timeout = 300
