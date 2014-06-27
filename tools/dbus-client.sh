@@ -5,7 +5,7 @@ PARAMS="--system --dest com.endlessm.AppManager --object-path /com/endlessm/AppM
 
 call() {
     method=$1; shift
-    ${GDBUS} call ${PARAMS} --method com.endlessm.AppManager.${method} $*
+    ${GDBUS} call ${PARAMS} --method com.endlessm.AppManager.${method} --timeout 1000 $*
 }
 
 introspect() {

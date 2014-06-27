@@ -23,9 +23,9 @@ fi
 
 # Directory where the Endless OS GPG's keyring is stored.
 #
-# If EAM_GPGDIR is not set, it is set to a default value.
-if [ -z ${EAM_GPGDIR+x} ]; then
-    EAM_GPGDIR="/var/lib/eos-app-manager/keyring"
+# If EAM_GPGKEYRING is not set, it is set to a default value.
+if [ -z ${EAM_GPGKEYRING+x} ]; then
+    EAM_GPGKEYRING="/usr/share/eos-app-manager/eos-keyring.gpg"
 fi
 
 # Subdirectories in each application's installation directory,

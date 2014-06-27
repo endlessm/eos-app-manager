@@ -8,7 +8,7 @@
 #define EAM_TEST_DIR "/tmp/eam-test"
 #define EAM_PREFIX EAM_TEST_DIR "/endless"
 #define EAM_TMP EAM_TEST_DIR "/tmp"
-#define EAM_GPGDIR EAM_TEST_DIR "/keyring"
+#define EAM_GPGKEYRING EAM_TEST_DIR "/keyring.gpg"
 
 #define SCRIPTDIR_INSTALL "../scripts/install/run"
 #define SCRIPTDIR_INSTALL_ROLLBACK "../scripts/install/rollback"
@@ -25,7 +25,6 @@ setup_filesystem (void)
   const gint mode = 0700;
   g_mkdir (EAM_TEST_DIR, mode);
   g_mkdir (EAM_TMP, mode);
-  g_mkdir (EAM_GPGDIR, mode);
   g_mkdir (EAM_PREFIX, mode);
   g_mkdir (EAM_PREFIX "/share", mode);
   g_mkdir (EAM_PREFIX "/share/applications", mode);
@@ -90,7 +89,7 @@ setup_gpg (void)
 {
   gchar *key = g_test_build_filename (G_TEST_DIST, "data", "dummy.pub", NULL);
   GSubprocess *gpg = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, NULL, "gpg",
-    "--homedir", EAM_GPGDIR, "--import", key, NULL);
+    "--keyring", EAM_GPGKEYRING, "--no-default-keyring", "--import", key, NULL);
   g_free (key);
 
   g_assert_nonnull (gpg);
@@ -339,7 +338,7 @@ main (int argc, char *argv[])
   /* Set environment variables */
   g_setenv ("EAM_PREFIX", EAM_PREFIX, TRUE);
   g_setenv ("EAM_TMP", EAM_TMP, TRUE);
-  g_setenv ("EAM_GPGDIR", EAM_GPGDIR, TRUE);
+  g_setenv ("EAM_GPGKEYRING", EAM_GPGKEYRING, TRUE);
 
   /* Initialize script arguments */
   script_args[0] = "test-app";

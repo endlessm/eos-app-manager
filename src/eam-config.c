@@ -39,13 +39,14 @@ eam_config_get (void)
  * @saddr: the new saddr or %NULL
  * @protver: the new protver or %NULL
  * @scriptdir: the new scriptdir or %NULL
+ * @gpgkeyring: the new keyring or %NULL
  * @timeout: the new timeout or %0
  *
  * Updates the values of the configurations if they are not %NULL or %0
  **/
 void
 eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
-  gchar *saddr, gchar *protver, gchar *scriptdir, gchar *gpgdir, guint timeout)
+  gchar *saddr, gchar *protver, gchar *scriptdir, gchar *gpgkeyring, guint timeout)
 {
   if (!cfg)
     cfg = eam_config_get ();
@@ -149,7 +150,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 
   gboolean ret = FALSE;
   gboolean own = FALSE;
-  gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir, *gpgdir;
+  gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir, *gpgkeyring;
   guint timeout;
 
   if (!keyfile) {
@@ -164,10 +165,10 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   dldir = get_str (keyfile, grp, "downloaddir");
   protver = get_str (keyfile, grp, "protocolversion");
   scriptdir = get_str (keyfile, grp, "scriptdir");
-  gpgdir = get_str (keyfile, grp, "gpgdir");
+  gpgkeyring = get_str (keyfile, grp, "gpgkeyring");
   timeout = g_key_file_get_integer (keyfile, grp, "timeout", NULL);
 
-  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir, gpgdir,
+  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir, gpgkeyring,
     timeout);
 
   ret = TRUE;
