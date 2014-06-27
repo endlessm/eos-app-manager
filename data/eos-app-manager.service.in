@@ -4,5 +4,5 @@ Documentation=man:eam(8)
 
 [Service]
 Type=dbus
-BusName=com.Endless.AppManager
+BusName=com.endlessm.AppManager
 ExecStart=@bindir@/eam

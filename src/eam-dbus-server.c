@@ -234,7 +234,7 @@ eam_dbus_server_new (EamPkgdb *db)
  * eam_dbus_server_run:
  * @server: a #EamDbusServer.
  *
- * Acquire the DBus name "com.Endlesss.AppManager" and launch de
+ * Acquire the DBus name "com.endlesssm.AppManager" and launch de
  * AppManager service.
  *
  * Returns: %TRUE if the server is launched. Otherwise %FALSE;
@@ -256,7 +256,7 @@ eam_dbus_server_run (EamDbusServer *server)
     return FALSE;
   }
 
-  priv->busowner = g_bus_own_name (G_BUS_TYPE_SYSTEM, "com.Endless.AppManager",
+  priv->busowner = g_bus_own_name (G_BUS_TYPE_SYSTEM, "com.endlessm.AppManager",
     G_BUS_NAME_OWNER_FLAGS_REPLACE | G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT,
     on_bus_acquired, on_name_acquired, on_name_lost,
     g_object_ref (server), (GDestroyNotify) g_object_unref);
