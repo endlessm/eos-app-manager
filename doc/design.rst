@@ -221,7 +221,7 @@ dbus service file, which lives in `/endless/share/dbus-1/services/`.
 Applications are DBus-activated, indicating that by specifying in their
 desktop file
 
-| DBusActivatable=True
+| DBusActivatable=true
 
 The applications service file tells it which DBus service to run by specifying e.g.:
 
