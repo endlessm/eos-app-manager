@@ -168,7 +168,7 @@ eam_fs_sanity_check (void)
     /* Create the applications installation directory if it does not exist */
     if (!applications_directory_exists () && !applications_directory_create ()) {
         g_critical ("Failed to create the applications directory structure '%s' under '%s'", appdir, ROOT_DIR);
-      return FALSE;
+	return FALSE;
     }
     if (!applications_directory_symlink_exists () && !applications_directory_symlink_create ()) {
         g_critical ("Failed to create the symbolic link '%s' to the applications directory", appdir);
@@ -237,8 +237,8 @@ eam_fs_sanity_delete (const gchar *path)
     GFile *file = g_file_new_for_path (path);
 
     /* Check for symlinks first, to make an early decision if possible */
-    GFileInfo *file_info = g_file_query_info(file, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
-                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, &error);
+    GFileInfo *file_info = g_file_query_info (file, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
+					      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, &error);
     if (error) {
       g_warning ("Failure querying information for file '%s': %s\n", path, error->message);
       g_clear_error (&error);
