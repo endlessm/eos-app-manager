@@ -93,9 +93,6 @@ bail:
     g_free (g_schemas_dir);
     g_free (dbus_services_dir);
 
-    if (!retval && applications_directory_exists () && !applications_directory_clear ())
-        g_critical ("Unable to clear files after the failed applications' directory creation");
-
     return retval;
 }
 
@@ -165,8 +162,8 @@ eam_fs_sanity_check (void)
     const gchar *appdir = eam_config_appdir ();
     g_assert (appdir);
 
-    /* Create the applications installation directory if it does not exist */
-    if (!applications_directory_exists () && !applications_directory_create ()) {
+    /* Ensure the applications installation directory exists */
+    if (!applications_directory_create ()) {
         g_critical ("Failed to create the applications directory structure '%s' under '%s'", appdir, ROOT_DIR);
 	return FALSE;
     }
