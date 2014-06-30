@@ -32,6 +32,8 @@ fi
 # that contain certain metadata files used by the OS to
 # launch the application and identify the services it offers,
 # among other things.
+# Application binaries subdirectory.
+APP_BIN_SUBDIR="bin"
 # Application .desktop file subdirectory.
 APP_DESKTOP_FILES_SUBDIR="share/applications"
 # Application desktop icons subdirectory.
@@ -45,6 +47,8 @@ APP_DBUS_SERVICES_SUBDIR="share/dbus-1/services"
 # These directories typically contain symbolic links to the
 # metadata files in the installation directory of every
 # application.
+# Binaries
+OS_BIN_DIR="${EAM_PREFIX}/bin"
 # Desktop files
 OS_DESKTOP_FILES_DIR="${EAM_PREFIX}/share/applications"
 # Desktop icons directories.
