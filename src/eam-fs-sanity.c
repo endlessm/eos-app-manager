@@ -15,36 +15,6 @@
 #define ROOT_DIR "/var"
 
 static gboolean
-applications_directory_exists ()
-{
-    gboolean retval;
-
-    const gchar *appdir = eam_config_appdir ();
-    g_assert (appdir);
-
-    gchar *dir =  g_build_filename (ROOT_DIR, appdir, NULL);
-    retval = g_file_test (dir, G_FILE_TEST_EXISTS);
-    g_free (dir);
-
-    return retval;
-}
-
-static gboolean
-applications_directory_clear ()
-{
-    gboolean retval;
-
-    const gchar *appdir = eam_config_appdir ();
-    g_assert (appdir);
-
-    gchar *dir = g_build_filename (ROOT_DIR, appdir, NULL);
-    retval = eam_fs_sanity_delete (dir);
-    g_free (dir);
-
-    return retval;
-}
-
-static gboolean
 applications_directory_create (void)
 {
     gboolean retval = TRUE;
