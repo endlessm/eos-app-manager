@@ -6,6 +6,7 @@
 #include "eam-fs-sanity.h"
 #include "eam-config.h"
 
+#define BIN_SUBDIR "bin"
 #define DESKTOP_FILES_SUBDIR "share/applications"
 #define DESKTOP_ICONS_SUBDIR "share/icons/EndlessOS"
 #define DBUS_SERVICES_SUBDIR "share/dbus-1/services"
@@ -52,12 +53,18 @@ applications_directory_create (void)
     g_assert (appdir);
 
     /* Create the applications' directory structure under ROOT_DIR */
+    gchar *bin_dir = g_build_filename (ROOT_DIR, appdir, BIN_SUBDIR, NULL);
     gchar *desktop_files_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_FILES_SUBDIR, NULL);
     gchar *desktop_icons_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_ICONS_SUBDIR, NULL);
     gchar *dbus_services_dir = g_build_filename (ROOT_DIR, appdir, DBUS_SERVICES_SUBDIR, NULL);
     gchar *g_schemas_dir = g_build_filename (ROOT_DIR, appdir, G_SCHEMAS_SUBDIR, NULL);
     const gint mode = 0755;
 
+    if (g_mkdir_with_parents (bin_dir, mode) != 0) {
+        g_critical ("Unable to create '%s'", desktop_files_dir);
+        retval = FALSE;
+        goto bail;
+    }
     if (g_mkdir_with_parents (desktop_files_dir, mode) != 0) {
         g_critical ("Unable to create '%s'", desktop_files_dir);
         retval = FALSE;
@@ -80,6 +87,7 @@ applications_directory_create (void)
     }
 
 bail:
+    g_free (bin_dir);
     g_free (desktop_files_dir);
     g_free (desktop_icons_dir);
     g_free (g_schemas_dir);
@@ -168,12 +176,17 @@ eam_fs_sanity_check (void)
     }
 
     /* Check if the existing applications directory structure is correct */
+    gchar *bin_dir = g_build_filename (appdir, BIN_SUBDIR, NULL);
     gchar *desktop_files_dir = g_build_filename (appdir, DESKTOP_FILES_SUBDIR, NULL);
     gchar *desktop_icons_dir = g_build_filename (appdir, DESKTOP_ICONS_SUBDIR, NULL);
     gchar *dbus_services_dir = g_build_filename (appdir, DBUS_SERVICES_SUBDIR, NULL);
     gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
 
     if (!g_file_test (appdir, G_FILE_TEST_IS_DIR)) {
+        g_critical ("Missing directory: '%s' does not exist", appdir);
+        retval = FALSE;
+    }
+    if (!g_file_test (bin_dir, G_FILE_TEST_IS_DIR)) {
         g_critical ("Missing directory: '%s' does not exist", appdir);
         retval = FALSE;
     }
@@ -194,6 +207,7 @@ eam_fs_sanity_check (void)
         retval = FALSE;
     }
 
+    g_free (bin_dir);
     g_free (desktop_files_dir);
     g_free (desktop_icons_dir);
     g_free (dbus_services_dir);
