@@ -16,7 +16,6 @@
 #include "eam-refresh.h"
 #include "eam-install.h"
 #include "eam-uninstall.h"
-#include "eam-update.h"
 #include "eam-list-avail.h"
 #include "eam-dbus-utils.h"
 #include "eam-version.h"
@@ -670,7 +669,7 @@ run_service_install (EamService *service, const gchar *appid,
     EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
     gchar *from_version = eam_pkg_version_as_string (pkg_version);
 
-    priv->trans = eam_update_new (appid, from_version);
+    priv->trans = eam_install_new_from_version (appid, from_version);
     g_free (from_version);
 
     run_eam_transaction (service, invocation, install_or_uninstall_cb);

@@ -41,16 +41,8 @@ GType           eam_install_get_type                               (void) G_GNUC
 
 EamTransaction *eam_install_new                                    (const gchar *appid);
 
-EamInstall     *eam_install_new_update                             (const gchar *appid);
-
-void            eam_install_run_async                              (EamInstall *install,
-                                                                    GCancellable *cancellable,
-                                                                    GAsyncReadyCallback callback,
-                                                                    gpointer data);
-
-gboolean        eam_install_finish                                 (EamInstall *install,
-                                                                    GAsyncResult *res,
-                                                                    GError **error);
+EamTransaction *eam_install_new_from_version                       (const gchar *appid,
+                                                                    const gchar *from_version);
 
 G_END_DECLS
 
