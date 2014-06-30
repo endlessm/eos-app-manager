@@ -21,7 +21,7 @@ $(systemdservice_DATA): $(systemdservice_in_files) $(systemdsystemunitdir) Makef
 	@sed -e "s|\@bindir\@|$(bindir)|" $< > $@
 
 xsessiondir = $(sysconfdir)/X11/Xsession.d
-xsession_DATA = 65eam_xdg_data_dirs_update
+xsession_DATA = 65eam_paths_update
 
 $(dbusconf_DATA): $(dbusconf_in_files) Makefile
 	@sed -e "s|\@EAM_USER\@|$(EAM_USER)|" $< > $@

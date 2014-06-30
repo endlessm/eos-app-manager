@@ -1,7 +1,0 @@
-# Copyright 2014 Endless Mobile, Inc.
-# This file is sourced by Xsession(5), not executed.
-# Add additional XDG_DATA_DIRS path.
-
-EAM_PREFIX="/endless/share"
-XDG_DATA_DIRS=${XDG_DATA_DIRS}:${EAM_PREFIX}
-export XDG_DATA_DIRS
