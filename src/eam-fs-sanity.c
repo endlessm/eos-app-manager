@@ -31,7 +31,7 @@ applications_directory_create (void)
     const gint mode = 0755;
 
     if (g_mkdir_with_parents (bin_dir, mode) != 0) {
-        g_critical ("Unable to create '%s'", desktop_files_dir);
+        g_critical ("Unable to create '%s'", bin_dir);
         retval = FALSE;
         goto bail;
     }
@@ -154,7 +154,7 @@ eam_fs_sanity_check (void)
         retval = FALSE;
     }
     if (!g_file_test (bin_dir, G_FILE_TEST_IS_DIR)) {
-        g_critical ("Missing directory: '%s' does not exist", appdir);
+        g_critical ("Missing directory: '%s' does not exist", bin_dir);
         retval = FALSE;
     }
     if (!g_file_test (desktop_files_dir, G_FILE_TEST_IS_DIR)) {
