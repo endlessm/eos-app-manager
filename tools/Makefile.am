@@ -17,7 +17,7 @@ eos-select-app-server: eos-select-app-server.in Makefile
 EXTRA_DIST = \
 	dbus-client.sh \
 	eos-select-app-server.in \
-	$(NULL);
+	$(NULL)
 
 bin_SCRIPTS = \
 	eos-select-app-server \
