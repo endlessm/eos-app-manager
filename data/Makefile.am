@@ -18,7 +18,7 @@ systemdservicedir = $(systemdsystemunitdir)
 systemdservice_DATA = $(systemdservice_in_files:.service.in=.service)
 
 $(systemdservice_DATA): $(systemdservice_in_files) $(systemdsystemunitdir) Makefile
-	@sed -e "s|\@bindir\@|$(bindir)|" $< > $@
+	@sed -e "s|\@bindir\@|$(bindir)|" -e "s|\@EAM_USER\@|$(EAM_USER)|" $< > $@
 
 xsessiondir = $(sysconfdir)/X11/Xsession.d
 xsession_DATA = 65eam_paths_update

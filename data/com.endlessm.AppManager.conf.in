@@ -5,7 +5,7 @@
  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
 <busconfig>
 
-  <!-- Only EAM_USER can own the AppManager service -->
+  <!-- Only @EAM_USER@ can own the AppManager service -->
   <policy user="@EAM_USER@">
     <allow own="com.endlessm.AppManager"/>
   </policy>

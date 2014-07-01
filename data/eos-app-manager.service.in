@@ -6,3 +6,4 @@ Documentation=man:eam(8)
 Type=dbus
 BusName=com.endlessm.AppManager
 ExecStart=@bindir@/eam
+User=@EAM_USER@
