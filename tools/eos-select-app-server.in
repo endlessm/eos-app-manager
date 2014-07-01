@@ -1,0 +1,88 @@
+#!/usr/bin/gjs
+// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+
+// Script to select the app server
+//
+// Usage:
+//   eos-select-app-server [default | <app server>]
+//
+// For example:
+//   eos-select-app-server              -- prompts user to select app server
+//   eos-select-app-server default      -- reset to the default app server
+//   eos-select-app-server staging-dev  -- select the staging-dev server
+
+const Gio = imports.gi.Gio;
+const GLib = imports.gi.GLib;
+
+const CONFIG_PATH ='@SYSCONF_DIR@/eos-app-manager';
+
+const servers =
+    ' TRUE http://appupdates.endlessm.com' +
+    ' FALSE http://staging-dev.endlessm-sf.com'
+
+const selectServer = function() {
+    let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection' + servers;
+
+    let response;
+    try {
+        response = GLib.spawn_command_line_sync(command);
+    } catch (e) {
+        logError(e, 'Error executing \'' + localizedExec + '\'');
+        return null;
+    }
+
+    const STATUS = 3;
+    const SELECTION = 1;
+    let status = response[STATUS];
+    let server;
+    if (status == 0) {
+        // User hit OK
+        let selection = response[SELECTION];
+        // Convert to string and trim the new line
+        server = String(selection).trim();
+    } else {
+        // User canceled
+        server = null;
+    }
+    return server;
+}
+
+const getServer = function(args) {
+    let server;
+    if (args.length == 0) {
+        server = selectServer();
+    } else if (args.length == 1) {
+        server = args[0];
+    } else {
+        throw new Error('Invalid command-line: only 0 or 1 argument allowed');
+    }
+    return server;
+}
+
+const refreshAppManager = function() {
+    let command = 'gdbus call --system --dest com.endlessm.AppManager --object-path /com/endlessm/AppManager --method com.endlessm.AppManager.Refresh'
+
+    GLib.spawn_command_line_sync(command);
+}
+
+let server = getServer(ARGV);
+
+if (server) {
+    // Read in existing config file
+    let configFilePath = CONFIG_PATH + '/eam-default.cfg';
+    let configKeyFile = new GLib.KeyFile();
+
+    configKeyFile.load_from_file(configFilePath,
+                                 GLib.KeyFileFlags.KEEP_COMMENTS |
+                                 GLib.KeyFileFlags.KEEP_TRANSLATIONS);
+
+    configKeyFile.set_string("eam", "serveraddress", server);
+
+    // Write out new config file
+    let configFile = Gio.File.new_for_path(configFilePath);
+    let configFileData = configKeyFile.to_data()[0];
+    configFile.replace_contents(configFileData, null, true,
+                                Gio.FileCreateFlags.NONE, null);
+
+    refreshAppManager();
+}
