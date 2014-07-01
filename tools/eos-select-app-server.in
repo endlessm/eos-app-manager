@@ -4,12 +4,11 @@
 // Script to select the app server
 //
 // Usage:
-//   eos-select-app-server [default | <app server>]
+//   eos-select-app-server [<app server>]
 //
 // For example:
 //   eos-select-app-server              -- prompts user to select app server
-//   eos-select-app-server default      -- reset to the default app server
-//   eos-select-app-server staging-dev  -- select the staging-dev server
+//   eos-select-app-server http://my-server-url   -- custom server URL
 
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
@@ -21,7 +20,7 @@ const servers =
     ' FALSE http://staging-dev.endlessm-sf.com'
 
 const selectServer = function() {
-    let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection' + servers;
+    let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection --width 400 --height 200' + servers;
 
     let response;
     try {
