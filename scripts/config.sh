@@ -34,6 +34,8 @@ fi
 # among other things.
 # Application binaries subdirectory.
 APP_BIN_SUBDIR="bin"
+# Application games binaries subdirectory.
+APP_GAMES_SUBDIR="games"
 # Application .desktop file subdirectory.
 APP_DESKTOP_FILES_SUBDIR="share/applications"
 # Application desktop icons subdirectory.
@@ -47,7 +49,7 @@ APP_DBUS_SERVICES_SUBDIR="share/dbus-1/services"
 # These directories typically contain symbolic links to the
 # metadata files in the installation directory of every
 # application.
-# Binaries
+# Binaries (including games)
 OS_BIN_DIR="${EAM_PREFIX}/bin"
 # Desktop files
 OS_DESKTOP_FILES_DIR="${EAM_PREFIX}/share/applications"

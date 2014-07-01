@@ -151,6 +151,7 @@ create_symbolic_links ()
     appid=$1
 
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_BIN_SUBDIR}" "${OS_BIN_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_GAMES_SUBDIR}" "${OS_BIN_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
@@ -186,6 +187,7 @@ delete_symbolic_links ()
     appid=$1
 
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_BIN_SUBDIR}" "${OS_BIN_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_GAMES_SUBDIR}" "${OS_BIN_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
