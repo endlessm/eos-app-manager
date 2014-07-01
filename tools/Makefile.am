@@ -19,6 +19,10 @@ EXTRA_DIST = \
 	eos-select-app-server.in \
 	$(NULL)
 
+CLEANFILES = \
+	eos-select-app-server \
+	$(NULL)
+
 bin_SCRIPTS = \
 	eos-select-app-server \
 	$(NULL)
