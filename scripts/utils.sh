@@ -96,6 +96,32 @@ desktop_updates ()
 # --------------
 
 # Internal function
+# Ensure symbolic links to all the files passed through stdin
+# The directory structure will be replicated into the links directory,
+# so that only regular files are linked, and their target is the
+# same subdirectory
+ensure_symbolic_links ()
+{
+    if [ "$#" -ne 2 ]; then
+        exit_error "ensure_symbolic_link: incorrect number of arguments"
+    fi
+
+    target_dir=$1
+    links_dir=$2
+
+    while read -d $'\0' source_file; do
+	echo $source_file
+
+	if [ -d "${source_file}" ]; then
+	    mkdir --parents "${links_dir}"/"${source_file}"
+	elif [ -f "${source_file}" ]; then
+	    dirname=$(dirname "${source_file}")
+	    ln --symbolic "${target_dir}"/"${source_file}" "${links_dir}"/"${dirname}"
+	fi
+    done
+}
+
+# Internal function
 # Creates symbolic links to all the files contained in the directory
 symbolic_links ()
 {
@@ -107,7 +133,7 @@ symbolic_links ()
     links_dir=$2
 
     if [ -d "${target_dir}" ]; then
-        find "${target_dir}" -mindepth 1 -exec ln --symbolic '{}' "${links_dir}" \;
+        cd "${target_dir}"; find . -mindepth 1 -print0 | ensure_symbolic_links "${target_dir}" "${links_dir}"
     fi
 }
 
