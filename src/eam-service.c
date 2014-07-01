@@ -83,6 +83,13 @@ typedef struct  {
   const gchar *message;
 } EamServiceAuth;
 
+typedef struct {
+  EamService *service;
+  GDBusMethodInvocation *invocation;
+  EamServiceMethod method;
+  GVariant *params;
+} EamInvocationInfo;
+
 static void eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
@@ -117,6 +124,29 @@ static EamServiceAuth auth_action[] = {
   {EAM_SERVICE_METHOD_CANCEL,    "Cancel",        eam_service_cancel,     AUTH_NAMESPACE "cancel-request",        AUTH_MSG_CANCEL},
   {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
 };
+
+static EamInvocationInfo *
+eam_invocation_info_new (EamService *service,
+			 GDBusMethodInvocation *invocation,
+			 EamServiceMethod method,
+			 GVariant *params)
+{
+  EamInvocationInfo *info;
+
+  info = g_slice_new0 (EamInvocationInfo);
+  info->service = service;
+  info->invocation = invocation;
+  info->method = method;
+  info->params = params;
+
+  return info;
+}
+
+static void
+eam_invocation_info_free (EamInvocationInfo *info)
+{
+  g_slice_free (EamInvocationInfo, info);
+}
 
 static void
 eam_service_dispose (GObject *obj)
@@ -899,21 +929,14 @@ bail:
   g_dbus_method_invocation_return_value (invocation, NULL);
 }
 
-struct _auth_closure {
-  EamService *service;
-  GDBusMethodInvocation *invocation;
-  EamServiceMethod method;
-  GVariant *params;
-};
-
 static void
 check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   PolkitAuthorizationResult *result;
   GError *error = NULL;
-  struct _auth_closure *closure = data;
+ EamInvocationInfo *info = data;
 
-  EamServicePrivate *priv = eam_service_get_instance_private (closure->service);
+  EamServicePrivate *priv = eam_service_get_instance_private (info->service);
   g_assert (source == G_OBJECT (priv->authority));
 
   priv->authorizing = FALSE;
@@ -921,28 +944,28 @@ check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
   result = polkit_authority_check_authorization_finish (priv->authority, res, &error);
 
   if (result == NULL) {
-    g_dbus_method_invocation_take_error (closure->invocation, error);
+    g_dbus_method_invocation_take_error (info->invocation, error);
     goto bail;
   }
 
   /* Check if the operation was cancelled */
   if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
-    g_dbus_method_invocation_take_error (closure->invocation, error);
+    g_dbus_method_invocation_take_error (info->invocation, error);
     goto bail;
   }
 
   /* Did not auth */
   if (!polkit_authorization_result_get_is_authorized (result)) {
-    g_dbus_method_invocation_return_error (closure->invocation, EAM_SERVICE_ERROR,
+    g_dbus_method_invocation_return_error (info->invocation, EAM_SERVICE_ERROR,
       EAM_SERVICE_ERROR_NOT_AUTHORIZED, _("Not authorized to perform the operation"));
     goto bail;
   }
 
-  if (auth_action[closure->method].run)
-    auth_action[closure->method].run (closure->service, closure->invocation, closure->params);
+  if (auth_action[info->method].run)
+    auth_action[info->method].run (info->service, info->invocation, info->params);
 
 bail:
-  g_slice_free (struct _auth_closure, closure);
+  eam_invocation_info_free (info);
   if (result)
     g_object_unref (result);
 }
@@ -975,19 +998,29 @@ eam_service_check_authorization_async (EamService *service, GDBusMethodInvocatio
   polkit_details_insert (details, "polkit.message", N_(auth_action[method].message));
   polkit_details_insert (details, "polkit.gettext_domain", GETTEXT_PACKAGE);
 
-  struct _auth_closure *closure = g_slice_new0 (struct _auth_closure);
-  closure->service = service;
-  closure->invocation = invocation;
-  closure->method = method;
-  closure->params = params;
+  EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
   polkit_authority_check_authorization (priv->authority, subject, auth_action[method].action_id,
     details, POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, priv->cancellable,
-    (GAsyncReadyCallback) check_authorization_cb, closure);
+    (GAsyncReadyCallback) check_authorization_cb, info);
 
   g_object_unref (subject);
   g_object_unref (details);
 
   return TRUE;
+}
+
+static void
+run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
+			       EamServiceMethod method, GVariant *params)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  /* Run the operation only if the user is authorized to perform the action */
+  if (!eam_service_check_authorization_async (service, invocation, method, params)) {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+      EAM_SERVICE_ERROR_AUTHORIZATION, _("An error happened during the authorization process"));
+    priv->authorizing = FALSE;
+  }
 }
 
 static gboolean
@@ -1002,8 +1035,6 @@ static void
 eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
                  EamServiceMethod method, GVariant *params)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
   eam_service_reset_timer (service);
 
   if (eam_service_is_busy (service) && method != EAM_SERVICE_METHOD_CANCEL) {
@@ -1013,12 +1044,7 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
       return;
   }
 
-  /* Run the operation only if the user is authorized to perform the action */
-  if (!eam_service_check_authorization_async (service, invocation, method, params)) {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_AUTHORIZATION, _("An error happened during the authorization process"));
-    priv->authorizing = FALSE;
-  }
+  run_method_with_authorization (service, invocation, method, params);
 }
 
 static void
