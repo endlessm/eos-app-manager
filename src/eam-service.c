@@ -32,6 +32,7 @@ struct _EamServicePrivate {
   guint updates_id;
   guint filtered_id;
   EamTransaction *trans;
+  GQueue *invocation_queue;
 
   gchar **available_updates;
   gboolean reloaddb;
@@ -107,6 +108,9 @@ static void eam_service_quit (EamService *service, GDBusMethodInvocation *invoca
 static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 
+static void run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
+  EamServiceMethod method, GVariant *params);
+
 #define AUTH_NAMESPACE "com.endlessm.app-installer."
 #define AUTH_MSG "Authentication is required to "
 #define AUTH_MSG_INSTALL AUTH_MSG "install or update software"
@@ -173,6 +177,11 @@ eam_service_dispose (GObject *obj)
     priv->filtered_id = 0;
   }
 
+  if (priv->invocation_queue) {
+    g_queue_free_full (priv->invocation_queue, (GDestroyNotify) eam_invocation_info_free);
+    priv->invocation_queue = NULL;
+  }
+
   g_clear_object (&priv->updates);
   g_clear_object (&priv->cancellable);
   g_clear_object (&priv->authority);
@@ -226,6 +235,7 @@ eam_service_init (EamService *service)
   priv->cancellable = g_cancellable_new ();
   priv->reloaddb = TRUE; /* initial state */
   priv->timer = g_timer_new ();
+  priv->invocation_queue = g_queue_new ();
 }
 
 /**
@@ -423,6 +433,19 @@ eam_service_set_reloaddb (EamService *service, gboolean value)
 }
 
 static void
+eam_service_check_queue (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  EamInvocationInfo *info = g_queue_pop_head (priv->invocation_queue);
+
+  if (info == NULL)
+    return;
+
+  run_method_with_authorization (service, info->invocation, info->method, info->params);
+  eam_invocation_info_free (info);
+}
+
+static void
 eam_service_clear_transaction (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -430,6 +453,8 @@ eam_service_clear_transaction (EamService *service)
 
   g_cancellable_reset (priv->cancellable);
   g_clear_object (&priv->trans); /* we don't need you anymore */
+
+  eam_service_check_queue (service);
 }
 
 static void
@@ -1035,13 +1060,15 @@ static void
 eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
                  EamServiceMethod method, GVariant *params)
 {
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
   eam_service_reset_timer (service);
 
   if (eam_service_is_busy (service) && method != EAM_SERVICE_METHOD_CANCEL) {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_BUSY, _("Service is busy with a previous task"));
+    EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
+    g_queue_push_tail (priv->invocation_queue, info);
 
-      return;
+    return;
   }
 
   run_method_with_authorization (service, invocation, method, params);
