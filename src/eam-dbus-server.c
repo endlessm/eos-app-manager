@@ -25,6 +25,8 @@ struct _EamDbusServerPrivate {
   guint quit_id;
   guint timer_id;
   EamService *service;
+
+  gchar *cfgfile;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamDbusServer, eam_dbus_server, G_TYPE_OBJECT)
@@ -32,6 +34,7 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamDbusServer, eam_dbus_server, G_TYPE_OBJECT)
 enum
 {
   PROP_DB = 1,
+  PROP_CFGFILE,
 };
 
 static void
@@ -58,6 +61,8 @@ eam_dbus_server_finalize (GObject *obj)
 
   if (priv->timer_id > 0)
     g_source_remove (priv->timer_id);
+
+  g_clear_pointer (&priv->cfgfile, g_free);
 
   g_clear_object (&priv->service);
 
@@ -100,6 +105,9 @@ eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
       g_source_set_name_by_id (priv->timer_id, "[EAM] timeout poll");
     }
     break;
+  case PROP_CFGFILE:
+    priv->cfgfile = g_value_dup_string (value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
     break;
@@ -121,6 +129,16 @@ eam_dbus_server_class_init (EamDbusServerClass *class)
    */
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamDbusServer:cfgfile:
+   *
+   * The service configuration file. It can be %NULL for the default
+   * config file.
+   */
+  g_object_class_install_property (object_class, PROP_CFGFILE,
+    g_param_spec_string ("cfg-file", "config-file", "Configuration File", NULL,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
@@ -221,13 +239,15 @@ on_name_lost (GDBusConnection *connection, const gchar *name, gpointer data)
 /**
  * eam_dbus_server_new:
  * @db: A #EamPkgdb instance.
+ * @cfgfile: The path to the configuration file or %NULL for the
+ * default one
  *
  * Returns: a #EamDbusServer.
  **/
 EamDbusServer *
-eam_dbus_server_new (EamPkgdb *db)
+eam_dbus_server_new (EamPkgdb *db, const gchar *cfgfile)
 {
-  return g_object_new (EAM_TYPE_DBUS_SERVER, "db", db, NULL);
+  return g_object_new (EAM_TYPE_DBUS_SERVER, "db", db, "cfg-file", cfgfile, NULL);
 }
 
 /**
@@ -249,6 +269,11 @@ eam_dbus_server_run (EamDbusServer *server)
 
   if (g_main_loop_is_running (priv->mainloop))
     return FALSE;
+
+  if (priv->cfgfile) {
+    g_object_set (priv->service, "cfg-file", priv->cfgfile, NULL);
+    g_clear_pointer (&priv->cfgfile, g_free);
+  }
 
   if (!eam_service_load_authority (priv->service, &error)) {
     g_critical ("Error loading the authority: %s", error->message);

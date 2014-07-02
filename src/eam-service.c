@@ -11,6 +11,7 @@
 #include <pwd.h>
 #include <grp.h>
 
+#include "eam-config.h"
 #include "eam-service.h"
 #include "eam-updates.h"
 #include "eam-refresh.h"
@@ -27,6 +28,7 @@ struct _EamServicePrivate {
   GDBusConnection *connection;
   guint registration_id;
 
+  gchar *cfgfile;
   EamPkgdb *db;
   EamUpdates *updates;
   guint updates_id;
@@ -52,6 +54,7 @@ G_DEFINE_QUARK (eam-service-error-quark, eam_service_error)
 enum
 {
   PROP_DB = 1,
+  PROP_CFGFILE,
 };
 
 enum
@@ -163,6 +166,7 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
+  g_clear_pointer (&priv->cfgfile, g_free);
   g_clear_pointer (&priv->timer, g_timer_destroy);
   g_clear_pointer (&priv->available_updates, g_strfreev);
   g_clear_object (&priv->db);
@@ -199,6 +203,9 @@ eam_service_set_property (GObject *obj, guint prop_id, const GValue *value,
   case PROP_DB:
     priv->db = g_object_ref_sink (g_value_get_object (value));
     break;
+  case PROP_CFGFILE:
+    priv->cfgfile = g_value_dup_string (value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
     break;
@@ -222,6 +229,17 @@ eam_service_class_init (EamServiceClass *class)
     g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
+  /**
+   * EamDbusServer:cfgfile:
+   *
+   * The service configuration file. It can be %NULL for the default
+   * config file.
+   */
+  g_object_class_install_property (object_class, PROP_CFGFILE,
+    g_param_spec_string ("cfg-file", "config-file", "Configuration File", NULL,
+      G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS));
+
+  /* signals */
   signals[QUIT_REQUESTED] = g_signal_new ("quit-requested",
     G_TYPE_FROM_CLASS(class), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
     g_cclosure_marshal_generic, G_TYPE_NONE, 0);
@@ -589,6 +607,17 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  /* This is kind of a HACK for a specific use-case:
+   *
+   * When the user changes the server and the eam process is still
+   * alive, the user wants to get the bundle list from the new server.
+   *
+   * Our solution (the simpler and inefficient) is to reload the
+   * configuration file every time the reload method is called, since
+   * the parsing and loading is relatively cheap.
+   */
+  eam_config_load_with_filename (NULL, priv->cfgfile);
 
   priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
   run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);

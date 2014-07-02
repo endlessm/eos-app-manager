@@ -38,7 +38,8 @@ struct _EamDbusServerClass {
 
 GType          eam_dbus_server_get_type                          (void) G_GNUC_CONST;
 
-EamDbusServer *eam_dbus_server_new                               (EamPkgdb *db);
+EamDbusServer *eam_dbus_server_new                               (EamPkgdb *db,
+                                                                  const gchar *cfgfile);
 
 gboolean       eam_dbus_server_run                               (EamDbusServer *server);
 

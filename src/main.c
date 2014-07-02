@@ -104,7 +104,7 @@ main (int argc, gchar **argv)
     return ret;
   }
 
-  EamDbusServer *server = eam_dbus_server_new (db);
+  EamDbusServer *server = eam_dbus_server_new (db, opt_cfgfile);
 
   if (eam_dbus_server_run (server))
     ret = EXIT_SUCCESS;
