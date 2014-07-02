@@ -60,8 +60,8 @@ bail:
     g_free (bin_dir);
     g_free (desktop_files_dir);
     g_free (desktop_icons_dir);
-    g_free (g_schemas_dir);
     g_free (dbus_services_dir);
+    g_free (g_schemas_dir);
 
     return retval;
 }
@@ -165,12 +165,12 @@ eam_fs_sanity_check (void)
         g_critical ("Missing directory: '%s' does not exist", desktop_icons_dir);
         retval = FALSE;
     }
-    if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
-        g_critical ("Missing directory: '%s' does not exist", g_schemas_dir);
-        retval = FALSE;
-    }
     if  (!g_file_test (dbus_services_dir, G_FILE_TEST_IS_DIR)) {
         g_critical ("Missing directory: '%s' does not exist", dbus_services_dir);
+        retval = FALSE;
+    }
+    if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
+        g_critical ("Missing directory: '%s' does not exist", g_schemas_dir);
         retval = FALSE;
     }
 
