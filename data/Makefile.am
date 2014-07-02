@@ -43,6 +43,9 @@ $(dist_polkit_rules_DATA): $(polkit_rules_in_files)
 polkit_policydir = $(datadir)/polkit-1/actions
 dist_polkit_policy_DATA = com.endlessm.app-installer.policy
 
+tmpfilesdir = $(libdir)/tmpfiles.d
+tmpfiles_DATA = eos-app-manager.conf
+
 EXTRA_DIST = \
 	$(RESOURCE_FILES) \
 	eam.gresource.xml \
@@ -53,6 +56,7 @@ EXTRA_DIST = \
 	$(xsession_DATA) \
 	$(polkit_rules_in_files) \
 	$(dist_polkit_policy_DATA) \
+	eos-app-manager.conf \
 	$(NULL)
 
 DISTCLEANFILES = \
