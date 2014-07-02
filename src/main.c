@@ -41,31 +41,12 @@ parse_options (int *argc, gchar ***argv)
 static gboolean
 load_config ()
 {
-  GKeyFile *keyfile = NULL;
-  gboolean ret = TRUE;
-
-  if (!opt_cfgfile)
-    goto bail;
-
-  GError *err = NULL;
-  keyfile = g_key_file_new ();
-  if (!g_key_file_load_from_file (keyfile, opt_cfgfile, G_KEY_FILE_NONE, &err)) {
-    g_warning (N_ ("Error parsing configuration file: %s"), err->message);
-    g_key_file_unref (keyfile);
-    g_error_free (err);
-    keyfile = NULL;
-  }
-
-bail:
-  if (!eam_config_load (eam_config_get (), keyfile)) {
+  if (!eam_config_load_with_filename (NULL, opt_cfgfile)) {
     g_warning (N_ ("Cannot load configuration parameters"));
-    ret = FALSE;
+    return FALSE;
   }
 
-  if (keyfile)
-    g_key_file_unref (keyfile);
-
-  return ret;
+  return TRUE;
 }
 
 static gboolean

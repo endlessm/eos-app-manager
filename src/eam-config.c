@@ -182,6 +182,46 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
 }
 
 /**
+ * eam_config_load_with_filename:
+ * @cfg: a #EamConfig of %NULL for singleton
+ * @filename: a path to a configuration file or %NULL for default config
+ *
+ * Parse a configuration file (in #GKeyFile format) and loads the
+ * configuration from there.
+ *
+ * Returns: %TRUE if the configuration could be parsed correctly.
+ **/
+gboolean
+eam_config_load_with_filename (EamConfig *cfg, const gchar *filename)
+{
+  GKeyFile *keyfile = NULL;
+  gboolean ret = TRUE;
+
+  if (!cfg)
+    cfg = eam_config_get ();
+
+  if (!filename)
+    goto bail;
+
+  keyfile = g_key_file_new ();
+  if (!g_key_file_load_from_file (keyfile, filename, G_KEY_FILE_NONE, NULL)) {
+    g_key_file_unref (keyfile);
+    keyfile = NULL;
+  }
+
+bail:
+  if (!eam_config_load (cfg, keyfile))
+    ret = FALSE;
+
+  if (keyfile)
+    g_key_file_unref (keyfile);
+
+  return ret;
+
+}
+
+
+/**
  * eam_config_dump:
  * @cfg: a #EamConfig of %NULL for singleton
  *
