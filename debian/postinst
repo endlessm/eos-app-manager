@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set -eu
-+app-manager:*:116:65534:Endless App Manager:/var/endless:/usr/sbin/nologin
 
 # creating app-manager user if it isn't already there
 if ! getent passwd app-manager >/dev/null; then
