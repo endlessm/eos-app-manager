@@ -42,8 +42,12 @@ APP_DESKTOP_FILES_SUBDIR="share/applications"
 APP_DESKTOP_ICONS_SUBDIR="share/icons/EndlessOS"
 # Application XML schemas subdirectory.
 APP_GSETTINGS_SUBDIR="share/glib-2.0/schemas"
-# Applications D-Bus services subdirectory.
+# Application D-Bus services subdirectory.
 APP_DBUS_SERVICES_SUBDIR="share/dbus-1/services"
+# Application knowledge app data.
+APP_EKN_DATA_SUBDIR="share/ekn/data"
+# Application knowledge app manifest.
+APP_EKN_MANIFEST_SUBDIR="share/ekn/manifest"
 
 # Directories where the OS looks for the applications metadata.
 # These directories typically contain symbolic links to the
@@ -59,6 +63,10 @@ OS_DESKTOP_ICONS_DIR="${EAM_PREFIX}/share/icons/EndlessOS"
 OS_GSETTINGS_DIR="${EAM_PREFIX}/share/glib-2.0/schemas"
 # D-Bus services directory.
 OS_DBUS_SERVICES_DIR="${EAM_PREFIX}/share/dbus-1/services"
+# Knowledge app data.
+OS_EKN_DATA_SUBDIR="${EAM_PREFIX}/share/ekn/data"
+# Knowledge app manifest.
+OS_EKN_MANIFEST_SUBDIR="${EAM_PREFIX}/share/ekn/manifest"
 
 
 # Prints the value of the configuration variables
@@ -75,9 +83,13 @@ print_config ()
     echo "APP_DESKTOP_ICONS_SUBDIR=$APP_DESKTOP_ICONS_SUBDIR"
     echo "APP_GSETTINGS_SUBDIR=$APP_GSETTINGS_SUBDIR"
     echo "APP_DBUS_SERVICES_SUBDIR=$APP_DBUS_SERVICES_SUBDIR"
+    echo "APP_EKN_DATA_SUBDIR=$APP_EKN_DATA_SUBDIR"
+    echo "APP_EKN_MANIFEST_SUBDIR=$APP_EKN_MANIFEST_SUBDIR"
     echo "OS_BIN_DIR=$OS_BIN_DIR"
     echo "OS_DESKTOP_FILES_DIR=$OS_DESKTOP_FILES_DIR"
     echo "OS_DESKTOP_ICONS_DIR=$OS_DESKTOP_ICONS_DIR"
     echo "OS_GSETTINGS_DIR=$OS_GSETTINGS_DIR"
     echo "OS_DBUS_SERVICES_DIR=$OS_DBUS_SERVICES_DIR"
+    echo "OS_EKN_DATA_SUBDIR=$OS_EKN_DATA_SUBDIR"
+    echo "OS_EKN_MANIFEST_SUBDIR=$OS_EKN_MANIFEST_SUBDIR"
 }
