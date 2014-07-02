@@ -10,6 +10,8 @@
 #define DESKTOP_FILES_SUBDIR "share/applications"
 #define DESKTOP_ICONS_SUBDIR "share/icons/EndlessOS"
 #define DBUS_SERVICES_SUBDIR "share/dbus-1/services"
+#define EKN_DATA_SUBDIR "share/ekn/data"
+#define EKN_MANIFEST_SUBDIR "share/ekn/manifest"
 #define G_SCHEMAS_SUBDIR "share/glib-2.0/schemas"
 
 #define ROOT_DIR "/var"
@@ -27,6 +29,8 @@ applications_directory_create (void)
     gchar *desktop_files_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_FILES_SUBDIR, NULL);
     gchar *desktop_icons_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_ICONS_SUBDIR, NULL);
     gchar *dbus_services_dir = g_build_filename (ROOT_DIR, appdir, DBUS_SERVICES_SUBDIR, NULL);
+    gchar *ekn_data_dir = g_build_filename (ROOT_DIR, appdir, EKN_DATA_SUBDIR, NULL);
+    gchar *ekn_manifest_dir = g_build_filename (ROOT_DIR, appdir, EKN_MANIFEST_SUBDIR, NULL);
     gchar *g_schemas_dir = g_build_filename (ROOT_DIR, appdir, G_SCHEMAS_SUBDIR, NULL);
     const gint mode = 0755;
 
@@ -50,6 +54,16 @@ applications_directory_create (void)
         retval = FALSE;
         goto bail;
     }
+    if (g_mkdir_with_parents (ekn_data_dir, mode) != 0) {
+        g_critical ("Unable to create '%s'", ekn_data_dir);
+        retval = FALSE;
+        goto bail;
+    }
+    if (g_mkdir_with_parents (ekn_manifest_dir, mode) != 0) {
+        g_critical ("Unable to create '%s'", ekn_manifest_dir);
+        retval = FALSE;
+        goto bail;
+    }
     if (g_mkdir_with_parents (g_schemas_dir, mode) != 0) {
         g_critical ("Unable to create '%s'", g_schemas_dir);
         retval = FALSE;
@@ -60,8 +74,10 @@ bail:
     g_free (bin_dir);
     g_free (desktop_files_dir);
     g_free (desktop_icons_dir);
-    g_free (g_schemas_dir);
     g_free (dbus_services_dir);
+    g_free (ekn_data_dir);
+    g_free (ekn_manifest_dir);
+    g_free (g_schemas_dir);
 
     return retval;
 }
@@ -147,6 +163,8 @@ eam_fs_sanity_check (void)
     gchar *desktop_files_dir = g_build_filename (appdir, DESKTOP_FILES_SUBDIR, NULL);
     gchar *desktop_icons_dir = g_build_filename (appdir, DESKTOP_ICONS_SUBDIR, NULL);
     gchar *dbus_services_dir = g_build_filename (appdir, DBUS_SERVICES_SUBDIR, NULL);
+    gchar *ekn_data_dir = g_build_filename (appdir, EKN_DATA_SUBDIR, NULL);
+    gchar *ekn_manifest_dir = g_build_filename (appdir, EKN_MANIFEST_SUBDIR, NULL);
     gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
 
     if (!g_file_test (appdir, G_FILE_TEST_IS_DIR)) {
@@ -165,12 +183,20 @@ eam_fs_sanity_check (void)
         g_critical ("Missing directory: '%s' does not exist", desktop_icons_dir);
         retval = FALSE;
     }
-    if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
-        g_critical ("Missing directory: '%s' does not exist", g_schemas_dir);
-        retval = FALSE;
-    }
     if  (!g_file_test (dbus_services_dir, G_FILE_TEST_IS_DIR)) {
         g_critical ("Missing directory: '%s' does not exist", dbus_services_dir);
+        retval = FALSE;
+    }
+    if (!g_file_test (ekn_data_dir, G_FILE_TEST_IS_DIR)) {
+        g_critical ("Missing directory: '%s' does not exist", ekn_data_dir);
+        retval = FALSE;
+    }
+    if (!g_file_test (ekn_manifest_dir, G_FILE_TEST_IS_DIR)) {
+        g_critical ("Missing directory: '%s' does not exist", ekn_manifest_dir);
+        retval = FALSE;
+    }
+    if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
+        g_critical ("Missing directory: '%s' does not exist", g_schemas_dir);
         retval = FALSE;
     }
 
@@ -178,6 +204,8 @@ eam_fs_sanity_check (void)
     g_free (desktop_files_dir);
     g_free (desktop_icons_dir);
     g_free (dbus_services_dir);
+    g_free (ekn_data_dir);
+    g_free (ekn_manifest_dir);
     g_free (g_schemas_dir);
 
     return retval;
