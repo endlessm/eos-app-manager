@@ -1,3 +1,11 @@
+eos-app-manager (0.1-2) eos; urgency=medium
+
+  * debian/postinst:
+    Create app-manager user
+    [endlessm/eos-shell#2794]
+
+ -- Juan A. Suarez Romero <jasuarez@igalia.com>  Wed, 02 Jul 2014 12:39:00 +0200
+
 eos-app-manager (0.1-1) eos; urgency=medium
 
   * Initial release.
