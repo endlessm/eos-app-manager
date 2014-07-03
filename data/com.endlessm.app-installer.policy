@@ -12,6 +12,7 @@
   <action id="com.endlessm.app-installer.install-application">
     <description>Install software</description>
     <message>Authentication is required to install new software</message>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:app-manager</annotate>
     <defaults>
       <allow_any>no</allow_any>
       <allow_inactive>no</allow_inactive>
