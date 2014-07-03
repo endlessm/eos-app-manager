@@ -43,7 +43,7 @@ $(dist_polkit_rules_DATA): $(polkit_rules_in_files)
 polkit_policydir = $(datadir)/polkit-1/actions
 dist_polkit_policy_DATA = com.endlessm.app-installer.policy
 
-tmpfilesdir = $(libdir)/tmpfiles.d
+tmpfilesdir = $(prefix)/lib/tmpfiles.d
 tmpfiles_DATA = eos-app-manager.conf
 
 EXTRA_DIST = \
