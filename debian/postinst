@@ -8,6 +8,7 @@ if ! getent passwd app-manager >/dev/null; then
             --no-create-home \
             --home /var/endless \
             --shell /usr/sbin/nologin \
+            --group \
             app-manager
 fi
 
