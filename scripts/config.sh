@@ -64,9 +64,9 @@ OS_GSETTINGS_DIR="${EAM_PREFIX}/share/glib-2.0/schemas"
 # D-Bus services directory.
 OS_DBUS_SERVICES_DIR="${EAM_PREFIX}/share/dbus-1/services"
 # Knowledge app data.
-OS_EKN_DATA_SUBDIR="${EAM_PREFIX}/share/ekn/data"
+OS_EKN_DATA_DIR="${EAM_PREFIX}/share/ekn/data"
 # Knowledge app manifest.
-OS_EKN_MANIFEST_SUBDIR="${EAM_PREFIX}/share/ekn/manifest"
+OS_EKN_MANIFEST_DIR="${EAM_PREFIX}/share/ekn/manifest"
 
 
 # Prints the value of the configuration variables
@@ -90,6 +90,6 @@ print_config ()
     echo "OS_DESKTOP_ICONS_DIR=$OS_DESKTOP_ICONS_DIR"
     echo "OS_GSETTINGS_DIR=$OS_GSETTINGS_DIR"
     echo "OS_DBUS_SERVICES_DIR=$OS_DBUS_SERVICES_DIR"
-    echo "OS_EKN_DATA_SUBDIR=$OS_EKN_DATA_SUBDIR"
-    echo "OS_EKN_MANIFEST_SUBDIR=$OS_EKN_MANIFEST_SUBDIR"
+    echo "OS_EKN_DATA_DIR=$OS_EKN_DATA_DIR"
+    echo "OS_EKN_MANIFEST_DIR=$OS_EKN_MANIFEST_DIR"
 }
