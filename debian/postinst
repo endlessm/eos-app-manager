@@ -8,7 +8,15 @@ if ! getent passwd app-manager >/dev/null; then
             --no-create-home \
             --home /var/endless \
             --shell /usr/sbin/nologin \
+            --group \
             app-manager
+fi
+
+# create /var/endless or update ownership existing directory
+if [ -d /var/endless ]; then
+	chown -R app-manager:app-manager /var/endless
+else
+	install -d -m0755 -o app-manager -g app-manager /var/endless
 fi
 
 #DEBHELPER#
