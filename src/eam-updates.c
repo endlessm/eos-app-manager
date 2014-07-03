@@ -84,6 +84,7 @@ eam_updates_init (EamUpdates *self)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
 
   priv->wc = eam_wc_new ();
+  priv->avails = eam_pkgdb_new ();
 }
 
 /**
