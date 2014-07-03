@@ -60,7 +60,7 @@ verify_downloaded_file ()
     cd $DIR
 
     sha256sum --quiet --status --check "${sha256file}"
-    gpg --keyring="${EAM_GPGKEYRING}" --quiet --verify "${gpgfile}" "${file}"
+    gpg --no-default-keyring --keyring="${EAM_GPGKEYRING}" --quiet --verify "${gpgfile}" "${file}"
 }
 
 # Deletes the downloaded file, its sha256file and GPG signature.
