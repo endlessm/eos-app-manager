@@ -8,7 +8,7 @@
 
 #define BIN_SUBDIR "bin"
 #define DESKTOP_FILES_SUBDIR "share/applications"
-#define DESKTOP_ICONS_SUBDIR "share/icons/EndlessOS"
+#define DESKTOP_ICONS_SUBDIR "share/icons"
 #define DBUS_SERVICES_SUBDIR "share/dbus-1/services"
 #define EKN_DATA_SUBDIR "share/ekn/data"
 #define EKN_MANIFEST_SUBDIR "share/ekn/manifest"
