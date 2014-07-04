@@ -12,47 +12,50 @@
 static gboolean
 parse_os_release_file (gchar **version_id, GError **error)
 {
-  GIOChannel *file = g_io_channel_new_file ("/etc/os-release", "r", error);
-  if (!file)
+  char *contents = NULL;
+  char **lines;
+  gint idx;
+
+  if (!g_file_get_contents ("/etc/os-release", &contents, NULL, error))
     return FALSE;
 
-  if (error)
-    goto bail;
+  lines = g_strsplit (contents, "\n", -1);
 
   gboolean ret = FALSE;
   gchar *line = NULL;
-  while (g_io_channel_read_line (file, &line, NULL, NULL, error) == G_IO_STATUS_NORMAL) {
-    if (line[0] == '#') {
-      g_clear_pointer (&line, g_free);
-      continue;
-    }
 
+  for (idx = 0; lines[idx] != NULL; idx++) {
+    line = lines[idx];
     line = g_strstrip (line);
-    gchar *p = strchr (line, '=');
-    if (!p) {
-      g_clear_pointer (&line, g_free);
-      continue;
-    }
 
     if (!g_str_has_prefix (line, "VERSION_ID")) {
-      g_clear_pointer (&line, g_free);
+      continue;
+    }
+
+    gchar *p = strchr (line, '=');
+    if (!p) {
       continue;
     }
 
     do
       p++;
-    while (g_ascii_isspace (*p));
+    while (g_ascii_isspace (*p) || *p == '"');
 
-    *version_id = g_strdup (p);
+    gchar *start = p;
+
+    do
+      p++;
+    while (*p != '"' && *p != '\0');
+
+    *version_id = g_strndup (start, p - start);
     ret = TRUE;
 
     break;
   }
 
-  g_clear_pointer (&line, g_free);
+  g_free (contents);
+  g_strfreev (lines);
 
-bail:
-  g_io_channel_unref (file);
   return ret;
 }
 
