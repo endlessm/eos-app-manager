@@ -39,7 +39,7 @@ APP_GAMES_SUBDIR="games"
 # Application .desktop file subdirectory.
 APP_DESKTOP_FILES_SUBDIR="share/applications"
 # Application desktop icons subdirectory.
-APP_DESKTOP_ICONS_SUBDIR="share/icons/EndlessOS"
+APP_DESKTOP_ICONS_SUBDIR="share/icons"
 # Application XML schemas subdirectory.
 APP_GSETTINGS_SUBDIR="share/glib-2.0/schemas"
 # Application D-Bus services subdirectory.
@@ -58,7 +58,7 @@ OS_BIN_DIR="${EAM_PREFIX}/bin"
 # Desktop files
 OS_DESKTOP_FILES_DIR="${EAM_PREFIX}/share/applications"
 # Desktop icons directories.
-OS_DESKTOP_ICONS_DIR="${EAM_PREFIX}/share/icons/EndlessOS"
+OS_DESKTOP_ICONS_DIR="${EAM_PREFIX}/share/icons"
 # XML schemas directory.
 OS_GSETTINGS_DIR="${EAM_PREFIX}/share/glib-2.0/schemas"
 # D-Bus services directory.
