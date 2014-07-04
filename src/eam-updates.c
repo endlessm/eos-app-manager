@@ -84,6 +84,7 @@ eam_updates_init (EamUpdates *self)
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
 
   priv->wc = eam_wc_new ();
+  priv->avails = eam_pkgdb_new ();
 }
 
 /**
@@ -199,7 +200,7 @@ pkg_json_is_valid (JsonObject *json)
     EamPkgVersion *osver = eam_pkg_version_new_from_string (
       eam_os_get_version ());
 
-    gboolean rel = eam_pkg_version_relate (posver, EAM_RELATION_GE, osver);
+    gboolean rel = eam_pkg_version_relate (posver, EAM_RELATION_LE, osver);
     eam_pkg_version_free (posver);
     eam_pkg_version_free (osver);
 
