@@ -109,6 +109,7 @@ ensure_symbolic_links ()
     target_dir=$1
     links_dir=$2
 
+    [ -d "${links_dir}" ] || mkdir --parents "${links_dir}"
     while read -d $'\0' source_file; do
 	if [ -d "${source_file}" ]; then
 	    mkdir --parents "${links_dir}"/"${source_file}"
