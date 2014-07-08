@@ -109,6 +109,7 @@ ensure_symbolic_links ()
     target_dir=$1
     links_dir=$2
 
+    [ -d "${links_dir}" ] || mkdir --parents "${links_dir}"
     while read -d $'\0' source_file; do
 	if [ -d "${source_file}" ]; then
 	    mkdir --parents "${links_dir}"/"${source_file}"
@@ -232,6 +233,21 @@ check_args_minimum_number ()
 
 # Directories
 # -----------
+# Create the needed directories in EAM_PREFIX. This is needed when the
+# scripts are run by the image-builder and ensures a sane setup at app
+# installation time and not just at daemon init.
+create_os_directories ()
+{
+    for dir in \
+        "${OS_BIN_DIR}" "${OS_DESKTOP_FILES_DIR}" \
+        "${OS_DESKTOP_ICONS_DIR}" "${OS_GSETTINGS_DIR}" \
+        "${OS_DBUS_SERVICES_DIR}" "${OS_EKN_DATA_DIR}" \
+        "${OS_EKN_MANIFEST_DIR}"
+    do
+        [ -d "${dir}" ] || mkdir --parents "${dir}"
+    done
+}
+
 # Deletes a directory recursively. Nonexistent directories are ignored
 # (no error is raised).
 delete_dir ()
