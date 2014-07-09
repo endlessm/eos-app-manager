@@ -145,16 +145,33 @@ binary_symbolic_link ()
     fi
 
     appid=$1
-    binaryname=$(grep '^Exec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
+
+    # Use TryExec if present...
+    binaryname=$(grep '^TryExec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
+    if [ -z "${binaryname}" ]; then
+	# Otherwise use Exec
+	binaryname=$(grep '^Exec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
+	# Strip everything past the first space
+	binaryname=${binaryname%% *}
+    fi
+
     binpath="${EAM_PREFIX}/${appid}/${APP_BIN_SUBDIR}/${binaryname}"
     gamespath="${EAM_PREFIX}/${appid}/${APP_GAMES_SUBDIR}/${binaryname}"
 
     if [ -f "${binpath}" ]; then
+	# First look in /endless/$appid/bin
 	ln --symbolic "${binpath}" "${OS_BIN_DIR}"
     elif [ -f "${gamespath}" ]; then
+	# Then look in /endless/$appid/games
 	ln --symbolic "${gamespath}" "${OS_BIN_DIR}"
     else
-	exit_error "binary_symbolic_link: can't find app binary to link"
+	# Finally, look if the command we are trying to link is already in $PATH
+	commandname=$(command -v "${binaryname}")
+	if [ -z "${commandname}" ]; then
+	    # If command is neither in $PATH nor in one of the binary directories
+	    # of the bundle, exit with error
+	    exit_error "binary_symbolic_link: can't find app binary to link"
+	fi
     fi
 }
 
