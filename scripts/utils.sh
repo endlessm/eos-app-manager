@@ -136,6 +136,28 @@ symbolic_links ()
     fi
 }
 
+# Internal function
+# Creates a symbolic link to the binary specified in the desktop file
+binary_symbolic_link ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "binary_symbolic_link: incorrect number of arguments"
+    fi
+
+    appid=$1
+    binaryname=$(grep '^Exec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
+    binpath="${EAM_PREFIX}/${appid}/${APP_BIN_SUBDIR}/${binaryname}"
+    gamespath="${EAM_PREFIX}/${appid}/${APP_GAMES_SUBDIR}/${binaryname}"
+
+    if [ -f "${binpath}" ]; then
+	ln --symbolic "${binpath}" "${OS_BIN_DIR}"
+    elif [ -f "${gamespath}" ]; then
+	ln --symbolic "${gamespath}" "${OS_BIN_DIR}"
+    else
+	exit_error "binary_symbolic_link: can't find app binary to link"
+    fi
+}
+
 # Creates symbolic links, on common OS directories, for the application
 # metadata files: .desktop files, desktop icons, gsettings and D-Bus
 # services.
@@ -149,8 +171,8 @@ create_symbolic_links ()
 
     appid=$1
 
-    symbolic_links "${EAM_PREFIX}/${appid}/${APP_BIN_SUBDIR}" "${OS_BIN_DIR}"
-    symbolic_links "${EAM_PREFIX}/${appid}/${APP_GAMES_SUBDIR}" "${OS_BIN_DIR}"
+    binary_symbolic_link "${appid}"
+
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}" "${OS_DESKTOP_FILES_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
