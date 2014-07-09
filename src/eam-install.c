@@ -588,12 +588,20 @@ parse_json (EamInstall *self, JsonNode *root,
 {
   JsonObject *json = NULL;
   gboolean is_diff;
+  const gchar *appid;
 
   *xdelta_json = NULL;
   *bundle_json = NULL;
 
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
   if (JSON_NODE_HOLDS_OBJECT (root)) {
     json = json_node_get_object (root);
+
+    appid = json_object_get_string_member (json, "appId");
+    if (!appid || g_strcmp0 (appid, priv->appid) != 0)
+      return;
+
     is_diff = json_object_get_boolean_member (json, "isDiff");
     if (is_diff) {
       if (xdelta_is_candidate (self, json))
@@ -618,6 +626,11 @@ parse_json (EamInstall *self, JsonNode *root,
         continue;
 
       json = json_node_get_object (node);
+
+      appid = json_object_get_string_member (json, "appId");
+      if (!appid || g_strcmp0 (appid, priv->appid) != 0)
+        continue;
+
       is_diff = json_object_get_boolean_member (json, "isDiff");
       if (is_diff) {
         if (xdelta_is_candidate (self, json)) {
@@ -632,6 +645,21 @@ parse_json (EamInstall *self, JsonNode *root,
     g_list_free (el);
 }
 
+
+/**
+ * expected json format:
+ *
+ * {
+ *   "appId": "com.application.id2",
+ *   "appName": "App Name 2",
+ *   "codeVersion": "2.22",
+ *   "minOsVersion": "1eos1",
+ *   "downloadLink": "http://twourl.com/220to222",
+ *   "shaHash": "bbccddee-2.20",
+ *   "isDiff": true,
+ *   "fromVersion": "2.20"
+ * }
+ **/
 static gboolean
 load_bundle_info (EamInstall *self, JsonNode *root)
 {
@@ -675,22 +703,8 @@ load_bundle_info (EamInstall *self, JsonNode *root)
   return (priv->bundle || priv->xdelta_bundle);
 }
 
-/**
- * expected json format:
- *
- * {
- *   "appId": "com.application.id2",
- *   "appName": "App Name 2",
- *   "codeVersion": "2.22",
- *   "minOsVersion": "1eos1",
- *   "downloadLink": "http://twourl.com/220to222",
- *   "shaHash": "bbccddee-2.20",
- *   "isDiff": true,
- *   "fromVersion": "2.20"
- * }
- **/
 static void
-parse_cb (GObject *source, GAsyncResult *result, gpointer data)
+load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
   GError *error = NULL;
@@ -722,7 +736,7 @@ bail:
 }
 
 static void
-request_cb (GObject *source, GAsyncResult *result, gpointer data)
+request_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
   GError *error = NULL;
@@ -743,7 +757,7 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   JsonParser *parser = json_parser_new ();
-  json_parser_load_from_stream_async (parser, strm, cancellable, parse_cb, task);
+  json_parser_load_from_stream_async (parser, strm, cancellable, load_json_updates_cb, task);
   g_object_unref (parser);
   g_object_unref (strm);
 
@@ -751,6 +765,46 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data)
 
 bail:
   g_object_unref (task);
+}
+
+static void
+request_json_updates (EamInstall *self, GTask *task)
+{
+  /* is it enough? */
+  if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+      EAM_TRANSACTION_ERROR_NO_NETWORK, _("Networking is not available"));
+    goto bail;
+  }
+
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
+    priv->appid, NULL, NULL);
+  if (!uri) {
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+      EAM_TRANSACTION_ERROR_PROTOCOL_ERROR, _("Not valid method or protocol version"));
+    goto bail;
+  }
+
+  EamWc *wc = eam_wc_new ();
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  eam_wc_request_instream_with_headers_async (wc, uri, cancellable, request_json_updates_cb,
+    task, "Accept", "application/json", "personality",
+    eam_os_get_personality (), NULL);
+
+  g_free (uri);
+  g_object_unref (wc);
+
+  return;
+bail:
+  g_object_unref (task);
+}
+
+static gchar *
+build_json_updates_filename ()
+{
+ return g_build_filename (eam_config_dldir (), "updates.json", NULL);
 }
 
 /**
@@ -768,36 +822,38 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
-  /* is it enough? */
-  if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
-    g_task_report_new_error (trans, callback, data, eam_install_run_async,
-      EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_NO_NETWORK,
-      _("Networking is not available"));
-    return;
-  }
+  JsonParser *parser = json_parser_new ();
+  gchar *updates = build_json_updates_filename ();
+  GError *error = NULL;
+
+  json_parser_load_from_file (parser, updates, &error);
+  g_free (updates);
 
   EamInstall *self = EAM_INSTALL (trans);
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
-    priv->appid, NULL, NULL);
-
-  if (!uri) {
-    g_task_report_new_error (self, callback, data, eam_install_run_async,
-      EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_PROTOCOL_ERROR,
-      _("Not valid method or protocol version"));
-    return;
-  }
-
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  EamWc *wc = eam_wc_new ();
-  eam_wc_request_instream_with_headers_async (wc, uri, cancellable, request_cb,
-    task, "Accept", "application/json", "personality",
-    eam_os_get_personality (), NULL);
+  if (error) {
+    g_warning ("Can't load cached updates.json: %s", error->message);
+    g_clear_error (&error);
 
-  g_free (uri);
-  g_object_unref (wc);
+    request_json_updates (self, task);
+    goto bail;
+  }
+
+  if (!load_bundle_info (self, json_parser_get_root (parser))) {
+    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+       EAM_TRANSACTION_ERROR_INVALID_FILE,
+       _("Not valid stream with update/install link"));
+
+    g_object_unref (task);
+    goto bail;
+  }
+
+  download_bundle (self, task);
+
+bail:
+  g_object_unref (parser);
+
 }
 
 static gboolean
