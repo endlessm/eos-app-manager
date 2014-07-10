@@ -153,6 +153,8 @@ binary_symbolic_link ()
 	binaryname=$(grep '^Exec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
 	# Strip everything past the first space
 	binaryname=${binaryname%% *}
+	# If the path is absolute, only get the last component
+	binaryname=${binaryname##*/}
     fi
 
     binpath="${EAM_PREFIX}/${appid}/${APP_BIN_SUBDIR}/${binaryname}"
