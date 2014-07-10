@@ -190,7 +190,6 @@ subprocess_run_async (GTask *task)
 
   /* @TODO: connect stdout & stderr to a logging subsystem */
   GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv, G_SUBPROCESS_FLAGS_NONE, &error);
-  g_strfreev (argv);
 
   if (error) {
     g_task_return_error (task, error);
@@ -199,6 +198,9 @@ subprocess_run_async (GTask *task)
 
   g_object_set_data_full (G_OBJECT (process), "scriptname", g_path_get_basename (file_name),
     (GDestroyNotify) g_free);
+
+  /* Freed here as 'file_name' is used in the previous call */
+  g_strfreev (argv);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   g_subprocess_wait_async (process, cancellable, subprocess_cb, task);

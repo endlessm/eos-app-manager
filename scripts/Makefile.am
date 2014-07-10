@@ -6,6 +6,7 @@ common_scripts = \
 	$(NULL)
 
 install_scripts = \
+	install/run/05-directories.sh \
 	install/run/10-extract.sh \
 	install/run/20-external.sh \
 	install/run/30-custom-installer.sh \
@@ -26,6 +27,7 @@ uninstall_scripts = \
 	$(NULL)
 
 update_scripts = \
+	update/full/05-directories.sh \
 	update/full/10-extract.sh \
 	update/full/15-external.sh \
 	update/full/20-custom-installer.sh \
@@ -36,6 +38,7 @@ update_scripts = \
 	update/full/45-symlinks.sh \
 	update/full/50-desktop-updates.sh \
 	update/full/55-cleanup.sh \
+	update/xdelta/05-directories.sh \
 	update/xdelta/10-verify-downloads.sh \
 	update/xdelta/20-apply-xdelta.sh \
 	update/xdelta/30-delete-symlinks.sh \
