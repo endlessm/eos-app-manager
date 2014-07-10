@@ -146,11 +146,21 @@ binary_symbolic_link ()
 
     appid=$1
 
+    appdesktopfile="${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop"
+    if [ ! -f "${appdesktopfile}" ]; then
+        # Use the first one we find as a last resort
+        appdesktopfile=$(find "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/" -name "*.desktop" | head -n 1)
+    fi
+
+    if [ ! -f "${appdesktopfile}" ]; then
+        exit_error "binary_symbolic_link: no desktop files in bundle"
+    fi
+
     # Use TryExec if present...
-    binaryname=$(grep '^TryExec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
+    binaryname=$(grep '^TryExec' "${appdesktopfile}" | cut --delimiter '=' --fields 2)
     if [ -z "${binaryname}" ]; then
 	# Otherwise use Exec
-	binaryname=$(grep '^Exec' "${EAM_PREFIX}/${appid}/${APP_DESKTOP_FILES_SUBDIR}/${appid}.desktop" | cut --delimiter '=' --fields 2)
+	binaryname=$(grep '^Exec' "${appdesktopfile}" | cut --delimiter '=' --fields 2)
 	# Strip everything past the first space
 	binaryname=${binaryname%% *}
 	# If the path is absolute, only get the last component
