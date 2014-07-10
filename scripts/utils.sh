@@ -168,7 +168,7 @@ binary_symbolic_link ()
 	ln --symbolic "${gamespath}" "${OS_BIN_DIR}"
     else
 	# Finally, look if the command we are trying to link is already in $PATH
-	commandname=$(command -v "${binaryname}")
+	commandname=$(command -v "${binaryname}" 2> /dev/null)
 	if [ -z "${commandname}" ]; then
 	    # If command is neither in $PATH nor in one of the binary directories
 	    # of the bundle, exit with error
