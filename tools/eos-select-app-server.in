@@ -20,7 +20,7 @@ const servers =
     ' FALSE http://master.appupdates.endlessm-sf.com'
 
 const selectServer = function() {
-    let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection --width 400 --height 200' + servers;
+    let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection --width 450 --height 200' + servers;
 
     let response;
     try {
