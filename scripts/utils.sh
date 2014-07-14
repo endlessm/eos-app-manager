@@ -251,8 +251,21 @@ binary_symbolic_link ()
 	ln --symbolic "${gamespath}" "${OS_BIN_DIR}"
     else
 	# Finally, look if the command we are trying to link is already in $PATH
-	commandname=$(command -v "${binaryname}" 2> /dev/null)
-	if [ -z "${commandname}" ]; then
+	#
+	# We don't want to match binaries in ${OS_BIN_DIR} here, so remove it
+	# from $PATH first
+	oldpath=$PATH
+	pathremove "${OS_BIN_DIR}"
+
+	cmdfound=0
+	if command -v "${binaryname}" > /dev/null 2>&1; then
+	    cmdfound=1
+	fi
+
+	# Restore $PATH
+	export PATH="${oldpath}"
+
+	if [ "${cmdfound}" == 0 ]; then
 	    # If command is neither in $PATH nor in one of the binary directories
 	    # of the bundle, exit with error
 	    exit_error "binary_symbolic_link: can't find app binary to link"
