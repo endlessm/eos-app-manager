@@ -92,6 +92,79 @@ desktop_updates ()
     update-desktop-database $OS_DESKTOP_FILES_DIR
 }
 
+# Paths
+# -----
+
+# Internal function
+# Removes a directory from a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathremove () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathremove: at least one argument is required"
+    fi
+
+    local IFS=':'
+    local NEWPATH
+    local DIR
+    local PATHVARIABLE=${2:-PATH}
+    for DIR in ${!PATHVARIABLE} ; do
+        if [ "$DIR" != "$1" ] ; then
+            NEWPATH=${NEWPATH:+$NEWPATH:}$DIR
+        fi
+    done
+    export $PATHVARIABLE="$NEWPATH"
+}
+
+# Internal function
+# Prepends a directory to a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathprepend () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathprepend: at least one argument is required"
+    fi
+
+    pathremove $1 $2
+    local PATHVARIABLE=${2:-PATH}
+    export $PATHVARIABLE="$1${!PATHVARIABLE:+:${!PATHVARIABLE}}"
+}
+
+# Internal function
+# Appends a directory to a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathappend () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathappend: at least one argument is required"
+    fi
+
+    pathremove $1 $2
+    local PATHVARIABLE=${2:-PATH}
+    export $PATHVARIABLE="${!PATHVARIABLE:+${!PATHVARIABLE}:}$1"
+}
+
+# Internal function
+# Checks if a directory is in a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathexists () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathexists: at least one argument is required"
+    fi
+
+    local IFS=':'
+    local DIR
+    local PATHVARIABLE=${2:-PATH}
+
+    for DIR in ${!PATHVARIABLE}; do
+        [ "$DIR" = "$1" ] && return 0
+    done
+
+    # no match found
+    return 1
+}
+
 # Symbolic links
 # --------------
 
