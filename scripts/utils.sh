@@ -430,3 +430,42 @@ parse_ini_section ()
      < ${config_file} \
       | sed -n -e "/^\[${section}\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
 }
+
+# python modules
+#---------------
+# Recursively byte compile all python modules in the site directories.
+compile_python_modules ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "compile_python_modules: incorrect number of arguments"
+    fi
+
+    dir=$1
+
+    for python in python2 python3; do
+        for sitedir in dist-packages site-packages; do
+            if [ "${python}" = python2 ]; then
+                pyvers=$(${python} -c 'import sys; print sys.version[0:3]')
+                pydir="${dir}/lib/python${pyvers}/${sitedir}"
+            else
+                pydir="${dir}/lib/${python}/${sitedir}"
+            fi
+            if [ -d "${pydir}" ]; then
+                ${python} -m compileall -f -q "${pydir}"
+            fi
+        done
+    done
+}
+
+# Remove compiled bytecode recursively.
+remove_python_bytecode ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "remove_python_bytecode: incorrect number of arguments"
+    fi
+
+    dir=$1
+
+    find "${dir}" -type d -name __pycache__ -exec rm -rf '{}' ';'
+    find "${dir}" -type f -name '*.py[co]' -delete
+}
