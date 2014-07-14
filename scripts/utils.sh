@@ -370,3 +370,16 @@ compile_python_modules ()
         done
     done
 }
+
+# Remove compiled bytecode recursively.
+remove_python_bytecode ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "remove_python_bytecode: incorrect number of arguments"
+    fi
+
+    dir=$1
+
+    find "${dir}" -type d -name __pycache__ -exec rm -rf '{}' ';'
+    find "${dir}" -type f -name '*.py[co]' -delete
+}

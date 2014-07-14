@@ -42,6 +42,7 @@ update_scripts = \
 	update/full/55-cleanup.sh \
 	update/xdelta/05-directories.sh \
 	update/xdelta/10-verify-downloads.sh \
+	update/xdelta/15-python-cleanup.sh \
 	update/xdelta/20-apply-xdelta.sh \
 	update/xdelta/30-delete-symlinks.sh \
 	update/xdelta/35-move-out-installation-dir.sh \
@@ -54,6 +55,7 @@ update_scripts = \
 	update/rollback/02-move-back-installation-dir.sh \
 	update/rollback/03-symlinks.sh \
 	update/rollback/04-desktop-updates.sh \
+	update/rollback/04-python-compile.sh \
 	update/rollback/05-cleanup.sh \
 	$(NULL)
 
