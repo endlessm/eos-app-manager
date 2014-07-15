@@ -100,19 +100,6 @@ eam_updates_new ()
   return g_object_new (EAM_TYPE_UPDATES, NULL);
 }
 
-static char *
-build_updates_temp_filename (void)
-{
-  char *prefix = g_strdup_printf ("%" G_GINT64_FORMAT, g_get_monotonic_time () / 1000);
-  char *tmpname = g_strconcat (prefix, "-updates.json", NULL);
-  char *res = g_build_filename (g_get_tmp_dir (), tmpname, NULL);
-
-  g_free (tmpname);
-  g_free (prefix);
-
-  return res;
-}
-
 static gchar *
 build_updates_filename (void)
 {
@@ -122,8 +109,9 @@ build_updates_filename (void)
 typedef struct {
   GTask *task;
   GCancellable *cancellable;
-  char *temp_file;
-  char *target_file;
+  GFile *temp_file;
+  GFile *target_file;
+  GFileIOStream *stream;
 } RequestData;
 
 static void
@@ -135,8 +123,9 @@ request_data_free (gpointer data_)
   RequestData *data = data_;
 
   g_object_unref (data->task);
+  g_object_unref (data->stream);
+  g_object_unref (data->temp_file);
   g_free (data->target_file);
-  g_free (data->temp_file);
 
   g_free (data);
 }
@@ -146,8 +135,6 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
 {
   RequestData *data = data_;
   GError *error = NULL;
-  GFile *temp = NULL;
-  GFile *target = NULL;
   char *buf = NULL;
   gsize buf_size = 0;
 
@@ -160,17 +147,24 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   if (g_task_return_error_if_cancelled (data->task))
     goto bail;
 
-  temp = g_file_new_for_path (data->temp_file);
-
-  g_file_load_contents (temp, data->cancellable, &buf, &buf_size, NULL, &error);
+  
+  g_file_load_contents (data->temp_file, data->cancellable, &buf, &buf_size, NULL, &error);
   if (error) {
     g_task_return_error (data->task, error);
     goto bail;
   }
 
-  target = g_file_new_for_path (data->target_file);
+  g_file_replace_contents (data->target_file,
+                           buf, buf_size, NULL, FALSE,
+                           0, NULL,
+                           data->cancellable,
+                           &error);
+  if (error) {
+    g_task_return_error (data->task, error);
+    goto bail;
+  }
 
-  g_file_replace_contents (target, buf, buf_size, NULL, FALSE, 0, NULL, data->cancellable, &error);
+  g_file_delete (data->temp_file, data->cancellable, &error);
   if (error) {
     g_task_return_error (data->task, error);
     goto bail;
@@ -179,10 +173,6 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   g_task_return_int (data->task, size);
 
 bail:
-  if (temp != NULL)
-    g_object_unref (temp);
-  if (target != NULL)
-    g_object_unref (target);
   g_free (buf);
   request_data_free (data);
 }
@@ -220,19 +210,38 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
     return;
   }
 
-  RequestData *clos = g_new (RequestData, 1);
+  char *target_file = build_updates_filename ();
+
+  RequestData *clos = g_new0 (RequestData, 1);
+
+  GError *error = NULL;
+  clos->temp_file = g_file_new_tmp (NULL, &clos->stream, &error);
+  if (clos->temp_file == NULL) {
+    g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
+      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_INVALID_FILE,
+      _("Unable to create a temporary file: %s"),
+      error->message);
+    request_data_free (clos);
+    goto out;
+  }
+  
+  clos->target_file = g_file_new_for_path (target_file);
   clos->task = g_task_new (self, cancellable, callback, data);
   clos->cancellable = cancellable;
-  clos->temp_file = build_updates_temp_filename ();
-  clos->target_file = build_updates_filename ();
+
+  char *temp_file = g_file_get_path (clos->temp_file);
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  eam_wc_request_with_headers_async (priv->wc, uri, clos->temp_file,
-                                     cancellable,
+  eam_wc_request_with_headers_async (priv->wc, uri, temp_file,
+                                     clos->cancellable,
                                      request_cb, clos,
                                      "Accept", "application/json",
                                      NULL);
 
+  g_free (target_file);
+  g_free (temp_file);
+
+out:
   g_free (uri);
 }
 
