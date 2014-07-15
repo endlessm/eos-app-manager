@@ -16,12 +16,14 @@ install_scripts = \
 	install/run/70-desktop-updates.sh \
 	install/run/70-python-compile.sh \
 	install/run/80-cleanup.sh \
+	install/rollback/00-directories.sh \
 	install/rollback/01-delete-symlinks.sh \
 	install/rollback/02-cleanup.sh \
 	install/rollback/03-desktop-updates.sh \
 	$(NULL)
 
 uninstall_scripts = \
+	uninstall/00-directories.sh \
 	uninstall/01-delete-symlinks.sh \
 	uninstall/02-delete-installation-dir.sh \
 	uninstall/03-desktop-updates.sh \
@@ -51,6 +53,7 @@ update_scripts = \
 	update/xdelta/60-desktop-updates.sh \
 	update/xdelta/60-python-compile.sh \
 	update/xdelta/70-cleanup.sh \
+	update/rollback/00-directories.sh \
 	update/rollback/01-delete-symlinks.sh \
 	update/rollback/02-move-back-installation-dir.sh \
 	update/rollback/03-symlinks.sh \

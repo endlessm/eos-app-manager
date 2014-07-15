@@ -44,6 +44,8 @@ APP_DESKTOP_ICONS_SUBDIR="share/icons"
 APP_GSETTINGS_SUBDIR="share/glib-2.0/schemas"
 # Application D-Bus services subdirectory.
 APP_DBUS_SERVICES_SUBDIR="share/dbus-1/services"
+# Application help subdirectory
+APP_HELP_SUBDIR="share/help"
 # Application knowledge app data.
 APP_EKN_DATA_SUBDIR="share/ekn/data"
 # Application knowledge app manifest.
@@ -63,6 +65,8 @@ OS_DESKTOP_ICONS_DIR="${EAM_PREFIX}/share/icons"
 OS_GSETTINGS_DIR="${EAM_PREFIX}/share/glib-2.0/schemas"
 # D-Bus services directory.
 OS_DBUS_SERVICES_DIR="${EAM_PREFIX}/share/dbus-1/services"
+# Help directory
+OS_HELP_DIR="${EAM_PREFIX}/share/help"
 # Knowledge app data.
 OS_EKN_DATA_DIR="${EAM_PREFIX}/share/ekn/data"
 # Knowledge app manifest.
