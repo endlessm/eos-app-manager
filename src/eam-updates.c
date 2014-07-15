@@ -109,9 +109,9 @@ build_updates_filename (void)
 typedef struct {
   GTask *task;
   GCancellable *cancellable;
+  GFileIOStream *stream;
   GFile *temp_file;
   GFile *target_file;
-  GFileIOStream *stream;
 } RequestData;
 
 static void
@@ -122,12 +122,50 @@ request_data_free (gpointer data_)
 
   RequestData *data = data_;
 
-  g_object_unref (data->task);
   g_object_unref (data->stream);
   g_object_unref (data->temp_file);
   g_object_unref (data->target_file);
+  g_object_unref (data->task);
 
   g_free (data);
+}
+
+#define GET_DATA_BLOCK_SIZE     4096
+
+static void
+load_stream_contents (GFileIOStream *stream,
+                      GCancellable  *cancellable,
+                      char         **buf,
+                      gsize         *size,
+                      GError       **error)
+{
+  GInputStream *istream = g_io_stream_get_input_stream (G_IO_STREAM (stream));
+  GByteArray *content = g_byte_array_new ();
+  gsize pos = 0;
+  gssize res;
+
+  g_byte_array_set_size (content, pos + GET_DATA_BLOCK_SIZE + 1);
+
+  while ((res = g_input_stream_read (istream, content->data + pos,
+                                     GET_DATA_BLOCK_SIZE,
+                                     cancellable, error)) > 0)
+    {
+      pos += res;
+      g_byte_array_set_size (content, pos + GET_DATA_BLOCK_SIZE + 1);
+    }
+
+  if (res < 0)
+    {
+      /* error has already been set */
+      goto out;
+    }
+
+  /* zero-terminate the content; we allocated an extra byte for this */
+  content->data[pos] = 0;
+
+out:
+  *size = pos;
+  *buf = (char *) g_byte_array_free (content, FALSE);
 }
 
 static void
@@ -147,8 +185,7 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   if (g_task_return_error_if_cancelled (data->task))
     goto bail;
 
-  
-  g_file_load_contents (data->temp_file, data->cancellable, &buf, &buf_size, NULL, &error);
+  load_stream_contents (data->stream, data->cancellable, &buf, &buf_size, &error);
   if (error) {
     g_task_return_error (data->task, error);
     goto bail;
