@@ -92,6 +92,79 @@ desktop_updates ()
     update-desktop-database $OS_DESKTOP_FILES_DIR
 }
 
+# Paths
+# -----
+
+# Internal function
+# Removes a directory from a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathremove () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathremove: at least one argument is required"
+    fi
+
+    local IFS=':'
+    local NEWPATH
+    local DIR
+    local PATHVARIABLE=${2:-PATH}
+    for DIR in ${!PATHVARIABLE} ; do
+        if [ "$DIR" != "$1" ] ; then
+            NEWPATH=${NEWPATH:+$NEWPATH:}$DIR
+        fi
+    done
+    export $PATHVARIABLE="$NEWPATH"
+}
+
+# Internal function
+# Prepends a directory to a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathprepend () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathprepend: at least one argument is required"
+    fi
+
+    pathremove $1 $2
+    local PATHVARIABLE=${2:-PATH}
+    export $PATHVARIABLE="$1${!PATHVARIABLE:+:${!PATHVARIABLE}}"
+}
+
+# Internal function
+# Appends a directory to a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathappend () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathappend: at least one argument is required"
+    fi
+
+    pathremove $1 $2
+    local PATHVARIABLE=${2:-PATH}
+    export $PATHVARIABLE="${!PATHVARIABLE:+${!PATHVARIABLE}:}$1"
+}
+
+# Internal function
+# Checks if a directory is in a $PATH-style variable
+# Second argument is the name of the path variable to be
+# modified (default: PATH)
+pathexists () {
+    if [ "$#" -lt 1 ]; then
+        exit_error "pathexists: at least one argument is required"
+    fi
+
+    local IFS=':'
+    local DIR
+    local PATHVARIABLE=${2:-PATH}
+
+    for DIR in ${!PATHVARIABLE}; do
+        [ "$DIR" = "$1" ] && return 0
+    done
+
+    # no match found
+    return 1
+}
+
 # Symbolic links
 # --------------
 
@@ -178,8 +251,21 @@ binary_symbolic_link ()
 	ln --symbolic "${gamespath}" "${OS_BIN_DIR}"
     else
 	# Finally, look if the command we are trying to link is already in $PATH
-	commandname=$(command -v "${binaryname}" 2> /dev/null)
-	if [ -z "${commandname}" ]; then
+	#
+	# We don't want to match binaries in ${OS_BIN_DIR} here, so remove it
+	# from $PATH first
+	oldpath=$PATH
+	pathremove "${OS_BIN_DIR}"
+
+	cmdfound=0
+	if command -v "${binaryname}" > /dev/null 2>&1; then
+	    cmdfound=1
+	fi
+
+	# Restore $PATH
+	export PATH="${oldpath}"
+
+	if [ "${cmdfound}" == 0 ]; then
 	    # If command is neither in $PATH nor in one of the binary directories
 	    # of the bundle, exit with error
 	    exit_error "binary_symbolic_link: can't find app binary to link"
@@ -343,4 +429,43 @@ parse_ini_section ()
       -e "s/^\(.*\)=\([^\"']*\)$/\1=\"\2\"/" \
      < ${config_file} \
       | sed -n -e "/^\[${section}\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
+}
+
+# python modules
+#---------------
+# Recursively byte compile all python modules in the site directories.
+compile_python_modules ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "compile_python_modules: incorrect number of arguments"
+    fi
+
+    dir=$1
+
+    for python in python2 python3; do
+        for sitedir in dist-packages site-packages; do
+            if [ "${python}" = python2 ]; then
+                pyvers=$(${python} -c 'import sys; print sys.version[0:3]')
+                pydir="${dir}/lib/python${pyvers}/${sitedir}"
+            else
+                pydir="${dir}/lib/${python}/${sitedir}"
+            fi
+            if [ -d "${pydir}" ]; then
+                ${python} -m compileall -f -q "${pydir}"
+            fi
+        done
+    done
+}
+
+# Remove compiled bytecode recursively.
+remove_python_bytecode ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "remove_python_bytecode: incorrect number of arguments"
+    fi
+
+    dir=$1
+
+    find "${dir}" -type d -name __pycache__ -exec rm -rf '{}' ';'
+    find "${dir}" -type f -name '*.py[co]' -delete
 }
