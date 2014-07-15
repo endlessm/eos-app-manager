@@ -72,7 +72,7 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
 
   char *dir = g_build_filename (eam_config_scriptdir (), "uninstall", NULL);
   g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("EAM_TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
 
   GStrv params = g_new0 (gchar *, 2);
   params[0] = g_strdup (priv->appid);
