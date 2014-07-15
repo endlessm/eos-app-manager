@@ -125,7 +125,7 @@ request_data_free (gpointer data_)
   g_object_unref (data->task);
   g_object_unref (data->stream);
   g_object_unref (data->temp_file);
-  g_free (data->target_file);
+  g_object_unref (data->target_file);
 
   g_free (data);
 }
