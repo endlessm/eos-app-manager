@@ -326,7 +326,7 @@ run_scripts (EamInstall *self, const gchar *scriptdir,
 
   /* prefix environment */
   g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("EAM_TMP", g_get_tmp_dir (), FALSE);
+  g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
   g_setenv ("EAM_GPGKEYRING", eam_config_gpgkeyring (), FALSE);
 
   EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
