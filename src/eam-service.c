@@ -120,7 +120,7 @@ static void run_method_with_authorization (EamService *service, GDBusMethodInvoc
 static EamServiceAuth auth_action[] = {
   {EAM_SERVICE_METHOD_INSTALL,   "Install",       eam_service_install,    AUTH_NAMESPACE "install-application",   AUTH_MSG_INSTALL},
   {EAM_SERVICE_METHOD_UNINSTALL, "Uninstall",     eam_service_uninstall,  AUTH_NAMESPACE "uninstall-application", AUTH_MSG_UNINSTALL},
-  {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    AUTH_NAMESPACE "refresh-applications",  AUTH_MSG_REFRESH},
+  {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    NULL, ""},
   {EAM_SERVICE_METHOD_LIST_AVAILABLE, "ListAvailable", eam_service_list_avail, NULL, ""},
   {EAM_SERVICE_METHOD_LIST_INSTALLED, "ListInstalled", eam_service_list_installed, NULL, ""},
   {EAM_SERVICE_METHOD_USER_CAPS, "GetUserCapabilities", eam_service_get_user_caps, NULL, "" },
@@ -842,8 +842,7 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
     EAM_SERVICE_METHOD_INSTALL);
   can_uninstall = eam_service_check_auth_by_method (service, subject,
     EAM_SERVICE_METHOD_UNINSTALL);
-  can_refresh = eam_service_check_auth_by_method (service, subject,
-    EAM_SERVICE_METHOD_REFRESH);
+  can_refresh = TRUE; 
 
 out:
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a{sv})"));
