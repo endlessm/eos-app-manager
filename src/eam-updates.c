@@ -130,51 +130,13 @@ request_data_free (gpointer data_)
   g_free (data);
 }
 
-#define GET_DATA_BLOCK_SIZE     4096
-
-static void
-load_stream_contents (GFileIOStream *stream,
-                      GCancellable  *cancellable,
-                      char         **buf,
-                      gsize         *size,
-                      GError       **error)
-{
-  GInputStream *istream = g_io_stream_get_input_stream (G_IO_STREAM (stream));
-  GByteArray *content = g_byte_array_new ();
-  gsize pos = 0;
-  gssize res;
-
-  g_byte_array_set_size (content, pos + GET_DATA_BLOCK_SIZE + 1);
-
-  while ((res = g_input_stream_read (istream, content->data + pos,
-                                     GET_DATA_BLOCK_SIZE,
-                                     cancellable, error)) > 0)
-    {
-      pos += res;
-      g_byte_array_set_size (content, pos + GET_DATA_BLOCK_SIZE + 1);
-    }
-
-  if (res < 0)
-    {
-      /* error has already been set */
-      goto out;
-    }
-
-  /* zero-terminate the content; we allocated an extra byte for this */
-  content->data[pos] = 0;
-
-out:
-  *size = pos;
-  *buf = (char *) g_byte_array_free (content, FALSE);
-}
-
 static void
 request_cb (GObject *source, GAsyncResult *result, gpointer data_)
 {
   RequestData *data = data_;
   GError *error = NULL;
-  char *buf = NULL;
-  gsize buf_size = 0;
+  GInputStream *istream = NULL;
+  GFileOutputStream *ostream = NULL;
 
   gssize size = eam_wc_request_finish (EAM_WC (source), result, &error);
   if (error) {
@@ -185,17 +147,17 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   if (g_task_return_error_if_cancelled (data->task))
     goto bail;
 
-  load_stream_contents (data->stream, data->cancellable, &buf, &buf_size, &error);
+  ostream = g_file_replace (data->target_file, NULL, FALSE, 0, data->cancellable, &error);
   if (error) {
     g_task_return_error (data->task, error);
     goto bail;
   }
 
-  g_file_replace_contents (data->target_file,
-                           buf, buf_size, NULL, FALSE,
-                           0, NULL,
-                           data->cancellable,
-                           &error);
+  istream = g_io_stream_get_input_stream (G_IO_STREAM (data->stream));
+
+  g_output_stream_splice (G_OUTPUT_STREAM (ostream), istream,
+    G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+    data->cancellable, &error);
   if (error) {
     g_task_return_error (data->task, error);
     goto bail;
@@ -210,7 +172,10 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   g_task_return_int (data->task, size);
 
 bail:
-  g_free (buf);
+  if (istream)
+    g_object_unref (istream);
+  if (ostream)
+    g_object_unref (ostream);
   request_data_free (data);
 }
 
