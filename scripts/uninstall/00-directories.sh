@@ -7,7 +7,7 @@
 #
 # Usage: ./00-directories.sh ...
 
-. ${BASH_SOURCE[0]%/*}/../../utils.sh
+. ${BASH_SOURCE[0]%/*}/../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
 create_os_directories
