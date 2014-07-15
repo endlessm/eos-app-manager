@@ -100,31 +100,91 @@ eam_updates_new ()
   return g_object_new (EAM_TYPE_UPDATES, NULL);
 }
 
+static char *
+build_updates_temp_filename (void)
+{
+  char *prefix = g_strdup_printf ("%" G_GINT64_FORMAT, g_get_monotonic_time () / 1000);
+  char *tmpname = g_strconcat (prefix, "-updates.json", NULL);
+  char *res = g_build_filename (g_get_tmp_dir (), tmpname, NULL);
+
+  g_free (tmpname);
+  g_free (prefix);
+
+  return res;
+}
+
 static gchar *
-build_updates_filename ()
+build_updates_filename (void)
 {
   return g_build_filename (eam_config_dldir (), "updates.json", NULL);
 }
 
+typedef struct {
+  GTask *task;
+  GCancellable *cancellable;
+  char *temp_file;
+  char *target_file;
+} RequestData;
+
 static void
-request_cb (GObject *source, GAsyncResult *result, gpointer data)
+request_data_free (gpointer data_)
 {
-  GTask *task = data;
+  if (G_UNLIKELY (data_ == NULL))
+    return;
+
+  RequestData *data = data_;
+
+  g_object_unref (data->task);
+  g_free (data->target_file);
+  g_free (data->temp_file);
+
+  g_free (data);
+}
+
+static void
+request_cb (GObject *source, GAsyncResult *result, gpointer data_)
+{
+  RequestData *data = data_;
   GError *error = NULL;
+  GFile *temp = NULL;
+  GFile *target = NULL;
+  char *buf = NULL;
+  gsize buf_size = 0;
 
   gssize size = eam_wc_request_finish (EAM_WC (source), result, &error);
   if (error) {
-    g_task_return_error (task, error);
+    g_task_return_error (data->task, error);
     goto bail;
   }
 
-  if (g_task_return_error_if_cancelled (task))
+  if (g_task_return_error_if_cancelled (data->task))
     goto bail;
 
-  g_task_return_int (task, size);
+  temp = g_file_new_for_path (data->temp_file);
+
+  g_file_load_contents (temp, data->cancellable, &buf, &buf_size, NULL, &error);
+  if (error) {
+    g_task_return_error (data->task, error);
+    goto bail;
+  }
+
+  target = g_file_new_for_path (data->target_file);
+
+  g_file_replace_contents (target, buf, buf_size, NULL, FALSE, 0, NULL, data->cancellable, &error);
+  if (error) {
+    g_task_return_error (data->task, error);
+    goto bail;
+  }
+
+  g_task_return_int (data->task, size);
 
 bail:
-  g_object_unref (task);
+  if (temp != NULL)
+    g_object_unref (temp);
+  if (target != NULL)
+    g_object_unref (target);
+  g_free (buf);
+  request_data_free (data);
 }
 
 /**
@@ -160,13 +220,19 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
     return;
   }
 
-  GTask *task = g_task_new (self, cancellable, callback, data);
-  gchar *filename = build_updates_filename ();
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  eam_wc_request_with_headers_async (priv->wc, uri, filename, cancellable,
-    request_cb, task, "Accept", "application/json", NULL);
+  RequestData *clos = g_new (RequestData, 1);
+  clos->task = g_task_new (self, cancellable, callback, data);
+  clos->cancellable = cancellable;
+  clos->temp_file = build_updates_temp_filename ();
+  clos->target_file = build_updates_filename ();
 
-  g_free (filename);
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  eam_wc_request_with_headers_async (priv->wc, uri, clos->temp_file,
+                                     cancellable,
+                                     request_cb, clos,
+                                     "Accept", "application/json",
+                                     NULL);
+
   g_free (uri);
 }
 
