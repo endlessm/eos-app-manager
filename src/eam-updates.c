@@ -101,30 +101,80 @@ eam_updates_new ()
 }
 
 static gchar *
-build_updates_filename ()
+build_updates_filename (void)
 {
   return g_build_filename (eam_config_dldir (), "updates.json", NULL);
 }
 
+typedef struct {
+  GTask *task;
+  GCancellable *cancellable;
+  GFileIOStream *stream;
+  GFile *temp_file;
+  GFile *target_file;
+} RequestData;
+
 static void
-request_cb (GObject *source, GAsyncResult *result, gpointer data)
+request_data_free (gpointer data_)
 {
-  GTask *task = data;
+  if (G_UNLIKELY (data_ == NULL))
+    return;
+
+  RequestData *data = data_;
+
+  g_object_unref (data->stream);
+  g_object_unref (data->temp_file);
+  g_object_unref (data->target_file);
+  g_object_unref (data->task);
+
+  g_free (data);
+}
+
+static void
+request_cb (GObject *source, GAsyncResult *result, gpointer data_)
+{
+  RequestData *data = data_;
   GError *error = NULL;
+  GInputStream *istream = NULL;
+  GFileOutputStream *ostream = NULL;
 
   gssize size = eam_wc_request_finish (EAM_WC (source), result, &error);
   if (error) {
-    g_task_return_error (task, error);
+    g_task_return_error (data->task, error);
     goto bail;
   }
 
-  if (g_task_return_error_if_cancelled (task))
+  if (g_task_return_error_if_cancelled (data->task))
     goto bail;
 
-  g_task_return_int (task, size);
+  ostream = g_file_replace (data->target_file, NULL, FALSE, 0, data->cancellable, &error);
+  if (error) {
+    g_task_return_error (data->task, error);
+    goto bail;
+  }
+
+  istream = g_io_stream_get_input_stream (G_IO_STREAM (data->stream));
+
+  g_output_stream_splice (G_OUTPUT_STREAM (ostream), istream,
+    G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+    data->cancellable, &error);
+  if (error) {
+    g_task_return_error (data->task, error);
+    goto bail;
+  }
+
+  g_file_delete (data->temp_file, data->cancellable, &error);
+  if (error) {
+    g_task_return_error (data->task, error);
+    goto bail;
+  }
+
+  g_task_return_int (data->task, size);
 
 bail:
-  g_object_unref (task);
+  if (ostream)
+    g_object_unref (ostream);
+  request_data_free (data);
 }
 
 /**
@@ -160,13 +210,38 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
     return;
   }
 
-  GTask *task = g_task_new (self, cancellable, callback, data);
-  gchar *filename = build_updates_filename ();
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  eam_wc_request_with_headers_async (priv->wc, uri, filename, cancellable,
-    request_cb, task, "Accept", "application/json", NULL);
+  char *target_file = build_updates_filename ();
 
-  g_free (filename);
+  RequestData *clos = g_new0 (RequestData, 1);
+
+  GError *error = NULL;
+  clos->temp_file = g_file_new_tmp (NULL, &clos->stream, &error);
+  if (clos->temp_file == NULL) {
+    g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
+      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_INVALID_FILE,
+      _("Unable to create a temporary file: %s"),
+      error->message);
+    request_data_free (clos);
+    goto out;
+  }
+  
+  clos->target_file = g_file_new_for_path (target_file);
+  clos->task = g_task_new (self, cancellable, callback, data);
+  clos->cancellable = cancellable;
+
+  char *temp_file = g_file_get_path (clos->temp_file);
+
+  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
+  eam_wc_request_with_headers_async (priv->wc, uri, temp_file,
+                                     clos->cancellable,
+                                     request_cb, clos,
+                                     "Accept", "application/json",
+                                     NULL);
+
+  g_free (target_file);
+  g_free (temp_file);
+
+out:
   g_free (uri);
 }
 
