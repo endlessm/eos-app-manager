@@ -172,8 +172,6 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   g_task_return_int (data->task, size);
 
 bail:
-  if (istream)
-    g_object_unref (istream);
   if (ostream)
     g_object_unref (ostream);
   request_data_free (data);
