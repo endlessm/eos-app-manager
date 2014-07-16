@@ -147,7 +147,9 @@ request_cb (GObject *source, GAsyncResult *result, gpointer data_)
   if (g_task_return_error_if_cancelled (data->task))
     goto bail;
 
-  ostream = g_file_replace (data->target_file, NULL, FALSE, 0, data->cancellable, &error);
+  ostream = g_file_replace (data->target_file, NULL, FALSE, 
+                            G_FILE_CREATE_REPLACE_DESTINATION,
+                            data->cancellable, &error);
   if (error) {
     g_task_return_error (data->task, error);
     goto bail;
