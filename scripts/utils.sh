@@ -330,7 +330,7 @@ symbolic_links_delete ()
     links_dir=$2
 
     if [ -d "${target_dir}" ]; then
-        find ${links_dir} -mindepth 1 -type l -lname "${target_dir}*" -print0 | xargs -0 rm
+        find ${links_dir} -mindepth 1 -type l -lname "${target_dir}*" -print0 | xargs -0 rm --force
     fi
 }
 
