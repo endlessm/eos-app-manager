@@ -273,6 +273,24 @@ binary_symbolic_link ()
     fi
 }
 
+# Internal function
+# Creates a symbolic link to the bundle's EKN data
+ekn_data_symbolic_link ()
+{
+    if [ "$#" -ne 1 ]; then
+        exit_error "ekn_data_symbolic_link: incorrect number of arguments"
+    fi
+
+    appid=$1
+    target_dir="${EAM_PREFIX}/${appid}/${APP_EKN_DATA_SUBDIR}"
+
+    # Link only the first level of the EKN data subdir.
+    if [ -d "${target_dir}" ]; then
+	find "${target_dir}" -mindepth 1 -maxdepth 1 -exec ln --symbolic '{}' "${OS_EKN_DATA_DIR}" \;
+    fi
+}
+
+
 # Creates symbolic links, on common OS directories, for the application
 # metadata files: .desktop files, desktop icons, gsettings and D-Bus
 # services.
@@ -292,7 +310,9 @@ create_symbolic_links ()
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_HELP_SUBDIR}" "${OS_HELP_DIR}"
-    symbolic_links "${EAM_PREFIX}/${appid}/${APP_EKN_DATA_SUBDIR}" "${OS_EKN_DATA_DIR}"
+
+    ekn_data_symbolic_link "${appid}"
+
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_EKN_MANIFEST_SUBDIR}" "${OS_EKN_MANIFEST_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
 }
@@ -310,7 +330,7 @@ symbolic_links_delete ()
     links_dir=$2
 
     if [ -d "${target_dir}" ]; then
-        find  "${target_dir}" -mindepth 1 -print0 | xargs -0 -I '{.}' find -L "${links_dir}" -samefile '{.}' -exec rm '{}' \;
+        find ${links_dir} -mindepth 1 -type l -lname "${target_dir}*" -print0 | xargs -0 rm --force
     fi
 }
 
