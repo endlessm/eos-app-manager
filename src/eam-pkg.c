@@ -18,15 +18,16 @@ struct _EamPkg
   gchar *id;
   gchar *name;
   EamPkgVersion *version;
+  gchar *locale;
 };
 
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
 G_DEFINE_QUARK (eam-pkg-error-quark, eam_pkg_error)
 
-static const gchar *KEYS[] = { "app_id", "app_name", "version" };
-static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion" };
-enum { APP_ID, APP_NAME, CODE_VERSION };
+static const gchar *KEYS[] = { "app_id", "app_name", "version", "locale" };
+static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion", "Locale" };
+enum { APP_ID, APP_NAME, CODE_VERSION, LOCALE };
 
 void
 eam_pkg_free (EamPkg *pkg)
@@ -47,12 +48,13 @@ eam_pkg_copy (EamPkg *pkg)
   copy->id = g_strdup (pkg->id);
   copy->name = g_strdup (pkg->name);
   copy->version = eam_pkg_version_copy (pkg->version);
+  copy->locale = g_strdup (pkg->locale);
 
   return copy;
 }
 
 static inline EamPkg *
-create_pkg (gchar *id, gchar *name, const gchar *ver)
+create_pkg (gchar *id, gchar *name, const gchar *ver, gchar *locale)
 {
   EamPkgVersion *version = eam_pkg_version_new_from_string (ver);
   if (!version)
@@ -62,6 +64,7 @@ create_pkg (gchar *id, gchar *name, const gchar *ver)
   pkg->id = id;
   pkg->name = name;
   pkg->version = version;
+  pkg->locale = locale;
 
   return pkg;
 }
@@ -69,10 +72,10 @@ create_pkg (gchar *id, gchar *name, const gchar *ver)
 static EamPkg *
 eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
 {
-  gchar *ver, *id, *name;
+  gchar *ver, *id, *name, *locale;
   const gchar *group = "Bundle";
 
-  ver = id = name = NULL;
+  ver = id = name = locale = NULL;
 
   if (!g_key_file_has_group (keyfile, group))
     goto bail;
@@ -89,7 +92,10 @@ eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
   if (!ver)
     goto bail;
 
-  EamPkg *pkg = create_pkg (id, name, ver);
+  /* "locale" is not required */
+  locale = g_key_file_get_string (keyfile, group, KEYS[LOCALE], NULL);
+
+  EamPkg *pkg = create_pkg (id, name, ver, locale);
 
   g_free (ver); /* we don't need it anymore */
 
@@ -99,6 +105,7 @@ bail:
   g_free (id);
   g_free (ver);
   g_free (name);
+  g_free (locale);
 
   return NULL;
 }
@@ -159,10 +166,10 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
   g_return_val_if_fail (json, NULL);
 
   const gchar *ver, *key;
-  gchar *id, *name;
+  gchar *id, *name, *loc;
   JsonNode *node;
 
-  id = name = NULL;
+  id = name = loc = NULL;
 
   key = JSON_KEYS[APP_ID];
   node = json_object_get_member (json, key);
@@ -182,11 +189,18 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
     goto bail;
   ver = json_node_get_string (node);
 
-  return create_pkg (id, name, ver);
+  /* "locale" is not required */
+  key = JSON_KEYS[LOCALE];
+  node = json_object_get_member (json, key);
+  if (node)
+    loc = json_node_dup_string (node);
+
+  return create_pkg (id, name, ver, loc);
 
 bail:
   g_free (id);
   g_free (name);
+  g_free (loc);
 
   g_set_error (error, EAM_PKG_ERROR, EAM_PKG_ERROR_KEY_NOT_FOUND,
     _("Key \"%s\" was not found"), key);
@@ -210,4 +224,13 @@ EamPkgVersion *
 eam_pkg_get_version (const EamPkg *pkg)
 {
   return pkg->version;
+}
+
+const gchar *
+eam_pkg_get_locale (const EamPkg *pkg)
+{
+  if (pkg->locale != NULL)
+    return pkg->locale;
+
+  return "All";
 }
