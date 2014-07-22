@@ -99,6 +99,7 @@
     -->
     <method name="ListAvailable" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="a{sv}" direction="in" />
       <arg type="a(sss)" direction="out" />
       <arg type="a(sss)" direction="out" />
     </method>
