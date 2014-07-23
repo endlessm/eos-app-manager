@@ -34,6 +34,7 @@ eam_pkg_free (EamPkg *pkg)
 {
   g_free (pkg->id);
   g_free (pkg->name);
+  g_free (pkg->locale);
 
   if (pkg->version)
     eam_pkg_version_free (pkg->version);
