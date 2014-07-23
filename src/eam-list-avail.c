@@ -16,13 +16,16 @@ struct _EamListAvailPrivate
   EamPkgdb *db;
   EamUpdates *updates;
   gboolean dbreloaded;
+
+  char *language;
 };
 
 enum
 {
   PROP_DBRELOADED = 1,
   PROP_PKGDB,
-  PROP_UPDATES
+  PROP_UPDATES,
+  PROP_LANGUAGE
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -50,6 +53,8 @@ eam_list_avail_finalize (GObject *obj)
   g_clear_object (&priv->db);
   g_clear_object (&priv->updates);
 
+  g_free (priv->language);
+
   G_OBJECT_CLASS (eam_list_avail_parent_class)->finalize (obj);
 }
 
@@ -68,6 +73,9 @@ eam_list_avail_set_property (GObject *obj, guint prop_id, const GValue *value,
     break;
   case PROP_UPDATES:
     priv->updates = g_value_dup_object (value);
+    break;
+  case PROP_LANGUAGE:
+    priv->language = g_value_dup_string (value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -90,6 +98,9 @@ eam_list_avail_get_property (GObject *obj, guint prop_id, GValue *value,
     break;
   case PROP_UPDATES:
     g_value_set_object (value, priv->updates);
+    break;
+  case PROP_LANGUAGE:
+    g_value_set_string (value, priv->language);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -133,6 +144,10 @@ eam_list_avail_class_init (EamListAvailClass *klass)
   g_object_class_install_property (object_class, PROP_UPDATES,
     g_param_spec_object ("updates", "updates-manager", "", EAM_TYPE_UPDATES,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_LANGUAGE,
+    g_param_spec_string ("language", "Language", "Language used to filter packages", NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 
@@ -154,10 +169,10 @@ eam_list_avail_init (EamListAvail *self)
  * Returns: a new #EamListAvail instance with #EamTransaction interface.
  **/
 EamTransaction *
-eam_list_avail_new (gboolean dbreloaded, EamPkgdb *db, EamUpdates *updates)
+eam_list_avail_new (gboolean dbreloaded, EamPkgdb *db, EamUpdates *updates, const char *language)
 {
   return g_object_new (EAM_TYPE_LIST_AVAIL, "dbreloaded", dbreloaded,
-    "pkgdb", db, "updates", updates, NULL);
+    "pkgdb", db, "updates", updates, "language", language, NULL);
 }
 
 static void
@@ -174,7 +189,7 @@ eam_list_avail_run_async (EamTransaction *trans, GCancellable *cancellable,
 
   if (priv->dbreloaded) {
     g_assert (priv->db);
-    eam_updates_filter (priv->updates, priv->db);
+    eam_updates_filter (priv->updates, priv->db, priv->language);
   }
 
   GTask *task = g_task_new (self, cancellable, callback, data);

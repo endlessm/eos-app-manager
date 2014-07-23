@@ -45,7 +45,8 @@ GType           eam_list_avail_get_type                               (void) G_G
 
 EamTransaction *eam_list_avail_new                                    (gboolean dbreloaded,
                                                                        EamPkgdb *db,
-                                                                       EamUpdates *updates);
+                                                                       EamUpdates *updates,
+                                                                       const char *language);
 
 G_END_DECLS
 

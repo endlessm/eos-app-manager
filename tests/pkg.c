@@ -6,9 +6,19 @@
 #include <eam-version.h>
 
 #define bad_info_1 "[Bundle]"
-#define good_info "[Bundle]\napp_id = app01\napp_name= application one\nversion = 1\n"
-#define good_info_2 "[Bundle]\napp_id = app01\napp_name= application one\nversion = 2\n"
-#define good_json "{ \"appId\": \"com.application.id1\", \"appName\": \"App Name 1\", \"codeVersion\": \"1.1\" }"
+#define good_info \
+  "[Bundle]\n" \
+  "app_id = app01\n" \
+  "app_name = application one\n" \
+  "version = 1\n" \
+  "locale = All\n"
+#define good_info_2 \
+  "[Bundle]\n" \
+  "app_id = app01\n" \
+  "app_name = application one\n" \
+  "version = 2\n" \
+  "locale = All\n"
+#define good_json "{ \"appId\": \"com.application.id1\", \"appName\": \"App Name 1\", \"codeVersion\": \"1.1\", \"Locale\": \"All\" }"
 
 static void
 test_pkg_basic (void)
@@ -36,6 +46,7 @@ test_pkg_basic (void)
   g_assert_cmpstr (eam_pkg_get_name (pkg), ==, eam_pkg_get_name (cpkg));
   g_assert_cmpstr (eam_pkg_get_version (pkg)->version, ==,
                    eam_pkg_get_version (cpkg)->version);
+  g_assert_cmpstr (eam_pkg_get_locale (pkg), ==, eam_pkg_get_locale (cpkg));
 
   eam_pkg_free (cpkg);
   eam_pkg_free (pkg);
