@@ -889,7 +889,7 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
 
   const char *language = NULL;
 
-  g_variant_lookup (opts, "EndlessLanguage", "&s", &language);
+  g_variant_lookup (opts, "Locale", "&s", &language);
 
   priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service), language);
   run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
