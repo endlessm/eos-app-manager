@@ -402,20 +402,27 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db, const char *language)
 
   EamPkg *apkg;
   while (eam_pkgdb_iter_next (priv->avails, &apkg)) {
+    const EamPkg *fpkg;
+
     if (!apkg)
       continue;
 
-    if (language != NULL) {
+    if (language != NULL && *language != '\0') {
       const char *lang_pkg = eam_pkg_get_locale (apkg);
 
-      /* "All" packages are always included */
-      if (g_strcmp0 (lang_pkg, "All") != 0 &&
-          g_strcmp0 (lang_pkg, language) != 0) {
-        continue;
+      if (g_ascii_strcasecmp (lang_pkg, "all") == 0) {
+        goto version_check;
       }
+
+      if (g_ascii_strcasecmp (lang_pkg, language) == 0) {
+        goto version_check;
+      }
+
+      continue;
     }
 
-    const EamPkg *fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
+  version_check:
+    fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
     if (!fpkg) {
       priv->installs = g_list_prepend (priv->installs, apkg);
     } else {
