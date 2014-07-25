@@ -26,7 +26,7 @@ case "$1" in
 	;;
     uninstall) call "Uninstall" "$2"
 	;;
-    list-available) call "ListAvailable"
+    list-available) call "ListAvailable" "{}"
 	;;
     list-installed) call "ListInstalled"
 	;;
