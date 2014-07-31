@@ -29,26 +29,28 @@ static void
 test_restv1_basic (void)
 {
   gchar *uri, *turi;
-  const gchar *version;
+  const gchar *version = eam_os_get_version ();
+  const gchar *arch = eam_os_get_architecture ();
 
   load_config ("v1");
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
-  turi = g_strconcat ("http://localhost/api/v1/updates/", eam_os_get_version (), NULL);
+  turi = g_strconcat ("http://localhost/api/v1/updates/", version, "?arch=",
+                      arch, NULL);
   g_assert_cmpstr (uri, ==, turi);
   g_free (uri);
   g_free (turi);
 
-  version = eam_os_get_version ();
-
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATES, "com.application.id1", NULL);
-  turi = g_strconcat ("http://localhost/api/v1/updates/", version, "/com.application.id1", NULL);
+  turi = g_strconcat ("http://localhost/api/v1/updates/", version,
+                      "/com.application.id1?arch=", arch, NULL);
   g_assert_cmpstr (uri, ==, turi);
   g_free (uri);
   g_free (turi);
 
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK, "com.application.id2", "2.22", NULL);
-  turi = g_strconcat ("http://localhost/api/v1/updates/", version, "/com.application.id2/2.22", NULL);
+  turi = g_strconcat ("http://localhost/api/v1/updates/", version,
+                      "/com.application.id2/2.22/", arch, NULL);
   g_assert_cmpstr (uri, ==, turi);
   g_free (uri);
   g_free (turi);

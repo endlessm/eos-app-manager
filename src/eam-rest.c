@@ -5,25 +5,27 @@
 #include "eam-config.h"
 
 static const gchar *METHODS_V1_FORMAT[] = {
-  "%s/api/v1/updates/%s",       /* ALL_UPDATES     */
-  "%s/api/v1/updates/%s/%s",    /* APP_UPDATE      */
-  "%s/api/v1/updates/%s/%s",    /* APP_UPDATE_LINK */
-  "%s/api/v1/updates/blob/%s",  /* APP_UPDATE_BLOB */
+  "%s/api/v1/updates/%s?arch=%s",    /* ALL_UPDATES     */
+  "%s/api/v1/updates/%s/%s?arch=%s", /* APP_UPDATE      */
+  "%s/api/v1/updates/%s/%s",         /* APP_UPDATE_LINK */
+  "%s/api/v1/updates/blob/%s",       /* APP_UPDATE_BLOB */
 };
 
 static gchar *
 build_uri_v1 (EamRestMethod method, const gchar *saddr, va_list args)
 {
   const gchar *osver = eam_os_get_version ();
+  const gchar *osarch = eam_os_get_architecture ();
 
   switch (method) {
   case EAM_REST_API_V1_GET_ALL_UPDATES:{
-    return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver);
+    return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, osarch);
   }
   case EAM_REST_API_V1_GET_APP_UPDATES:{
     const gchar *appid = va_arg (args, const gchar *);
     if (appid)
-      return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid);
+      return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid,
+                              osarch);
 
     break;
   }
@@ -32,13 +34,24 @@ build_uri_v1 (EamRestMethod method, const gchar *saddr, va_list args)
     const gchar *appver = va_arg (args, const gchar *);
     gchar *ret = NULL;
     if (appid) {
-       ret = g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid);
-       if (ret && appver) {
-         gchar *tmp = ret;
-         ret = g_strconcat (tmp, "/", appver, NULL);
-         g_free (tmp);
-       }
-       return ret;
+      ret = g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid);
+      if (ret) {
+        /*
+         * If the app version is specified, then we can build a full
+         * endpoint url with /arch. Otherwise, we have to pass arch as a
+         * parameter.
+         */
+        if (appver) {
+          gchar *tmp = ret;
+          ret = g_strconcat (tmp, "/", appver, "/", osarch, NULL);
+          g_free (tmp);
+        } else {
+          gchar *tmp = ret;
+          ret = g_strconcat (tmp, "?arch=", osarch, NULL);
+          g_free (tmp);
+        }
+      }
+      return ret;
     }
 
     break;
