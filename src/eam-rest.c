@@ -41,15 +41,12 @@ build_uri_v1 (EamRestMethod method, const gchar *saddr, va_list args)
          * endpoint url with /arch. Otherwise, we have to pass arch as a
          * parameter.
          */
-        if (appver) {
-          gchar *tmp = ret;
+        char *tmp = ret;
+        if (appver)
           ret = g_strconcat (tmp, "/", appver, "/", osarch, NULL);
-          g_free (tmp);
-        } else {
-          gchar *tmp = ret;
+        else
           ret = g_strconcat (tmp, "?arch=", osarch, NULL);
-          g_free (tmp);
-        }
+        g_free (tmp);
       }
       return ret;
     }
