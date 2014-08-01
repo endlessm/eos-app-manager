@@ -48,6 +48,13 @@ test_restv1_basic (void)
   g_free (uri);
   g_free (turi);
 
+  uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK, "com.application.id2", NULL);
+  turi = g_strconcat ("http://localhost/api/v1/updates/", version,
+                      "/com.application.id2?arch=", arch, NULL);
+  g_assert_cmpstr (uri, ==, turi);
+  g_free (uri);
+  g_free (turi);
+
   uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK, "com.application.id2", "2.22", NULL);
   turi = g_strconcat ("http://localhost/api/v1/updates/", version,
                       "/com.application.id2/2.22/", arch, NULL);
