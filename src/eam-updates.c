@@ -382,6 +382,7 @@ bail:
  * eam_updates_filter:
  * @self: a #EamUpdates instance
  * @db: a #EamPkgdb instance
+ * @language: (optional): the language used to filter
  *
  * This method will compare the available list of packages with the
  * installed package database. Two list will be generated: the
@@ -390,7 +391,7 @@ bail:
  * @TODO: filter the obsolete package (installed but not available)
  **/
 void
-eam_updates_filter (EamUpdates *self, EamPkgdb *db)
+eam_updates_filter (EamUpdates *self, EamPkgdb *db, const char *language)
 {
   g_return_if_fail (EAM_IS_UPDATES (self));
 
@@ -401,10 +402,27 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db)
 
   EamPkg *apkg;
   while (eam_pkgdb_iter_next (priv->avails, &apkg)) {
+    const EamPkg *fpkg;
+
     if (!apkg)
       continue;
 
-    const EamPkg *fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
+    if (language != NULL && *language != '\0') {
+      const char *lang_pkg = eam_pkg_get_locale (apkg);
+
+      if (g_ascii_strcasecmp (lang_pkg, "all") == 0) {
+        goto version_check;
+      }
+
+      if (g_ascii_strcasecmp (lang_pkg, language) == 0) {
+        goto version_check;
+      }
+
+      continue;
+    }
+
+  version_check:
+    fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
     if (!fpkg) {
       priv->installs = g_list_prepend (priv->installs, apkg);
     } else {

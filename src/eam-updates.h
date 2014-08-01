@@ -83,7 +83,8 @@ gboolean        eam_updates_load                                     (EamUpdates
                                                                       GError **error);
 
 void            eam_updates_filter                                   (EamUpdates *self,
-                                                                      EamPkgdb *db);
+                                                                      EamPkgdb *db,
+                                                                      const char *language);
 
 const GList    *eam_updates_get_installables                         (EamUpdates *self);
 

@@ -429,7 +429,7 @@ eam_service_set_reloaddb (EamService *service, gboolean value)
     {
       EamUpdates *updates = get_eam_updates (service);
       eam_updates_parse (updates, NULL);
-      eam_updates_filter (updates, priv->db);
+      eam_updates_filter (updates, priv->db, NULL);
     }
 
   priv->reloaddb = value;
@@ -885,7 +885,13 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service));
+  GVariant *opts = g_variant_get_child_value (params, 0);
+
+  const char *language = NULL;
+
+  g_variant_lookup (opts, "Locale", "&s", &language);
+
+  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service), language);
   run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
 }
 

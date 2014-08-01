@@ -17,6 +17,7 @@ const CONFIG_PATH ='@SYSCONF_DIR@/eos-app-manager';
 
 const servers =
     ' TRUE http://appupdates.endlessm.com' +
+    ' FALSE http://staging.appupdates.endlessm.com' +
     ' FALSE http://master.appupdates.endlessm-sf.com'
 
 const selectServer = function() {

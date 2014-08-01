@@ -9,6 +9,7 @@ G_BEGIN_DECLS
 
 const gchar    *eam_os_get_version                                ();
 const gchar    *eam_os_get_personality                            ();
+const gchar    *eam_os_get_architecture                           ();
 
 G_END_DECLS
 

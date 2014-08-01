@@ -91,6 +91,50 @@ test_updates_filter (void)
   const gchar *avail = g_test_get_filename (G_TEST_DIST, "data",
      "available.json", NULL);
   JsonParser *parser = json_parser_new ();
+  GError *error = NULL;
+  json_parser_load_from_file (parser, avail, &error);
+  g_assert_no_error (error);
+
+  JsonNode *node = json_parser_get_root (parser);
+  g_assert_nonnull (node);
+
+  EamUpdates *updates = eam_updates_new ();
+  g_signal_connect (updates, "available-apps-changed",
+    G_CALLBACK (on_available_apps_changed), NULL);
+  g_assert (eam_updates_load (updates, node, NULL));
+
+  const gchar *appdir = g_test_get_filename (G_TEST_DIST, "appdir", NULL);
+  EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
+  eam_pkgdb_load (db, NULL);
+
+  eam_updates_filter (updates, db, NULL);
+
+  const GList *list;
+  EamPkg *pkg;
+  list = eam_updates_get_upgradables (updates);
+  g_assert_nonnull (list);
+  pkg = list->data;
+  g_assert_nonnull (pkg);
+  g_assert_cmpstr (eam_pkg_get_id (pkg), ==, "com.application.id2");
+  g_assert_null (list->next);
+
+  list = eam_updates_get_installables (updates);
+  g_assert_nonnull (list);
+  pkg = list->data;
+  g_assert_nonnull (pkg);
+  g_assert_cmpstr (eam_pkg_get_id (pkg), >=, "com.application.id3");
+
+  g_object_unref (updates);
+  g_object_unref (parser);
+  g_object_unref (db);
+}
+
+static void
+test_updates_filter_lang (void)
+{
+  const gchar *avail = g_test_get_filename (G_TEST_DIST, "data",
+     "available.json", NULL);
+  JsonParser *parser = json_parser_new ();
   g_assert (json_parser_load_from_file (parser, avail, NULL));
 
   JsonNode *node = json_parser_get_root (parser);
@@ -105,7 +149,7 @@ test_updates_filter (void)
   EamPkgdb *db = eam_pkgdb_new_with_appdir (appdir);
   eam_pkgdb_load (db, NULL);
 
-  eam_updates_filter (updates, db);
+  eam_updates_filter (updates, db, "pt");
 
   const GList *list;
   EamPkg *pkg;
@@ -117,6 +161,11 @@ test_updates_filter (void)
   g_assert_null (list->next);
 
   list = eam_updates_get_installables (updates);
+  g_assert_nonnull (list);
+  pkg = list->data;
+  g_assert_nonnull (pkg);
+  g_assert_cmpstr (eam_pkg_get_id (pkg), ==, "com.application.id3-pt");
+  list = list->next;
   g_assert_nonnull (list);
   pkg = list->data;
   g_assert_nonnull (pkg);
@@ -141,6 +190,7 @@ main (int argc, char *argv[])
 
   g_test_add_func ("/updates/load", test_updates_load);
   g_test_add_func ("/updates/filter", test_updates_filter);
+  g_test_add_func ("/updates/filter/lang", test_updates_filter_lang);
 
   return g_test_run ();
 }

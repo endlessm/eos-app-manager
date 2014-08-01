@@ -287,6 +287,8 @@ Considerations:
      other application versions will require an OS update before they can be
      updated
 
+* More accurate endpoints can be found at https://docs.google.com/a/endlessm.com/document/d/1FVkhk8E4KSgD5GeP2R5B-qJsnHiDRqDl5PXSF6TTAms/edit
+
 +---------------------------------------+------------------------------------------------------+--------------------------------------------------------------------------------+
 | Resource and method(s)*               | Params                                               | Description                                                                    |
 | Both HTML and JSON request capable    |                                                      |                                                                                |
@@ -310,12 +312,21 @@ Considerations:
 | from=<origVer>                        |                                                      |                                                                                |
 | personality=<personality>             |                                                      |                                                                                |
 +---------------------------------------+------------------------------------------------------+--------------------------------------------------------------------------------+
+| /api/v1/updates/:osVer/:appId/:appVer/| arch - Target machine architecture                   | Returns AppUpdateLink filtered for a specific app, os version, and arch.       |
+| :arch                                 |                                                      |                                                                                |
+|                                       |                                                      |                                                                                |
+| Optional query params:                |                                                      |                                                                                |
+| from=<origVer>                        |                                                      |                                                                                |
+| personality=<personality>             |                                                      |                                                                                |
++---------------------------------------+------------------------------------------------------+--------------------------------------------------------------------------------+
 | /uploads/bundle/<SHA2 hash>           |                                                      | Returns (or redirects to) full update for a specific app. Includes             |
 |                                       |                                                      | checksum in custom HTTP header (a la Amazon AWS API[1])                        |
 +---------------------------------------+------------------------------------------------------+--------------------------------------------------------------------------------+
 
-AppUpdateLink = AppUpdate + { personality, downloadLink, shaHash, isDiff,
-fromVersion }AppUpdate = { appId, appName, codeVersion, minOsVersion }
+AvailableApp = { appId, version, arch }
+AppUpdate = { appId, appName, codeVersion, minOsVersion }
+AppUpdateLink = AppUpdate + { personality, downloadLink, shaHash, isDiff, arch, locale }
+ContentBundle = { contentId, locales, downloadLink, shaHash, signatureLink }
 
 
 Future improvements
