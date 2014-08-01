@@ -72,6 +72,41 @@ EAM_ADMIN_GROUP=adm
 AC_SUBST(EAM_ADMIN_GROUP)
 AC_DEFINE_UNQUOTED([EAM_ADMIN_GROUP_NAME],["$EAM_ADMIN_GROUP"],[System group with administration permissions])
 
+# define the EOS architecture
+AC_ARG_WITH([eos-arch],
+    [AS_HELP_STRING([--with-eos-arch=ARCH], [specify the app architecture])],
+    [EOS_ARCH=$with_eos_arch])
+
+# Try to determine the debian architecture from the GNU host triplet.
+# This is mostly borrowed from the dpkg tables in /usr/share/dpkg and
+# only works for a few architectures that Endless might care about.
+if test "x$with_eos_arch" = x; then
+    # Start by looking at OS to determine if we're using armel or armhf.
+    case "$host_os" in
+    linux-gnueabihf)
+        EOS_ARCH=armhf
+        ;;
+    linux-gnueabi)
+        EOS_ARCH=armel
+        ;;
+    esac
+
+    # Otherwise, map from the CPU type.
+    case "$host_cpu" in
+    i[3456]86)
+        EOS_ARCH=i386
+        ;;
+    x86_64)
+        EOS_ARCH=amd64
+        ;;
+    esac
+
+    # Fallback to just using the GNU cpu and hoping it matches.
+    test "x$EOS_ARCH" = x && EOS_ARCH=$host_cpu
+fi
+AC_SUBST([EOS_ARCH])
+AC_DEFINE_UNQUOTED([EOS_ARCH], ["$EOS_ARCH"], [EOS app architecture])
+
 AC_CONFIG_FILES([
 Makefile
 data/Makefile

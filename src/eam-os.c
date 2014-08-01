@@ -1,5 +1,9 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "eam-os.h"
 
 #include <errno.h>
@@ -128,4 +132,17 @@ bail:
   if (!personality)
     return "Global"; /* is this a sensible fallback? */
   return personality;
+}
+
+/**
+ * eam_os_get_architecture:
+ *
+ * Queries the EndlessOS architecture.
+ *
+ * Returns: A string with the EOS architecture.
+ **/
+const gchar *
+eam_os_get_architecture ()
+{
+  return EOS_ARCH;
 }
