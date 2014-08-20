@@ -619,6 +619,10 @@ reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer 
   GVariant *value = g_variant_new ("(b)", TRUE);
   g_dbus_method_invocation_return_value (invocation, value);
 
+  /* Let's notify the available apps list has changed, as an installed app is
+     not available anymore, and uninstalled app becomes available */
+  avails_changed_cb (service, NULL);
+
 out:
   eam_service_clear_transaction (service);
 }
