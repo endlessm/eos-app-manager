@@ -405,6 +405,11 @@ create_os_directories ()
     do
         [ -d "${dir}" ] || mkdir --parents "${dir}"
     done
+
+    # Older versions of eos-app-manager used gpg, which created a
+    # .gnupg directory in EAM_PREFIX. Delete any existing directory
+    # as it's unneeded now that gpgv is used.
+    delete_dir "${EAM_PREFIX}/.gnupg"
 }
 
 # Deletes a directory recursively. Nonexistent directories are ignored
