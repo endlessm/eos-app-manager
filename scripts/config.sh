@@ -50,6 +50,8 @@ APP_HELP_SUBDIR="share/help"
 APP_EKN_DATA_SUBDIR="share/ekn/data"
 # Application knowledge app manifest.
 APP_EKN_MANIFEST_SUBDIR="share/ekn/manifest"
+# Application shell search provider directory.
+APP_SHELL_SEARCH_SUBDIR="share/gnome-shell/search-providers"
 
 # Directories where the OS looks for the applications metadata.
 # These directories typically contain symbolic links to the
@@ -71,6 +73,8 @@ OS_HELP_DIR="${EAM_PREFIX}/share/help"
 OS_EKN_DATA_DIR="${EAM_PREFIX}/share/ekn/data"
 # Knowledge app manifest.
 OS_EKN_MANIFEST_DIR="${EAM_PREFIX}/share/ekn/manifest"
+# Shell search provider directory.
+OS_SHELL_SEARCH_DIR="${EAM_PREFIX}/share/gnome-shell/search-providers"
 
 
 # Prints the value of the configuration variables
@@ -89,6 +93,7 @@ print_config ()
     echo "APP_DBUS_SERVICES_SUBDIR=$APP_DBUS_SERVICES_SUBDIR"
     echo "APP_EKN_DATA_SUBDIR=$APP_EKN_DATA_SUBDIR"
     echo "APP_EKN_MANIFEST_SUBDIR=$APP_EKN_MANIFEST_SUBDIR"
+    echo "APP_SHELL_SEARCH_SUBDIR=$APP_SHELL_SEARCH_SUBDIR"
     echo "OS_BIN_DIR=$OS_BIN_DIR"
     echo "OS_DESKTOP_FILES_DIR=$OS_DESKTOP_FILES_DIR"
     echo "OS_DESKTOP_ICONS_DIR=$OS_DESKTOP_ICONS_DIR"
@@ -96,4 +101,5 @@ print_config ()
     echo "OS_DBUS_SERVICES_DIR=$OS_DBUS_SERVICES_DIR"
     echo "OS_EKN_DATA_DIR=$OS_EKN_DATA_DIR"
     echo "OS_EKN_MANIFEST_DIR=$OS_EKN_MANIFEST_DIR"
+    echo "OS_SHELL_SEARCH_DIR=$OS_SHELL_SEARCH_DIR"
 }
