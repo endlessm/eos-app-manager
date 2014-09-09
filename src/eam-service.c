@@ -107,22 +107,73 @@ static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invo
 static void run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
   EamServiceMethod method, GVariant *params);
 
-#define AUTH_NAMESPACE "com.endlessm.app-installer."
-#define AUTH_MSG "Authentication is required to "
-#define AUTH_MSG_INSTALL AUTH_MSG "install or update software"
-#define AUTH_MSG_UNINSTALL AUTH_MSG "uninstall software"
-#define AUTH_MSG_REFRESH AUTH_MSG "refresh the list of available applications"
-#define AUTH_MSG_CANCEL AUTH_MSG "cancel the application manager ongoing task"
+#define AUTH_NAMESPACE          com.endlessm.app-installer
+#define AUTH_ACTION(action)     G_STRINGIFY (G_PASTE (AUTH_NAMESPACE, action))
 
 static EamServiceAuth auth_action[] = {
-  {EAM_SERVICE_METHOD_INSTALL,   "Install",       eam_service_install,    AUTH_NAMESPACE "install-application",   AUTH_MSG_INSTALL},
-  {EAM_SERVICE_METHOD_UNINSTALL, "Uninstall",     eam_service_uninstall,  AUTH_NAMESPACE "uninstall-application", AUTH_MSG_UNINSTALL},
-  {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    NULL, ""},
-  {EAM_SERVICE_METHOD_LIST_AVAILABLE, "ListAvailable", eam_service_list_avail, NULL, ""},
-  {EAM_SERVICE_METHOD_LIST_INSTALLED, "ListInstalled", eam_service_list_installed, NULL, ""},
-  {EAM_SERVICE_METHOD_USER_CAPS, "GetUserCapabilities", eam_service_get_user_caps, NULL, "" },
-  {EAM_SERVICE_METHOD_CANCEL,    "Cancel",        eam_service_cancel,     AUTH_NAMESPACE "cancel-request",        AUTH_MSG_CANCEL},
-  {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
+  [EAM_SERVICE_METHOD_INSTALL] = {
+    .method = EAM_SERVICE_METHOD_INSTALL,
+    .dbus_name = "Install",
+    .run = eam_service_install,
+    .action_id = AUTH_ACTION (install-application),
+    .message = N_("Authentication is required to install or update software"),
+  },
+
+  [EAM_SERVICE_METHOD_UNINSTALL] = {
+    .method = EAM_SERVICE_METHOD_UNINSTALL,
+    .dbus_name = "Uninstall",
+    .run = eam_service_uninstall,
+    .action_id = AUTH_ACTION (uninstall-application),
+    .message = N_("Authentication is required to uninstall software"),
+  },
+
+  [EAM_SERVICE_METHOD_REFRESH] = {
+    .method = EAM_SERVICE_METHOD_REFRESH,
+    .dbus_name = "Refresh",
+    .run = eam_service_refresh,
+    .action_id = NULL,
+    .message = "",
+  },
+
+  [EAM_SERVICE_METHOD_LIST_AVAILABLE] = {
+    .method = EAM_SERVICE_METHOD_LIST_AVAILABLE,
+    .dbus_name = "ListAvailable",
+    .run = eam_service_list_avail,
+    .action_id = NULL,
+    .message = "",
+  },
+
+  [EAM_SERVICE_METHOD_LIST_INSTALLED] = {
+    .method = EAM_SERVICE_METHOD_LIST_INSTALLED,
+    .dbus_name = "ListInstalled",
+    .run = eam_service_list_installed,
+    .action_id = NULL,
+    .message = ""
+  },
+
+  [EAM_SERVICE_METHOD_USER_CAPS] = {
+    .method = EAM_SERVICE_METHOD_USER_CAPS,
+    .dbus_name = "GetUserCapabilities",
+    .run = eam_service_get_user_caps,
+    .action_id = NULL,
+    .message = "",
+  },
+
+  [EAM_SERVICE_METHOD_CANCEL] = {
+    .method = EAM_SERVICE_METHOD_CANCEL,
+    .dbus_name = "Cancel",
+    .run = eam_service_cancel,
+    .action_id = AUTH_ACTION (cancel-request),
+    .message = N_("Authentication is required to cancel the application manager ongoing task"),
+  },
+
+  [EAM_SERVICE_METHOD_QUIT] = {
+    .method = EAM_SERVICE_METHOD_QUIT,
+    .dbus_name = "Quit",
+    .run = eam_service_quit,
+    .action_id = NULL,
+    .message = "",
+  },
 };
 
 static EamInvocationInfo *
@@ -1029,7 +1080,7 @@ eam_service_check_authorization_async (EamService *service, GDBusMethodInvocatio
   priv->authorizing = TRUE;
 
   details = polkit_details_new ();
-  polkit_details_insert (details, "polkit.message", N_(auth_action[method].message));
+  polkit_details_insert (details, "polkit.message", auth_action[method].message);
   polkit_details_insert (details, "polkit.gettext_domain", GETTEXT_PACKAGE);
 
   EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
