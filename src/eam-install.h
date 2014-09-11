@@ -27,6 +27,16 @@ G_BEGIN_DECLS
 typedef struct _EamInstallClass	EamInstallClass;
 typedef struct _EamInstall	EamInstall;
 
+typedef enum {
+  EAM_ACTION_INSTALL,       /* Install */
+  EAM_ACTION_UPDATE,        /* Update downloading the complete bundle */
+  EAM_ACTION_XDELTA_UPDATE, /* Update applying xdelta diff files */
+} EamAction;
+
+/* EamAction GType definition */
+#define EAM_TYPE_ACTION	(eam_action_get_type())
+GType eam_action_get_type (void) G_GNUC_CONST;
+
 struct _EamInstall
 {
   GObject parent;
@@ -37,12 +47,20 @@ struct _EamInstallClass
   GObjectClass parent_class;
 };
 
-GType           eam_install_get_type                               (void) G_GNUC_CONST;
+GType           eam_install_get_type            (void) G_GNUC_CONST;
 
-EamTransaction *eam_install_new                                    (const gchar *appid);
+EamTransaction *eam_install_new                 (const gchar *appid);
 
-EamTransaction *eam_install_new_from_version                       (const gchar *appid,
-                                                                    const gchar *from_version);
+EamTransaction *eam_install_new_from_version    (const gchar *appid,
+                                                 const gchar *from_version);
+
+const char *    eam_install_get_download_url    (EamInstall  *install);
+void            eam_install_set_bundle_location (EamInstall  *install,
+                                                 const char  *path);
+
+const char *    eam_install_get_app_id          (EamInstall  *install);
+const char *    eam_install_get_from_version    (EamInstall  *install);
+EamAction       eam_install_get_action          (EamInstall  *install);
 
 G_END_DECLS
 
