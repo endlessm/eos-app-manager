@@ -1,5 +1,6 @@
 RESOURCE_FILES = \
-	eam-dbus-interface.xml \
+	eam-service-interface.xml \
+	eam-transaction-interface.xml \
 	$(NULL)
 
 dbusservicedir       = $(datadir)/dbus-1/system-services
