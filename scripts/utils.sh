@@ -403,7 +403,8 @@ create_os_directories ()
         "${OS_BIN_DIR}" "${OS_DESKTOP_FILES_DIR}" \
         "${OS_DESKTOP_ICONS_DIR}" "${OS_GSETTINGS_DIR}" \
         "${OS_DBUS_SERVICES_DIR}" "${OS_HELP_DIR}" \
-        "${OS_EKN_DATA_DIR}" "${OS_EKN_MANIFEST_DIR}"
+        "${OS_EKN_DATA_DIR}" "${OS_EKN_MANIFEST_DIR}" \
+        "${OS_SHELL_SEARCH_DIR}"
     do
         [ -d "${dir}" ] || mkdir --parents "${dir}"
     done
