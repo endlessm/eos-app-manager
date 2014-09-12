@@ -316,6 +316,7 @@ create_symbolic_links ()
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_EKN_MANIFEST_SUBDIR}" "${OS_EKN_MANIFEST_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
 }
 
 # Internal
@@ -356,6 +357,7 @@ delete_symbolic_links ()
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_EKN_MANIFEST_SUBDIR}" "${OS_EKN_MANIFEST_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
 }
 
 
@@ -404,7 +406,7 @@ create_os_directories ()
         "${OS_DESKTOP_ICONS_DIR}" "${OS_GSETTINGS_DIR}" \
         "${OS_DBUS_SERVICES_DIR}" "${OS_HELP_DIR}" \
         "${OS_EKN_DATA_DIR}" "${OS_EKN_MANIFEST_DIR}" \
-        "${OS_SHELL_SEARCH_DIR}"
+        "${OS_SHELL_SEARCH_DIR}" "${OS_KDE_HELP_DIR}"
     do
         [ -d "${dir}" ] || mkdir --parents "${dir}"
     done
