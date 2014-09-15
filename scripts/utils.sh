@@ -184,12 +184,12 @@ ensure_symbolic_links ()
 
     [ -d "${links_dir}" ] || mkdir --parents "${links_dir}"
     while read -d $'\0' source_file; do
-	if [ -d "${source_file}" ]; then
-	    mkdir --parents "${links_dir}"/"${source_file}"
-	elif [ -f "${source_file}" ]; then
-	    dirname=$(dirname "${source_file}")
-	    ln --symbolic "${target_dir}"/"${source_file}" "${links_dir}"/"${dirname}"
-	fi
+        if [ -f "${source_file}" -o -L "${source_file}" ]; then
+            dirname=$(dirname "${source_file}")
+            ln --symbolic "${target_dir}"/"${source_file}" "${links_dir}"/"${dirname}"
+        elif [ -d "${source_file}" ]; then
+            mkdir --parents "${links_dir}"/"${source_file}"
+        fi
     done
 }
 
