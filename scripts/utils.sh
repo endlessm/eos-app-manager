@@ -334,6 +334,11 @@ symbolic_links_delete ()
     if [ -d "${target_dir}" ]; then
         find ${links_dir} -mindepth 1 -type l -lname "${target_dir}*" -print0 | xargs -0 rm --force
     fi
+
+    # Try to cleanup empty directories that had links. Use -depth option
+    # to handle the contents of the directory first.
+    find ${links_dir} -mindepth 1 -depth -type d -exec \
+        rmdir --ignore-fail-on-non-empty '{}' ';'
 }
 
 # Deletes symbolic links that point to the application's metadata files.
