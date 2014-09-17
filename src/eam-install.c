@@ -259,15 +259,14 @@ eam_install_new_from_version (const gchar *appid, const gchar *from_version)
 }
 
 static gchar *
-build_tarball_filename (EamInstall  *self,
-                        const gchar *appid)
+build_tarball_filename (EamInstall *self)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   if (priv->bundle_location != NULL)
     return priv->bundle_location;
 
-  gchar *fname = g_strconcat (appid, ".bundle", NULL);
+  gchar *fname = g_strconcat (priv->appid, ".bundle", NULL);
   gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
   g_free (fname);
 
@@ -320,7 +319,7 @@ run_scripts (EamInstall *self, const gchar *scriptdir,
   /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
   params[0] = g_strdup (priv->appid);
-  params[1] = build_tarball_filename (self, priv->appid);
+  params[1] = build_tarball_filename (self);
 
   /* prefix environment */
   g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
@@ -438,8 +437,7 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
 
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  gchar *tarball = build_tarball_filename (self, priv->appid);
+  gchar *tarball = build_tarball_filename (self);
   create_sha256sum_file (self, tarball, &error);
   g_free (tarball);
 
@@ -518,7 +516,7 @@ download_bundle (EamInstall *self, GTask *task)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  gchar *filename = build_tarball_filename (self, priv->appid);
+  gchar *filename = build_tarball_filename (self);
   const gchar *download_url;
   if (priv->action == EAM_ACTION_XDELTA_UPDATE)
     download_url = priv->xdelta_bundle->download_url;
