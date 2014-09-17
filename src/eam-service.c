@@ -793,52 +793,33 @@ run_service_install (EamService *service, const gchar *appid,
     EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
     gchar *from_version = eam_pkg_version_as_string (pkg_version);
 
-    EamTransaction *transaction = eam_install_new_from_version (appid, from_version);
+    priv->trans = eam_install_new_from_version (appid, from_version);
     g_free (from_version);
-
-    EamRemoteTransaction *remote = eam_remote_transaction_new (service, transaction);
-
-    priv->trans = transaction;
-
-    if (remote != NULL) {
-      eam_service_add_active_transaction (service, remote);
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
-    }
-    else {
-      g_object_unref (transaction);
-      g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                             EAM_SERVICE_ERROR_UNIMPLEMENTED,
-                                             _("Internal transaction error"));
-    }
-
-    return;
   }
-  
-  if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
+  else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version */
-    EamTransaction *transaction = eam_install_new (appid);
-    EamRemoteTransaction *remote = eam_remote_transaction_new (service, transaction);
-
-    priv->trans = transaction;
-
-    if (remote != NULL) {
-      eam_service_add_active_transaction (service, remote);
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
-    }
-    else {
-      g_object_unref (transaction);
-      g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                             EAM_SERVICE_ERROR_UNIMPLEMENTED,
-                                             _("Internal transaction error"));
-    }
-
+    priv->trans = eam_install_new (appid);
+  }
+  else {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+                                           EAM_SERVICE_ERROR_PKG_UNKNOWN,
+                                           _("Application '%s' is unknown"),
+                                           appid);
     return;
   }
 
-  g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                         EAM_SERVICE_ERROR_PKG_UNKNOWN,
-                                         _("Application '%s' is unknown"),
-                                         appid);
+  EamRemoteTransaction *remote = eam_remote_transaction_new (service, priv->trans);
+
+  if (remote != NULL) {
+    eam_service_add_active_transaction (service, remote);
+    g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
+  }
+  else {
+    g_clear_object (&priv->trans);
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+                                             EAM_SERVICE_ERROR_UNIMPLEMENTED,
+                                             _("Internal transaction error"));
+  }
 }
 
 static void
