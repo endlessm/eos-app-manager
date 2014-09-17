@@ -890,10 +890,12 @@ eam_install_get_download_url (EamInstall *install)
   if (error) {
     g_warning ("Can't load cached updates.json: %s", error->message);
     g_clear_error (&error);
+    g_object_unref (parser);
     return NULL;
   }
 
   if (!load_bundle_info (install, json_parser_get_root (parser))) {
+    g_object_unref (parser);
     return NULL;
   }
 
@@ -903,6 +905,8 @@ eam_install_get_download_url (EamInstall *install)
   else {
     download_url = priv->bundle->download_url;
   }
+
+  g_object_unref (parser);
 
   return download_url;
 }
