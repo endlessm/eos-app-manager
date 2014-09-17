@@ -1,4 +1,4 @@
-// Copyright © 2014  Endless Mobile
+/* Copyright © 2014  Endless Mobile */
 
 #include "config.h"
 
