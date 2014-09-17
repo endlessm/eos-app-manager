@@ -124,7 +124,8 @@ static void eam_service_remove_active_transaction (EamService *service,
                                                    EamRemoteTransaction *remote);
 
 static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
-                                                         EamTransaction *transaction);
+                                                         EamTransaction *transaction,
+                                                         GError **error);
 static void eam_remote_transaction_cancel (EamRemoteTransaction *remote);
 static void eam_remote_transaction_free (EamRemoteTransaction *remote);
 
@@ -808,17 +809,20 @@ run_service_install (EamService *service, const gchar *appid,
     return;
   }
 
-  EamRemoteTransaction *remote = eam_remote_transaction_new (service, priv->trans);
+  GError *error = NULL;
+  EamRemoteTransaction *remote = eam_remote_transaction_new (service, priv->trans, &error);
 
   if (remote != NULL) {
     eam_service_add_active_transaction (service, remote);
     g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
   }
   else {
-    g_clear_object (&priv->trans);
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
                                              EAM_SERVICE_ERROR_UNIMPLEMENTED,
-                                             _("Internal transaction error"));
+                                             _("Internal transaction error: %s"),
+                                             error->message);
+    g_clear_object (&priv->trans);
+    g_clear_error (&error);
   }
 }
 
@@ -1343,17 +1347,17 @@ get_next_transaction_path (EamService *service)
 
 static gboolean
 eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
-                                      EamService *service)
+                                      EamService *service,
+                                      GError **error)
 {
   static GDBusNodeInfo *transaction = NULL;
-  GError *error = NULL;
+  GError *internal_error = NULL;
 
   if (transaction == NULL) {
-    transaction = load_introspection ("eam-transaction-interface.xml", &error);
+    transaction = load_introspection ("eam-transaction-interface.xml", &internal_error);
 
     if (error) {
-      g_warning ("Failed to load DBus introspection: %s", error->message);
-      g_error_free (error);
+      g_propagate_error (error, internal_error);
       return FALSE;
     }
   }
@@ -1366,11 +1370,10 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
                                        transaction->interfaces[0],
                                        &transaction_vtable,
                                        remote, NULL,
-                                       &error);
+                                       &internal_error);
 
   if (!remote->registration_id) {
-    g_warning ("Failed to register transaction object: %s", error->message);
-    g_error_free (error);
+    g_propagate_error (error, internal_error);
     return FALSE;
   }
 
@@ -1378,8 +1381,9 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
 }
 
 static EamRemoteTransaction *
-eam_remote_transaction_new (EamService     *service,
-                            EamTransaction *transaction)
+eam_remote_transaction_new (EamService *service,
+                            EamTransaction *transaction,
+                            GError **error)
 {
   EamRemoteTransaction *res = g_slice_new (EamRemoteTransaction);
 
@@ -1388,7 +1392,7 @@ eam_remote_transaction_new (EamService     *service,
   res->obj_path = get_next_transaction_path (service);
   res->cancellable = g_cancellable_new ();
 
-  if (!eam_remote_transaction_register_dbus (res, service)) {
+  if (!eam_remote_transaction_register_dbus (res, service, error)) {
     eam_remote_transaction_free (res);
     return NULL;
   }
