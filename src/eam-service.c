@@ -1224,9 +1224,6 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
 static void
 eam_remote_transaction_free (EamRemoteTransaction *remote)
 {
-  if (remote == NULL)
-    return;
-
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
 
