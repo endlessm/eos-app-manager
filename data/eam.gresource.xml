@@ -2,8 +2,6 @@
 <gresources>
   <gresource prefix="/com/endlessm/AppManager">
     <file preprocess="xml-stripblanks" compressed="true">eam-service-interface.xml</file>
-  </gresource>
-  <gresource prefix="/com/endlessm/AppManager">
     <file preprocess="xml-stripblanks" compressed="true">eam-transaction-interface.xml</file>
   </gresource>
 </gresources>
