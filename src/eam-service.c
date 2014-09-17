@@ -1319,11 +1319,13 @@ handle_transaction_method_call (GDBusConnection *connection,
     eam_transaction_run_async (remote->transaction, remote->cancellable,
                                transaction_install_cb,
                                remote);
+    return;
   }
 
   if (g_strcmp0 (method, "CancelTransaction") == 0) {
     eam_remote_transaction_cancel (remote);
     g_dbus_method_invocation_return_value (invocation, NULL);
+    return;
   }
 }
 
