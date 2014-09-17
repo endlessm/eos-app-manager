@@ -184,12 +184,12 @@ ensure_symbolic_links ()
 
     [ -d "${links_dir}" ] || mkdir --parents "${links_dir}"
     while read -d $'\0' source_file; do
-	if [ -d "${source_file}" ]; then
-	    mkdir --parents "${links_dir}"/"${source_file}"
-	elif [ -f "${source_file}" ]; then
-	    dirname=$(dirname "${source_file}")
-	    ln --symbolic "${target_dir}"/"${source_file}" "${links_dir}"/"${dirname}"
-	fi
+        if [ -f "${source_file}" -o -L "${source_file}" ]; then
+            dirname=$(dirname "${source_file}")
+            ln --symbolic "${target_dir}"/"${source_file}" "${links_dir}"/"${dirname}"
+        elif [ -d "${source_file}" ]; then
+            mkdir --parents "${links_dir}"/"${source_file}"
+        fi
     done
 }
 
@@ -316,6 +316,7 @@ create_symbolic_links ()
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_EKN_MANIFEST_SUBDIR}" "${OS_EKN_MANIFEST_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
 }
 
 # Internal
@@ -333,6 +334,11 @@ symbolic_links_delete ()
     if [ -d "${target_dir}" ]; then
         find ${links_dir} -mindepth 1 -type l -lname "${target_dir}*" -print0 | xargs -0 rm --force
     fi
+
+    # Try to cleanup empty directories that had links. Use -depth option
+    # to handle the contents of the directory first.
+    find ${links_dir} -mindepth 1 -depth -type d -exec \
+        rmdir --ignore-fail-on-non-empty '{}' ';'
 }
 
 # Deletes symbolic links that point to the application's metadata files.
@@ -356,6 +362,7 @@ delete_symbolic_links ()
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_EKN_MANIFEST_SUBDIR}" "${OS_EKN_MANIFEST_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
 }
 
 
@@ -403,7 +410,8 @@ create_os_directories ()
         "${OS_BIN_DIR}" "${OS_DESKTOP_FILES_DIR}" \
         "${OS_DESKTOP_ICONS_DIR}" "${OS_GSETTINGS_DIR}" \
         "${OS_DBUS_SERVICES_DIR}" "${OS_HELP_DIR}" \
-        "${OS_EKN_DATA_DIR}" "${OS_EKN_MANIFEST_DIR}"
+        "${OS_EKN_DATA_DIR}" "${OS_EKN_MANIFEST_DIR}" \
+        "${OS_SHELL_SEARCH_DIR}" "${OS_KDE_HELP_DIR}"
     do
         [ -d "${dir}" ] || mkdir --parents "${dir}"
     done

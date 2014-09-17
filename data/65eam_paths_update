@@ -9,3 +9,11 @@ export XDG_DATA_DIRS
 EAM_BIN_PREFIX="/endless/bin"
 PATH=${PATH}:${EAM_BIN_PREFIX}
 export PATH
+
+EAM_KDE_PREFIX="/endless"
+if [ -z "$KDEDIRS" ]; then
+  KDEDIRS="/usr/local:/usr:${EAM_KDE_PREFIX}"
+else
+  KDEDIRS="${KDEDIRS}:${EAM_KDE_PREFIX}"
+fi
+export KDEDIRS
