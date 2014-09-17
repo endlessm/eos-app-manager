@@ -341,11 +341,10 @@ eam_service_add_active_transaction (EamService *service,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  if (priv->active_transactions == NULL) {
+  if (priv->active_transactions == NULL)
     priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                        NULL, // the key is in the value
                                                        (GDestroyNotify) eam_remote_transaction_free);
-  }
 
   g_hash_table_replace (priv->active_transactions, remote->obj_path, remote);
 }
