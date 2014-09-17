@@ -363,10 +363,6 @@ eam_service_remove_active_transaction (EamService *service,
   }
 
   g_hash_table_remove (priv->active_transactions, remote->obj_path);
-
-  if (g_hash_table_size (priv->active_transactions) == 0) {
-    g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
-  }
 }
 
 static void
