@@ -854,7 +854,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
 
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  if (priv->bundle_location != NULL) {
+  if (priv->bundle_location == NULL) {
     download_bundle (self, task);
   }
   else {
