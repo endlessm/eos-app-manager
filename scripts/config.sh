@@ -54,6 +54,8 @@ APP_EKN_MANIFEST_SUBDIR="share/ekn/manifest"
 APP_SHELL_SEARCH_SUBDIR="share/gnome-shell/search-providers"
 # Application KDE help subdirectory.
 APP_KDE_HELP_SUBDIR="share/doc/kde"
+# Application KDE4 modules directory.
+APP_KDE4_SUBDIR="share/kde4"
 
 # Directories where the OS looks for the applications metadata.
 # These directories typically contain symbolic links to the
@@ -79,6 +81,8 @@ OS_EKN_MANIFEST_DIR="${EAM_PREFIX}/share/ekn/manifest"
 OS_SHELL_SEARCH_DIR="${EAM_PREFIX}/share/gnome-shell/search-providers"
 # KDE help directory.
 OS_KDE_HELP_DIR="${EAM_PREFIX}/share/doc/kde"
+# KDE4 modules direcotory.
+OS_KDE4_DIR="${EAM_PREFIX}/share/kde4"
 
 
 # Prints the value of the configuration variables
@@ -100,6 +104,7 @@ print_config ()
     echo "APP_EKN_MANIFEST_SUBDIR=$APP_EKN_MANIFEST_SUBDIR"
     echo "APP_SHELL_SEARCH_SUBDIR=$APP_SHELL_SEARCH_SUBDIR"
     echo "APP_KDE_HELP_SUBDIR=$APP_KDE_HELP_SUBDIR"
+    echo "APP_KDE4_SUBDIR=$APP_KDE4_SUBDIR"
     echo "OS_BIN_DIR=$OS_BIN_DIR"
     echo "OS_DESKTOP_FILES_DIR=$OS_DESKTOP_FILES_DIR"
     echo "OS_DESKTOP_ICONS_DIR=$OS_DESKTOP_ICONS_DIR"
@@ -110,4 +115,5 @@ print_config ()
     echo "OS_EKN_MANIFEST_DIR=$OS_EKN_MANIFEST_DIR"
     echo "OS_SHELL_SEARCH_DIR=$OS_SHELL_SEARCH_DIR"
     echo "OS_KDE_HELP_DIR=$OS_KDE_HELP_DIR"
+    echo "OS_KDE4_DIR=$OS_KDE4_DIR"
 }
