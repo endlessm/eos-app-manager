@@ -356,14 +356,11 @@ eam_service_remove_active_transaction (EamService *service,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  if (priv->active_transactions == NULL) {
+  if (priv->active_transactions == NULL ||
+      !g_hash_table_remove (priv->active_transactions, remote->obj_path))
     g_critical ("Asked to remove transaction '%s'[%p] without adding it first.\n",
                 remote->obj_path,
                 remote);
-    return;
-  }
-
-  g_hash_table_remove (priv->active_transactions, remote->obj_path);
 }
 
 static void
