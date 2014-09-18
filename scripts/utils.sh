@@ -317,6 +317,7 @@ create_symbolic_links ()
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_KDE4_SUBDIR}" "${OS_KDE4_DIR}"
 }
 
 # Internal
@@ -363,6 +364,7 @@ delete_symbolic_links ()
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_GSETTINGS_SUBDIR}" "${OS_GSETTINGS_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_KDE4_SUBDIR}" "${OS_KDE4_DIR}"
 }
 
 
