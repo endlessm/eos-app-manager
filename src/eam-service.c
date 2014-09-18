@@ -1236,7 +1236,6 @@ static void
 eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 {
   eam_service_remove_active_transaction (remote->service, remote);
-  eam_remote_transaction_free (remote);
 }
 
 static void
