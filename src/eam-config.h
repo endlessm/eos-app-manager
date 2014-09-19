@@ -18,6 +18,9 @@ void            eam_config_destroy                                (EamConfig *cf
 gboolean        eam_config_load                                   (EamConfig *cfg,
                                                                    GKeyFile *keyfile);
 
+gboolean        eam_config_load_with_filename                     (EamConfig *cfg,
+                                                                   const gchar *filename);
+
 void            eam_config_set                                    (EamConfig *cfg,
                                                                    gchar *appdir,
                                                                    gchar *dldir,
