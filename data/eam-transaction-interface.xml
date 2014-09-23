@@ -1,0 +1,20 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<!-- Copyright 2014 Endless Mobile, Inc. -->
+
+<node>
+  <interface name="com.endlessm.AppManager.Transaction">
+
+    <property name="BundleURI" type="s" access="read"/>
+    <property name="ApplicationId" type="s" access="read"/>
+
+    <method name="CompleteTransaction">
+      <arg type="s" name="path" direction="in"/>
+      <arg type="b" name="success" direction="out"/>
+    </method>
+
+    <method name="CancelTransaction"/>
+
+  </interface>
+</node>

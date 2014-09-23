@@ -1,8 +1,5 @@
 /* Copyright 2014 Endless Mobile, Inc. */
-
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <glib/gi18n.h>
 #include <polkit/polkit.h>
@@ -33,6 +30,8 @@ struct _EamServicePrivate {
   EamTransaction *trans;
   GQueue *invocation_queue;
 
+  GHashTable *active_transactions;
+
   gchar **available_updates;
   gboolean reloaddb;
 
@@ -41,6 +40,8 @@ struct _EamServicePrivate {
   GCancellable *cancellable;
 
   PolkitAuthority *authority;
+
+  guint64 last_transaction;
   gboolean authorizing;
 };
 
@@ -90,6 +91,15 @@ typedef struct {
   GVariant *params;
 } EamInvocationInfo;
 
+typedef struct {
+  EamTransaction *transaction;
+  char *obj_path;
+  GCancellable *cancellable;
+  EamService *service;
+  GDBusMethodInvocation *invocation;
+  guint registration_id;
+} EamRemoteTransaction;
+
 static void eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
@@ -110,23 +120,99 @@ static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invo
 static void run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
   EamServiceMethod method, GVariant *params);
 
-#define AUTH_NAMESPACE "com.endlessm.app-installer."
-#define AUTH_MSG "Authentication is required to "
-#define AUTH_MSG_INSTALL AUTH_MSG "install or update software"
-#define AUTH_MSG_UNINSTALL AUTH_MSG "uninstall software"
-#define AUTH_MSG_REFRESH AUTH_MSG "refresh the list of available applications"
-#define AUTH_MSG_CANCEL AUTH_MSG "cancel the application manager ongoing task"
+static void eam_service_remove_active_transaction (EamService *service,
+                                                   EamRemoteTransaction *remote);
+
+static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
+                                                         EamTransaction *transaction,
+                                                         GError **error);
+static void eam_remote_transaction_cancel (EamRemoteTransaction *remote);
+static void eam_remote_transaction_free (EamRemoteTransaction *remote);
+
+#define AUTH_NAMESPACE          com.endlessm.app-installer
+#define AUTH_ACTION(action)     G_STRINGIFY (G_PASTE (AUTH_NAMESPACE, action))
 
 static EamServiceAuth auth_action[] = {
-  {EAM_SERVICE_METHOD_INSTALL,   "Install",       eam_service_install,    AUTH_NAMESPACE "install-application",   AUTH_MSG_INSTALL},
-  {EAM_SERVICE_METHOD_UNINSTALL, "Uninstall",     eam_service_uninstall,  AUTH_NAMESPACE "uninstall-application", AUTH_MSG_UNINSTALL},
-  {EAM_SERVICE_METHOD_REFRESH,   "Refresh",       eam_service_refresh,    NULL, ""},
-  {EAM_SERVICE_METHOD_LIST_AVAILABLE, "ListAvailable", eam_service_list_avail, NULL, ""},
-  {EAM_SERVICE_METHOD_LIST_INSTALLED, "ListInstalled", eam_service_list_installed, NULL, ""},
-  {EAM_SERVICE_METHOD_USER_CAPS, "GetUserCapabilities", eam_service_get_user_caps, NULL, "" },
-  {EAM_SERVICE_METHOD_CANCEL,    "Cancel",        eam_service_cancel,     AUTH_NAMESPACE "cancel-request",        AUTH_MSG_CANCEL},
-  {EAM_SERVICE_METHOD_QUIT,      "Quit",          eam_service_quit,       NULL /* No auth required */,            ""},
+  [EAM_SERVICE_METHOD_INSTALL] = {
+    .method = EAM_SERVICE_METHOD_INSTALL,
+    .dbus_name = "Install",
+    .run = eam_service_install,
+    .action_id = AUTH_ACTION (install-application),
+    .message = N_("Authentication is required to install or update software"),
+  },
+
+  [EAM_SERVICE_METHOD_UNINSTALL] = {
+    .method = EAM_SERVICE_METHOD_UNINSTALL,
+    .dbus_name = "Uninstall",
+    .run = eam_service_uninstall,
+    .action_id = AUTH_ACTION (uninstall-application),
+    .message = N_("Authentication is required to uninstall software"),
+  },
+
+  [EAM_SERVICE_METHOD_REFRESH] = {
+    .method = EAM_SERVICE_METHOD_REFRESH,
+    .dbus_name = "Refresh",
+    .run = eam_service_refresh,
+    .action_id = NULL,
+    .message = "",
+  },
+
+  [EAM_SERVICE_METHOD_LIST_AVAILABLE] = {
+    .method = EAM_SERVICE_METHOD_LIST_AVAILABLE,
+    .dbus_name = "ListAvailable",
+    .run = eam_service_list_avail,
+    .action_id = NULL,
+    .message = "",
+  },
+
+  [EAM_SERVICE_METHOD_LIST_INSTALLED] = {
+    .method = EAM_SERVICE_METHOD_LIST_INSTALLED,
+    .dbus_name = "ListInstalled",
+    .run = eam_service_list_installed,
+    .action_id = NULL,
+    .message = ""
+  },
+
+  [EAM_SERVICE_METHOD_USER_CAPS] = {
+    .method = EAM_SERVICE_METHOD_USER_CAPS,
+    .dbus_name = "GetUserCapabilities",
+    .run = eam_service_get_user_caps,
+    .action_id = NULL,
+    .message = "",
+  },
+
+  [EAM_SERVICE_METHOD_CANCEL] = {
+    .method = EAM_SERVICE_METHOD_CANCEL,
+    .dbus_name = "Cancel",
+    .run = eam_service_cancel,
+    .action_id = AUTH_ACTION (cancel-request),
+    .message = N_("Authentication is required to cancel the application manager ongoing task"),
+  },
+
+  [EAM_SERVICE_METHOD_QUIT] = {
+    .method = EAM_SERVICE_METHOD_QUIT,
+    .dbus_name = "Quit",
+    .run = eam_service_quit,
+    .action_id = NULL,
+    .message = "",
+  },
 };
+
+static GDBusNodeInfo*
+load_introspection (const char *name, GError **error)
+{
+  char *path = g_strconcat ("/com/endlessm/AppManager/", name, NULL);
+  GBytes *data = g_resources_lookup_data (path, G_RESOURCE_LOOKUP_FLAGS_NONE, error);
+  g_free (path);
+
+  if (data == NULL)
+    return NULL;
+
+  GDBusNodeInfo *info = g_dbus_node_info_new_for_xml (g_bytes_get_data (data, NULL), error);
+  g_bytes_unref (data);
+
+  return info;
+}
 
 static EamInvocationInfo *
 eam_invocation_info_new (EamService *service,
@@ -162,6 +248,7 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
+  g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
   g_clear_pointer (&priv->timer, g_timer_destroy);
   g_clear_pointer (&priv->available_updates, g_strfreev);
   g_clear_object (&priv->db);
@@ -247,6 +334,33 @@ EamService *
 eam_service_new (EamPkgdb *db)
 {
   return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
+}
+
+static void
+eam_service_add_active_transaction (EamService *service,
+                                    EamRemoteTransaction *remote)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->active_transactions == NULL)
+    priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                       NULL, // the key is in the value
+                                                       (GDestroyNotify) eam_remote_transaction_free);
+
+  g_hash_table_replace (priv->active_transactions, remote->obj_path, remote);
+}
+
+static void
+eam_service_remove_active_transaction (EamService *service,
+                                       EamRemoteTransaction *remote)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  if (priv->active_transactions == NULL ||
+      !g_hash_table_remove (priv->active_transactions, remote->obj_path))
+    g_critical ("Asked to remove transaction '%s'[%p] without adding it first.\n",
+                remote->obj_path,
+                remote);
 }
 
 static void
@@ -368,8 +482,7 @@ do_signal:
       "PropertiesChanged", params, &error);
 
     if (error) {
-      g_critical ("Couldn't emit DBus signal \"PropertiesChanged\": %s",
-        error->message);
+      g_critical ("Couldn't emit DBus signal \"PropertiesChanged\": %s", error->message);
       g_clear_error (&error);
     }
   }
@@ -468,6 +581,7 @@ run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
   g_assert (priv->trans);
 
   g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
+
   eam_transaction_run_async (priv->trans, priv->cancellable, callback, service);
 }
 
@@ -679,16 +793,33 @@ run_service_install (EamService *service, const gchar *appid,
 
     priv->trans = eam_install_new_from_version (appid, from_version);
     g_free (from_version);
-
-    run_eam_transaction (service, invocation, install_or_uninstall_cb);
-  } else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
+  }
+  else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
     /* install the latest version */
     priv->trans = eam_install_new (appid);
-    run_eam_transaction (service, invocation, install_or_uninstall_cb);
-  } else {
+  }
+  else {
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is unknown"),
-      appid);
+                                           EAM_SERVICE_ERROR_PKG_UNKNOWN,
+                                           _("Application '%s' is unknown"),
+                                           appid);
+    return;
+  }
+
+  GError *error = NULL;
+  EamRemoteTransaction *remote = eam_remote_transaction_new (service, priv->trans, &error);
+
+  if (remote != NULL) {
+    eam_service_add_active_transaction (service, remote);
+    g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
+  }
+  else {
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+                                             EAM_SERVICE_ERROR_UNIMPLEMENTED,
+                                             _("Internal transaction error: %s"),
+                                             error->message);
+    g_clear_object (&priv->trans);
+    g_clear_error (&error);
   }
 }
 
@@ -699,8 +830,9 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   const gchar *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  run_eam_service_with_load_pkgdb (service, appid, run_service_install,
-    invocation);
+  run_eam_service_with_load_pkgdb (service, appid,
+                                   run_service_install,
+                                   invocation);
 }
 
 static void
@@ -1032,7 +1164,7 @@ eam_service_check_authorization_async (EamService *service, GDBusMethodInvocatio
   priv->authorizing = TRUE;
 
   details = polkit_details_new ();
-  polkit_details_insert (details, "polkit.message", N_(auth_action[method].message));
+  polkit_details_insert (details, "polkit.message", auth_action[method].message);
   polkit_details_insert (details, "polkit.gettext_domain", GETTEXT_PACKAGE);
 
   EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
@@ -1087,6 +1219,217 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static void
+eam_remote_transaction_free (EamRemoteTransaction *remote)
+{
+  g_clear_object (&remote->service);
+  g_clear_object (&remote->transaction);
+
+  g_cancellable_cancel (remote->cancellable);
+  g_clear_object (&remote->cancellable);
+
+  g_free (remote->obj_path);
+
+  g_slice_free (EamRemoteTransaction, remote);
+}
+
+static void
+eam_remote_transaction_cancel (EamRemoteTransaction *remote)
+{
+  eam_service_remove_active_transaction (remote->service, remote);
+}
+
+static void
+transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  EamRemoteTransaction *remote = data;
+  EamService *service = remote->service;
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  GError *error = NULL;
+  gboolean ret = eam_transaction_finish (remote->transaction, res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (remote->invocation, error);
+    goto out;
+  }
+
+  if (ret) {
+    /* if we installed, uninstalled or updated something we reload the
+     * database */
+    eam_service_set_reloaddb (service, TRUE);
+    eam_pkgdb_load_async (priv->db, remote->cancellable,
+                          reload_pkgdb_after_transaction_cb,
+                          service);
+    return;
+  }
+
+  GVariant *value = g_variant_new ("(b)", ret);
+  g_dbus_method_invocation_return_value (remote->invocation, value);
+
+out:
+  eam_service_remove_active_transaction (service, remote);
+}
+
+static void
+handle_transaction_method_call (GDBusConnection *connection,
+                                const char *sender,
+                                const char *path,
+                                const char *interface,
+                                const char *method,
+                                GVariant *params,
+                                GDBusMethodInvocation *invocation,
+                                gpointer data)
+{
+  EamRemoteTransaction *remote = data;
+
+  eam_service_reset_timer (remote->service);
+
+  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
+    return;
+
+  if (g_strcmp0 (method, "CompleteTransaction") == 0) {
+    const char *bundle_path;
+
+    g_variant_get (params, "(&s)", &bundle_path);
+
+    if (bundle_path != NULL && *bundle_path != '\0') {
+      EamInstall *install = EAM_INSTALL (remote->transaction);
+
+      eam_install_set_bundle_location (install, bundle_path);
+    }
+
+    remote->invocation = invocation;
+    eam_transaction_run_async (remote->transaction, remote->cancellable,
+                               transaction_install_cb,
+                               remote);
+    return;
+  }
+
+  if (g_strcmp0 (method, "CancelTransaction") == 0) {
+    eam_remote_transaction_cancel (remote);
+    g_dbus_method_invocation_return_value (invocation, NULL);
+    return;
+  }
+}
+
+static GVariant *
+handle_transaction_get_property (GDBusConnection *connection,
+                                 const gchar *sender,
+                                 const gchar *path,
+                                 const gchar *interface,
+                                 const gchar *name,
+                                 GError **error,
+                                 gpointer data)
+{
+  EamRemoteTransaction *remote = data;
+
+  eam_service_reset_timer (remote->service);
+
+  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
+    return NULL;
+
+  if (g_strcmp0 (name, "BundleURI") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const char *uri = eam_install_get_download_url (install);
+    if (uri != NULL && *uri != '\0') {
+      return g_variant_new ("(s)", uri);
+    }
+
+    goto error_out;
+  }
+
+  if (g_strcmp0 (name, "ApplicationId") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const char *appid = eam_install_get_app_id (install);
+    if (appid != NULL && *appid != '\0') {
+      return g_variant_new ("(s)", appid);
+    }
+
+    goto error_out;
+  }
+
+error_out:
+  /* return an error */
+  g_set_error (error, EAM_SERVICE_ERROR,
+               EAM_SERVICE_ERROR_UNIMPLEMENTED,
+               _("Property '%s' is not implemented"),
+               name);
+
+  return NULL;
+}
+
+static const GDBusInterfaceVTable transaction_vtable = {
+  handle_transaction_method_call,
+  handle_transaction_get_property,
+  NULL,
+};
+
+static char *
+get_next_transaction_path (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  return g_strdup_printf ("/com/endlessm/AppStore/Transactions/%" G_GUINT64_FORMAT,
+                          priv->last_transaction++);
+}
+
+static gboolean
+eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
+                                      EamService *service,
+                                      GError **error)
+{
+  static GDBusNodeInfo *transaction = NULL;
+  GError *internal_error = NULL;
+
+  if (transaction == NULL) {
+    transaction = load_introspection ("eam-transaction-interface.xml", &internal_error);
+
+    if (error) {
+      g_propagate_error (error, internal_error);
+      return FALSE;
+    }
+  }
+
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  remote->registration_id =
+    g_dbus_connection_register_object (priv->connection,
+                                       remote->obj_path,
+                                       transaction->interfaces[0],
+                                       &transaction_vtable,
+                                       remote, NULL,
+                                       &internal_error);
+
+  if (!remote->registration_id) {
+    g_propagate_error (error, internal_error);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static EamRemoteTransaction *
+eam_remote_transaction_new (EamService *service,
+                            EamTransaction *transaction,
+                            GError **error)
+{
+  EamRemoteTransaction *res = g_slice_new (EamRemoteTransaction);
+
+  res->service = g_object_ref (service);
+  res->transaction = g_object_ref (transaction);
+  res->obj_path = get_next_transaction_path (service);
+  res->cancellable = g_cancellable_new ();
+
+  if (!eam_remote_transaction_register_dbus (res, service, error)) {
+    eam_remote_transaction_free (res);
+    return NULL;
+  }
+
+  return res;
+}
+
+static void
 handle_method_call (GDBusConnection *connection, const char *sender,
   const char *path, const char *interface, const char *method, GVariant *params,
   GDBusMethodInvocation *invocation, gpointer data)
@@ -1097,11 +1440,12 @@ handle_method_call (GDBusConnection *connection, const char *sender,
   if (g_strcmp0 (interface, "com.endlessm.AppManager"))
     return;
 
-  for (method_i = 0; method_i < G_N_ELEMENTS (auth_action); method_i++)
+  for (method_i = 0; method_i < G_N_ELEMENTS (auth_action); method_i++) {
     if (g_strcmp0 (method, auth_action[method_i].dbus_name) == 0) {
       eam_service_run (service, invocation, method_i, params);
       break;
     }
+  }
 }
 
 static GVariant *
@@ -1126,24 +1470,11 @@ handle_get_property (GDBusConnection *connection, const gchar *sender,
   return NULL;
 }
 
-static const GDBusInterfaceVTable interface_vtable = {
-  handle_method_call, handle_get_property, NULL,
+static const GDBusInterfaceVTable service_vtable = {
+  handle_method_call,
+  handle_get_property,
+  NULL,
 };
-
-static GDBusNodeInfo*
-load_introspection (GError **error)
-{
-  GDBusNodeInfo *info = NULL;
-  GBytes *data = g_resources_lookup_data ("/com/endlessm/AppManager/eam-dbus-interface.xml",
-    G_RESOURCE_LOOKUP_FLAGS_NONE, error);
-
-  if (!data)
-    return NULL;
-
-  info = g_dbus_node_info_new_for_xml (g_bytes_get_data (data, NULL), error);
-  g_bytes_unref (data);
-  return info;
-}
 
 /**
  * eam_service_dbus_register:
@@ -1155,24 +1486,26 @@ load_introspection (GError **error)
 void
 eam_service_dbus_register (EamService *service, GDBusConnection *connection)
 {
-  GError *error = NULL;
-  static GDBusNodeInfo *introspection = NULL;
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  static GDBusNodeInfo *service_info = NULL;
 
   g_return_if_fail (EAM_IS_SERVICE (service));
   g_return_if_fail (G_IS_DBUS_CONNECTION (connection));
 
-  if (!introspection)
-    introspection = load_introspection (&error);
+  GError *error = NULL;
 
-  if (error) {
-    g_warning ("Failed to load DBus introspection: %s", error->message);
-    g_error_free (error);
-    return;
+  if (service_info == NULL) {
+    service_info = load_introspection ("eam-service-interface.xml", &error);
+
+    if (error) {
+      g_warning ("Failed to load DBus introspection: %s", error->message);
+      g_error_free (error);
+      return;
+    }
   }
 
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
   priv->registration_id = g_dbus_connection_register_object (connection,
-    "/com/endlessm/AppManager", introspection->interfaces[0], &interface_vtable,
+    "/com/endlessm/AppManager", service_info->interfaces[0], &service_vtable,
     service, NULL, &error);
 
   if (!priv->registration_id) {

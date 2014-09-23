@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/com/endlessm/AppManager">
-    <file preprocess="xml-stripblanks" compressed="true">eam-dbus-interface.xml</file>
+    <file preprocess="xml-stripblanks" compressed="true">eam-service-interface.xml</file>
+    <file preprocess="xml-stripblanks" compressed="true">eam-transaction-interface.xml</file>
   </gresource>
 </gresources>
 
