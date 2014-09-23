@@ -1324,7 +1324,7 @@ handle_transaction_get_property (GDBusConnection *connection,
 
   eam_service_reset_timer (remote->service);
 
-  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction"))
+  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
     return NULL;
 
   if (g_strcmp0 (name, "BundleURI") == 0) {
@@ -1334,8 +1334,22 @@ handle_transaction_get_property (GDBusConnection *connection,
     if (uri != NULL && *uri != '\0') {
       return g_variant_new ("(s)", uri);
     }
+
+    goto error_out;
   }
 
+  if (g_strcmp0 (name, "ApplicationId") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const char *appid = eam_install_get_app_id (install);
+    if (appid != NULL && *appid != '\0') {
+      return g_variant_new ("(s)", appid);
+    }
+
+    goto error_out;
+  }
+
+error_out:
   /* return an error */
   g_set_error (error, EAM_SERVICE_ERROR,
                EAM_SERVICE_ERROR_UNIMPLEMENTED,
