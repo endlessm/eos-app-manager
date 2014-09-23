@@ -6,9 +6,7 @@
 <node>
   <interface name="com.endlessm.AppManager.Transaction">
 
-    <method name="GetBundleURI">
-      <arg type="s" name="uri" direction="out"/>
-    </method>
+    <property name="BundleURI" type="as" access="read"/>
 
     <method name="CompleteTransaction">
       <arg type="s" name="path" direction="in"/>

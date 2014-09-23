@@ -1281,24 +1281,10 @@ handle_transaction_method_call (GDBusConnection *connection,
 {
   EamRemoteTransaction *remote = data;
 
+  eam_service_reset_timer (remote->service);
+
   if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
     return;
-
-  if (g_strcmp0 (method, "GetBundleURI") == 0) {
-    EamInstall *install = EAM_INSTALL (remote->transaction);
-
-    const char *uri = eam_install_get_download_url (install);
-    if (uri != NULL && *uri != '\0') {
-      GVariant *value = g_variant_new ("(s)", uri);
-      g_dbus_method_invocation_return_value (invocation, value);
-      return;
-    }
-
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                           EAM_SERVICE_ERROR_PKG_UNKNOWN,
-                                           _("No updated bundle information"));
-    return;
-  }
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
     const char *bundle_path;
@@ -1325,9 +1311,43 @@ handle_transaction_method_call (GDBusConnection *connection,
   }
 }
 
+static GVariant *
+handle_transaction_get_property (GDBusConnection *connection,
+                                 const gchar *sender,
+                                 const gchar *path,
+                                 const gchar *interface,
+                                 const gchar *name,
+                                 GError **error,
+                                 gpointer data)
+{
+  EamRemoteTransaction *remote = data;
+
+  eam_service_reset_timer (remote->service);
+
+  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction"))
+    return NULL;
+
+  if (g_strcmp0 (name, "BundleURI") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const char *uri = eam_install_get_download_url (install);
+    if (uri != NULL && *uri != '\0') {
+      return g_variant_new ("(s)", uri);
+    }
+  }
+
+  /* return an error */
+  g_set_error (error, EAM_SERVICE_ERROR,
+               EAM_SERVICE_ERROR_UNIMPLEMENTED,
+               _("Property '%s' is not implemented"),
+               name);
+
+  return NULL;
+}
+
 static const GDBusInterfaceVTable transaction_vtable = {
   handle_transaction_method_call,
-  NULL,
+  handle_transaction_get_property,
   NULL,
 };
 
