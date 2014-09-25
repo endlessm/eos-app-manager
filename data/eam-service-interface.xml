@@ -73,7 +73,7 @@
     <method name="Install" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg type="s" direction="in" />
-      <arg type="b" direction="out">
+      <arg type="o" direction="out">
 	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>

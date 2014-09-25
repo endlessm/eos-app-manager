@@ -1,8 +1,6 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
@@ -30,16 +28,6 @@ struct _EamBundle
   gchar *signature_url;
   gchar *hash;
 };
-
-typedef enum {
-  EAM_ACTION_INSTALL,       /* Install */
-  EAM_ACTION_UPDATE,        /* Update downloading the complete bundle */
-  EAM_ACTION_XDELTA_UPDATE, /* Update applying xdelta diff files */
-} EamAction;
-
-/* EamAction GType definition */
-#define EAM_TYPE_ACTION	(eam_action_get_type())
-GType eam_action_get_type (void) G_GNUC_CONST;
 
 GType
 eam_action_get_type (void)
@@ -70,6 +58,7 @@ struct _EamInstallPrivate
   EamAction action;
   EamBundle *bundle;
   EamBundle *xdelta_bundle;
+  char *bundle_location;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -142,6 +131,7 @@ eam_install_reset (EamInstall *self)
 
   g_clear_pointer (&priv->appid, g_free);
   g_clear_pointer (&priv->from_version, g_free);
+  g_clear_pointer (&priv->bundle_location, g_free);
   g_clear_pointer (&priv->bundle, eam_bundle_free);
   g_clear_pointer (&priv->xdelta_bundle, eam_bundle_free);
 }
@@ -222,7 +212,8 @@ eam_install_class_init (EamInstallClass *klass)
    */
   g_object_class_install_property (object_class, PROP_ACTION,
     g_param_spec_enum ("action", "Action type", "Action type", EAM_TYPE_ACTION,
-      EAM_ACTION_INSTALL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_PRIVATE));
+      EAM_ACTION_INSTALL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_PRIVATE));
 
   /**
    * EamUpdate:from-version:
@@ -268,11 +259,17 @@ eam_install_new_from_version (const gchar *appid, const gchar *from_version)
 }
 
 static gchar *
-build_tarball_filename (const gchar *appid)
+build_tarball_filename (EamInstall *self)
 {
-  gchar *fname = g_strconcat (appid, ".bundle", NULL);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  if (priv->bundle_location != NULL)
+    return priv->bundle_location;
+
+  gchar *fname = g_strconcat (priv->appid, ".bundle", NULL);
   gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
   g_free (fname);
+
   return ret;
 }
 
@@ -322,7 +319,7 @@ run_scripts (EamInstall *self, const gchar *scriptdir,
   /* scripts parameters */
   GStrv params = g_new0 (gchar *, 3);
   params[0] = g_strdup (priv->appid);
-  params[1] = build_tarball_filename (priv->appid);
+  params[1] = build_tarball_filename (self);
 
   /* prefix environment */
   g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
@@ -440,8 +437,7 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
 
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  gchar *tarball = build_tarball_filename (priv->appid);
+  gchar *tarball = build_tarball_filename (self);
   create_sha256sum_file (self, tarball, &error);
   g_free (tarball);
 
@@ -469,23 +465,10 @@ build_sign_filename (const gchar *appid)
 }
 
 static void
-dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
+download_signature (EamInstall *self, GTask *task)
 {
-  GTask *task = data;
-  GError *error = NULL;
-
-  eam_wc_request_finish (EAM_WC (source), result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
-
   /* download signature */
   /* @TODO: make all downloads in parallel */
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   gchar *filename = build_sign_filename (priv->appid);
@@ -501,6 +484,26 @@ dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   g_object_unref (wc);
   g_free (filename);
+}
+
+static void
+dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
+{
+  GTask *task = data;
+  GError *error = NULL;
+
+  eam_wc_request_finish (EAM_WC (source), result, &error);
+  if (error) {
+    g_task_return_error (task, error);
+    goto bail;
+  }
+
+  if (g_task_return_error_if_cancelled (task))
+    goto bail;
+
+  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+
+  download_signature (self, task);
 
   return;
 
@@ -513,7 +516,7 @@ download_bundle (EamInstall *self, GTask *task)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  gchar *filename = build_tarball_filename (priv->appid);
+  gchar *filename = build_tarball_filename (self);
   const gchar *download_url;
   if (priv->action == EAM_ACTION_XDELTA_UPDATE)
     download_url = priv->xdelta_bundle->download_url;
@@ -802,7 +805,7 @@ bail:
 }
 
 static gchar *
-build_json_updates_filename ()
+build_json_updates_filename (void)
 {
  return g_build_filename (eam_config_dldir (), "updates.json", NULL);
 }
@@ -849,11 +852,17 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     goto bail;
   }
 
-  download_bundle (self, task);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  if (priv->bundle_location == NULL) {
+    download_bundle (self, task);
+  }
+  else {
+    download_signature (self, task);
+  }
 
 bail:
   g_object_unref (parser);
-
 }
 
 static gboolean
@@ -863,4 +872,75 @@ eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
   g_return_val_if_fail (g_task_is_valid (res, trans), FALSE);
 
   return g_task_propagate_boolean (G_TASK (res), error);
+}
+
+const char *
+eam_install_get_download_url (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  const gchar *download_url;
+
+  JsonParser *parser = json_parser_new ();
+  gchar *updates = build_json_updates_filename ();
+  GError *error = NULL;
+
+  json_parser_load_from_file (parser, updates, &error);
+  g_free (updates);
+
+  if (error) {
+    g_warning ("Can't load cached updates.json: %s", error->message);
+    g_clear_error (&error);
+    g_object_unref (parser);
+    return NULL;
+  }
+
+  if (!load_bundle_info (install, json_parser_get_root (parser))) {
+    g_object_unref (parser);
+    return NULL;
+  }
+
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
+    download_url = priv->xdelta_bundle->download_url;
+  }
+  else {
+    download_url = priv->bundle->download_url;
+  }
+
+  g_object_unref (parser);
+
+  return download_url;
+}
+
+void
+eam_install_set_bundle_location (EamInstall *install,
+                                 const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->bundle_location);
+  priv->bundle_location = g_strdup (path);
+}
+
+const char *
+eam_install_get_app_id (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  return priv->appid;
+}
+
+const char *
+eam_install_get_from_version (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  return priv->from_version;
+}
+
+EamAction
+eam_install_get_action (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  return priv->action;
 }
