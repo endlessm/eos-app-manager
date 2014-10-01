@@ -5,10 +5,17 @@
 #include "eam-config.h"
 
 static const gchar *METHODS_V1_FORMAT[] = {
-  "%s/api/v1/updates/%s?arch=%s",    /* ALL_UPDATES     */
-  "%s/api/v1/updates/%s/%s?arch=%s", /* APP_UPDATE      */
-  "%s/api/v1/updates/%s/%s",         /* APP_UPDATE_LINK */
-  "%s/api/v1/updates/blob/%s",       /* APP_UPDATE_BLOB */
+  /* ALL_UPDATES */
+  "%s/api/v1/updates/%s?arch=%s&personality=%s",
+
+  /* APP_UPDATE */
+  "%s/api/v1/updates/%s/%s?arch=%s&personality=%s",
+
+  /* APP_UPDATE_LINK */
+  "%s/api/v1/updates/%s/%s",
+
+  /* APP_UPDATE_BLOB */
+  "%s/api/v1/updates/blob/%s",
 };
 
 static gchar *
@@ -16,16 +23,17 @@ build_uri_v1 (EamRestMethod method, const gchar *saddr, va_list args)
 {
   const gchar *osver = eam_os_get_version ();
   const gchar *osarch = eam_os_get_architecture ();
+  const gchar *ospers = eam_os_get_personality ();
 
   switch (method) {
   case EAM_REST_API_V1_GET_ALL_UPDATES:{
-    return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, osarch);
+    return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, osarch, ospers);
   }
   case EAM_REST_API_V1_GET_APP_UPDATES:{
     const gchar *appid = va_arg (args, const gchar *);
     if (appid)
       return g_strdup_printf (METHODS_V1_FORMAT[method], saddr, osver, appid,
-                              osarch);
+                              osarch, ospers);
 
     break;
   }
