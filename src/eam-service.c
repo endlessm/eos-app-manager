@@ -130,15 +130,12 @@ static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
 static void eam_remote_transaction_cancel (EamRemoteTransaction *remote);
 static void eam_remote_transaction_free (EamRemoteTransaction *remote);
 
-#define AUTH_NAMESPACE          com.endlessm.app-installer
-#define AUTH_ACTION(action)     G_STRINGIFY (G_PASTE (AUTH_NAMESPACE, action))
-
 static EamServiceAuth auth_action[] = {
   [EAM_SERVICE_METHOD_INSTALL] = {
     .method = EAM_SERVICE_METHOD_INSTALL,
     .dbus_name = "Install",
     .run = eam_service_install,
-    .action_id = AUTH_ACTION (install-application),
+    .action_id = "com.endlessm.app-installer.install-application",
     .message = N_("Authentication is required to install or update software"),
   },
 
@@ -146,7 +143,7 @@ static EamServiceAuth auth_action[] = {
     .method = EAM_SERVICE_METHOD_UNINSTALL,
     .dbus_name = "Uninstall",
     .run = eam_service_uninstall,
-    .action_id = AUTH_ACTION (uninstall-application),
+    .action_id = "com.endlessm.app-installer.uninstall-application",
     .message = N_("Authentication is required to uninstall software"),
   },
 
@@ -186,7 +183,7 @@ static EamServiceAuth auth_action[] = {
     .method = EAM_SERVICE_METHOD_CANCEL,
     .dbus_name = "Cancel",
     .run = eam_service_cancel,
-    .action_id = AUTH_ACTION (cancel-request),
+    .action_id = "com.endlessm.app-installer.cancel-request",
     .message = N_("Authentication is required to cancel the application manager ongoing task"),
   },
 
@@ -1333,7 +1330,7 @@ handle_transaction_get_property (GDBusConnection *connection,
 
     const char *uri = eam_install_get_download_url (install);
     if (uri != NULL && *uri != '\0') {
-      return g_variant_new ("(s)", uri);
+      return g_variant_new ("s", uri);
     }
 
     goto error_out;
@@ -1386,7 +1383,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
   if (transaction == NULL) {
     transaction = load_introspection ("eam-transaction-interface.xml", &internal_error);
 
-    if (error) {
+    if (internal_error != NULL) {
       g_propagate_error (error, internal_error);
       return FALSE;
     }
@@ -1402,7 +1399,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
                                        remote, NULL,
                                        &internal_error);
 
-  if (!remote->registration_id) {
+  if (internal_error != NULL) {
     g_propagate_error (error, internal_error);
     return FALSE;
   }
