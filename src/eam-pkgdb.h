@@ -39,46 +39,51 @@ struct _EamPkgdbClass
 	GInitiallyUnownedClass parent_class;
 };
 
-GType           eam_pkgdb_get_type                               (void) G_GNUC_CONST;
+GType           eam_pkgdb_get_type              (void) G_GNUC_CONST;
 
-EamPkgdb       *eam_pkgdb_new                                    (void);
+EamPkgdb       *eam_pkgdb_new                   (void);
 
-EamPkgdb       *eam_pkgdb_new_with_appdir                        (const gchar *appdir);
+EamPkgdb       *eam_pkgdb_new_with_appdir       (const gchar *appdir);
 
-gboolean        eam_pkgdb_add                                    (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg);
+gboolean        eam_pkgdb_add                   (EamPkgdb *pkgdb,
+                                                 const gchar *appid,
+                                                 EamPkg *pkg);
 
-gboolean        eam_pkgdb_del                                    (EamPkgdb *pkgdb, const gchar *appid);
+gboolean        eam_pkgdb_del                   (EamPkgdb *pkgdb,
+                                                 const gchar *appid);
 
-const EamPkg   *eam_pkgdb_get                                    (EamPkgdb *pkgdb, const gchar *appid);
+const EamPkg   *eam_pkgdb_get                   (EamPkgdb *pkgdb,
+                                                 const gchar *appid);
 
-gboolean        eam_pkgdb_exists                                 (EamPkgdb *pkgdb, const gchar *appid);
+gboolean        eam_pkgdb_exists                (EamPkgdb *pkgdb,
+                                                 const gchar *appid);
 
-guint           eam_pkgdb_size                                   (EamPkgdb *pkgdb);
+guint           eam_pkgdb_size                  (EamPkgdb *pkgdb);
 
-gboolean        eam_pkgdb_equal                                  (EamPkgdb *old,
-                                                                  EamPkgdb *new);
+gboolean        eam_pkgdb_equal                 (EamPkgdb *old,
+                                                 EamPkgdb *new);
 
-gboolean        eam_pkgdb_replace                                (EamPkgdb *pkgdb,
-                                                                  EamPkg *pkg);
+gboolean        eam_pkgdb_replace               (EamPkgdb *pkgdb,
+                                                 EamPkg *pkg);
 
-gboolean        eam_pkgdb_iter_next                              (EamPkgdb *pkgdb,
-                                                                  EamPkg **pkg);
+gboolean        eam_pkgdb_iter_next             (EamPkgdb *pkgdb,
+                                                 EamPkg **pkg);
 
-void            eam_pkgdb_iter_reset                             (EamPkgdb *pkgdb);
+void            eam_pkgdb_iter_reset            (EamPkgdb *pkgdb);
 
-gboolean        eam_pkgdb_load                                   (EamPkgdb *pkgdb,
-                                                                  GError **error);
+gboolean        eam_pkgdb_load                  (EamPkgdb *pkgdb,
+                                                 GError **error);
 
-void            eam_pkgdb_load_async                             (EamPkgdb *pkgdb,
-								  GCancellable *cancellable,
-								  GAsyncReadyCallback callback,
-								  gpointer data);
+void            eam_pkgdb_load_async            (EamPkgdb *pkgdb,
+						 GCancellable *cancellable,
+						 GAsyncReadyCallback callback,
+						 gpointer data);
 
-gboolean        eam_pkgdb_load_finish                            (EamPkgdb *pkgdb,
-                                                                  GAsyncResult *res,
-                                                                  GError **error);
+gboolean        eam_pkgdb_load_finish           (EamPkgdb *pkgdb,
+                                                 GAsyncResult *res,
+                                                 GError **error);
 
-void            eam_pkgdb_dump                                   (EamPkgdb *pkgdb);
+void            eam_pkgdb_dump                  (EamPkgdb *pkgdb);
 
 G_END_DECLS
 

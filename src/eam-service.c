@@ -16,6 +16,7 @@
 #include "eam-list-avail.h"
 #include "eam-dbus-utils.h"
 #include "eam-version.h"
+#include "eam-log.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -358,7 +359,7 @@ eam_service_remove_active_transaction (EamService *service,
 
   if (priv->active_transactions == NULL ||
       !g_hash_table_remove (priv->active_transactions, remote->obj_path))
-    g_critical ("Asked to remove transaction '%s'[%p] without adding it first.\n",
+    eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.\n",
                 remote->obj_path,
                 remote);
 }
@@ -482,7 +483,7 @@ do_signal:
       "PropertiesChanged", params, &error);
 
     if (error) {
-      g_critical ("Couldn't emit DBus signal \"PropertiesChanged\": %s", error->message);
+      eam_log_error_message ("Couldn't emit DBus signal \"PropertiesChanged\": %s", error->message);
       g_clear_error (&error);
     }
   }
@@ -503,7 +504,7 @@ avails_changed_cb (EamService *service, gpointer data)
     &error);
 
   if (error) {
-    g_critical ("Couldn't emit DBus signal \"AvailableApplicationsChanged\": %s",
+    eam_log_error_message ("Couldn't emit DBus signal \"AvailableApplicationsChanged\": %s",
       error->message);
     g_clear_error (&error);
   }
@@ -928,7 +929,7 @@ eam_service_check_auth_by_method (EamService *service, PolkitSubject *subject,
       action, NULL, 0, NULL, &error);
 
   if (error) {
-    g_warning ("Unable to check authorisation for %s: %s", action,
+    eam_log_error_message ("Unable to check authorisation for %s: %s", action,
       error->message);
     g_clear_error (&error);
     goto bail;
@@ -974,7 +975,7 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
    */
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
   if (!subject) {
-    g_warning ("Unable to create the Polkit subject for: %s", sender);
+    eam_log_error_message ("Unable to create the Polkit subject for: %s", sender);
     goto out;
   }
 
@@ -1155,7 +1156,7 @@ eam_service_check_authorization_async (EamService *service, GDBusMethodInvocatio
 
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
   if (subject == NULL) {
-    g_warning ("Unable to create the Polkit subject for: %s", sender);
+    eam_log_error_message ("Unable to create the Polkit subject for: %s", sender);
 
     return FALSE;
   }
@@ -1497,7 +1498,7 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
     service_info = load_introspection ("eam-service-interface.xml", &error);
 
     if (error) {
-      g_warning ("Failed to load DBus introspection: %s", error->message);
+      eam_log_error_message ("Failed to load DBus introspection: %s", error->message);
       g_error_free (error);
       return;
     }
@@ -1509,7 +1510,7 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
     service, NULL, &error);
 
   if (!priv->registration_id) {
-    g_warning ("Failed to register service object: %s\n", error->message);
+    eam_log_error_message ("Failed to register service object: %s\n", error->message);
     g_error_free (error);
     return;
   }

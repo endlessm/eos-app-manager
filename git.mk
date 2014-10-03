@@ -263,6 +263,7 @@ $(srcdir)/.gitignore: Makefile.am $(top_srcdir)/git.mk
 			$(LTLIBRARIES) $(check_LTLIBRARIES) $(EXTRA_LTLIBRARIES) \
 			so_locations \
 			$(MOSTLYCLEANFILES) \
+			test-driver \
 			$(TEST_LOGS) \
 			$(TEST_LOGS:.log=.trs) \
 			$(TEST_SUITE_LOG) \
