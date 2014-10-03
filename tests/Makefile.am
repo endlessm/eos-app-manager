@@ -1,5 +1,7 @@
 include $(top_srcdir)/glib-tap.mk
 
+TEST_ENVIRONMENT = EAM_TESTING=1
+
 AM_CFLAGS = -g $(DEPENDENCIES_CFLAGS)
 LDADD = $(top_builddir)/src/libeam-1.0.la $(DEPENDENCIES_LIBS)
 
