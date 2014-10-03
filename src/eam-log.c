@@ -20,7 +20,7 @@ eam_log_messagev (int level,
     if (env != NULL && *env == '1')
       eam_testing = "1";
     else
-      eam_testing = "1";
+      eam_testing = "0";
   }
 
   /* if we're not under a test environment, then we send
