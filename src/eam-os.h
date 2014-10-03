@@ -7,9 +7,9 @@
 
 G_BEGIN_DECLS
 
-const gchar    *eam_os_get_version                                ();
-const gchar    *eam_os_get_personality                            ();
-const gchar    *eam_os_get_architecture                           ();
+const gchar *   eam_os_get_version      (void);
+const gchar *   eam_os_get_personality  (void);
+const gchar *   eam_os_get_architecture (void);
 
 G_END_DECLS
 
