@@ -48,6 +48,7 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  libsoup-2.4 >= $SOUP_REQUIRED
 		  json-glib-1.0 >= $JSON_GLIB_REQUIRED
 		  systemd
+                  libsystemd-journal
 		  polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
 		  ])
 
