@@ -10,6 +10,7 @@
 #include "eam-dbus-server.h"
 #include "eam-service.h"
 #include "eam-config.h"
+#include "eam-log.h"
 
 typedef struct _EamDbusServerPrivate EamDbusServerPrivate;
 
@@ -130,31 +131,33 @@ signal_hangup (gpointer data)
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
   /* If we're reloading, voluntarily relinquish our bus
-   * name to avoid triggering a "bus-name-lost" signal. */
+   * name to avoid triggering a "bus-name-lost" signal.
+   */
   g_bus_unown_name (priv->busowner);
   priv->busowner = 0;
 
-  g_debug ("Received SIGHUP - terminating");
-
+  eam_log_debug_message ("Received SIGHUP - terminating.");
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
+
   return FALSE;
 }
 
 static gboolean
 signal_terminate (gpointer data)
 {
-  g_debug ("Received SIGTERM - terminating");
-
+  eam_log_debug_message ("Received SIGTERM - terminating.");
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
+
   return FALSE;
 }
 
 static gboolean
 signal_interrupt (gpointer data)
 {
-  g_debug ("Received SIGINT - terminating");
+  eam_log_debug_message ("Received SIGINT - terminating.");
 
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
+
   return FALSE;
 }
 #endif
@@ -173,23 +176,26 @@ eam_dbus_server_init (EamDbusServer *server)
 #endif
 }
 
+#ifdef EAM_ENABLE_DEBUG
 static void
 print_peer_credentials (GDBusConnection *connection)
 {
-  GCredentials *credentials;
-  gchar *s = NULL;
+  GCredentials *credentials = g_dbus_connection_get_peer_credentials (connection);
+  if (credentials != NULL)
+    {
+      char *s = g_credentials_to_string (credentials);
 
-  credentials = g_dbus_connection_get_peer_credentials(connection);
-  if (credentials)
-    s = g_credentials_to_string (credentials);
+      eam_log_debug_message ("Peer credentials: %s.", s != NULL ? s : "none");
 
-  if (s)
-    g_debug ("Peer credentials: %s\n", s);
-  g_debug ("Negotiated capabilities: unix-fd-passing = %d",
-    g_dbus_connection_get_capabilities (connection) & G_DBUS_CAPABILITY_FLAGS_UNIX_FD_PASSING);
+      g_free (s);
+    }
 
-  g_free (s);
+  eam_log_debug_message ("Negotiated capabilities: unix-fd-passing = %s",
+    (g_dbus_connection_get_capabilities (connection) & G_DBUS_CAPABILITY_FLAGS_UNIX_FD_PASSING) != 0
+      ? "yes"
+      : "no");
 }
+#endif
 
 static void
 on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
@@ -197,8 +203,10 @@ on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
   EamDbusServer *server = EAM_DBUS_SERVER (data);
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
-  g_debug ("bus acquired: %s", name);
+#ifdef EAM_ENABLE_DEBUG
+  eam_log_debug_message ("bus acquired: %s", name);
   print_peer_credentials (connection);
+#endif
 
   eam_service_dbus_register (priv->service, connection);
 }
@@ -206,13 +214,13 @@ on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
 static void
 on_name_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
 {
-  g_debug ("name acquired: %s", name);
+  eam_log_debug_message ("name acquired: %s", name);
 }
 
 static void
 on_name_lost (GDBusConnection *connection, const gchar *name, gpointer data)
 {
-  g_debug ("name lost: %s", name);
+  eam_log_debug_message ("name lost: %s", name);
   eam_dbus_server_quit (EAM_DBUS_SERVER (data));
 }
 
@@ -249,7 +257,7 @@ eam_dbus_server_run (EamDbusServer *server)
     return FALSE;
 
   if (!eam_service_load_authority (priv->service, &error)) {
-    g_critical ("Error loading the authority: %s", error->message);
+    eam_log_error_message ("Unable to load authority: %s", error->message);
     g_clear_error (&error);
     return FALSE;
   }

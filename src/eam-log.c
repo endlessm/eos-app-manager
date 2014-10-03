@@ -1,5 +1,4 @@
 /* Copyright 2014 Endless Mobile, Inc. */
-
 #include "config.h"
 
 #include "eam-log.h"

@@ -12,6 +12,7 @@
 #include "eam-config.h"
 #include "eam-os.h"
 #include "eam-version.h"
+#include "eam-log.h"
 
 #define INSTALL_SCRIPTDIR "install/run"
 #define INSTALL_ROLLBACKDIR "install/rollback"
@@ -359,7 +360,7 @@ rollback (GTask *task, GError *error)
     run_scripts (self, get_rollback_scriptdir (self), cancellable,
       xdelta_rollback_cb, task);
 
-    g_warning ("Incremental update failed: %s", error->message);
+    eam_log_error_message ("Incremental update failed: %s", error->message);
     g_clear_error (&error);
   } else {
     /* Use cancellable == NULL as we are returning immediately after
@@ -836,7 +837,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   GTask *task = g_task_new (self, cancellable, callback, data);
 
   if (error) {
-    g_warning ("Can't load cached updates.json: %s", error->message);
+    eam_log_error_message ("Can't load cached updates.json: %s", error->message);
     g_clear_error (&error);
 
     request_json_updates (self, task);
@@ -888,7 +889,7 @@ eam_install_get_download_url (EamInstall *install)
   g_free (updates);
 
   if (error) {
-    g_warning ("Can't load cached updates.json: %s", error->message);
+    eam_log_error_message ("Can't load cached updates.json: %s", error->message);
     g_clear_error (&error);
     g_object_unref (parser);
     return NULL;

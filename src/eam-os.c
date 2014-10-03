@@ -1,8 +1,8 @@
 /* Copyright 2014 Endless Mobile, Inc. */
-
 #include "config.h"
 
 #include "eam-os.h"
+#include "eam-log.h"
 
 #include <errno.h>
 #include <string.h>
@@ -69,7 +69,7 @@ parse_os_release_file (gchar **version_id, GError **error)
  * Returns: A string with the EOS version
  **/
 const gchar *
-eam_os_get_version ()
+eam_os_get_version (void)
 {
   static gchar *version = NULL;
 
@@ -80,7 +80,7 @@ eam_os_get_version ()
   parse_os_release_file (&version, &error);
 
   if (error) {
-    g_critical ("Can't parse /etc/os-release file: %s", error->message);
+    eam_log_error_message ("Can't parse /etc/os-release file: %s", error->message);
     g_clear_error (&error);
     goto bail;
   }
@@ -99,7 +99,7 @@ bail:
  * Returns: A string with the EOS personality
  **/
 const gchar *
-eam_os_get_personality ()
+eam_os_get_personality (void)
 {
   static gchar *personality = NULL;
 
@@ -112,7 +112,7 @@ eam_os_get_personality ()
   g_key_file_load_from_file (conffile, "/etc/EndlessOS/personality.conf",
     G_KEY_FILE_NONE, &error);
   if (error) {
-    g_critical ("Can't open personality file: %s", error->message);
+    eam_log_error_message ("Can't open personality file: %s", error->message);
     g_clear_error (&error);
     goto bail;
   }
@@ -120,7 +120,7 @@ eam_os_get_personality ()
   personality = g_key_file_get_string (conffile, "Personality",
     "PersonalityName", &error);
   if (error) {
-    g_critical ("Can't get personality field: %s", error->message);
+    eam_log_error_message ("Can't get personality field: %s", error->message);
     g_clear_error (&error);
     goto bail;
   }
@@ -140,7 +140,7 @@ bail:
  * Returns: A string with the EOS architecture.
  **/
 const gchar *
-eam_os_get_architecture ()
+eam_os_get_architecture (void)
 {
   return EOS_ARCH;
 }

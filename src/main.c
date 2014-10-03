@@ -9,6 +9,7 @@
 #include "eam-pkgdb.h"
 #include "eam-dbus-server.h"
 #include "eam-fs-sanity.h"
+#include "eam-log.h"
 
 static const gchar *opt_cfgfile;
 static gboolean opt_dumpcfg;
@@ -39,7 +40,7 @@ parse_options (int *argc, gchar ***argv)
 }
 
 static gboolean
-load_config ()
+load_config (void)
 {
   GKeyFile *keyfile = NULL;
   gboolean ret = TRUE;
@@ -50,7 +51,7 @@ load_config ()
   GError *err = NULL;
   keyfile = g_key_file_new ();
   if (!g_key_file_load_from_file (keyfile, opt_cfgfile, G_KEY_FILE_NONE, &err)) {
-    g_warning (N_ ("Error parsing configuration file: %s"), err->message);
+    eam_log_error_message ("Error parsing configuration file: %s", err->message);
     g_key_file_unref (keyfile);
     g_error_free (err);
     keyfile = NULL;
@@ -58,7 +59,7 @@ load_config ()
 
 bail:
   if (!eam_config_load (eam_config_get (), keyfile)) {
-    g_warning (N_ ("Cannot load configuration parameters"));
+    eam_log_error_message ("Cannot load configuration parameters");
     ret = FALSE;
   }
 
@@ -77,8 +78,8 @@ dump_pkgdb (EamPkgdb * db)
 
   eam_pkgdb_load (db, &error);
   if (error) {
-    g_warning (N_ ("Cannot load the package database"));
-    g_clear_error(&error);
+    eam_log_error_message ("Cannot load the package database");
+    g_clear_error (&error);
 
     return FALSE;
   }
