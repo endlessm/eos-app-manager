@@ -1329,7 +1329,7 @@ handle_transaction_get_property (GDBusConnection *connection,
 
     const char *uri = eam_install_get_download_url (install);
     if (uri != NULL && *uri != '\0') {
-      return g_variant_new ("(s)", uri);
+      return g_variant_new ("s", uri);
     }
 
     goto error_out;
