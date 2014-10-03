@@ -7,8 +7,8 @@
 
 G_BEGIN_DECLS
 
-gboolean        eam_fs_sanity_check                               (void);
-gboolean        eam_fs_sanity_delete                              (const gchar *path);
+gboolean        eam_fs_sanity_check     (void);
+gboolean        eam_fs_sanity_delete    (const gchar *path);
 
 G_END_DECLS
 

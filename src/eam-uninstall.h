@@ -37,9 +37,9 @@ struct _EamUninstallClass
   GObjectClass parent_class;
 };
 
-GType           eam_uninstall_get_type                             (void) G_GNUC_CONST;
+GType           eam_uninstall_get_type  (void) G_GNUC_CONST;
 
-EamTransaction *eam_uninstall_new                                  (const gchar *appid);
+EamTransaction *eam_uninstall_new       (const gchar *appid);
 
 G_END_DECLS
 

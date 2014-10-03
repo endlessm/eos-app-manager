@@ -41,12 +41,12 @@ struct _EamListAvailClass
   GObjectClass parent_class;
 };
 
-GType           eam_list_avail_get_type                               (void) G_GNUC_CONST;
+GType           eam_list_avail_get_type (void) G_GNUC_CONST;
 
-EamTransaction *eam_list_avail_new                                    (gboolean dbreloaded,
-                                                                       EamPkgdb *db,
-                                                                       EamUpdates *updates,
-                                                                       const char *language);
+EamTransaction *eam_list_avail_new      (gboolean dbreloaded,
+                                         EamPkgdb *db,
+                                         EamUpdates *updates,
+                                         const char *language);
 
 G_END_DECLS
 

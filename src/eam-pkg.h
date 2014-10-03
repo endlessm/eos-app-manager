@@ -28,30 +28,30 @@ typedef enum {
 
 typedef struct _EamPkg EamPkg;
 
-GQuark          eam_pkg_error_quark                              (void);
+GQuark          eam_pkg_error_quark             (void);
 
-GType           eam_pkg_get_type                                 (void) G_GNUC_CONST;
+GType           eam_pkg_get_type                (void) G_GNUC_CONST;
 
-EamPkg         *eam_pkg_copy                                     (EamPkg *pkg);
+EamPkg         *eam_pkg_copy                    (EamPkg *pkg);
 
-void            eam_pkg_free                                     (EamPkg *pkg);
+void            eam_pkg_free                    (EamPkg *pkg);
 
-EamPkg         *eam_pkg_new_from_keyfile                         (GKeyFile *keyfile,
-                                                                  GError **error);
+EamPkg         *eam_pkg_new_from_keyfile        (GKeyFile *keyfile,
+                                                 GError **error);
 
-EamPkg         *eam_pkg_new_from_filename                        (const gchar *filename,
-                                                                  GError **error);
+EamPkg         *eam_pkg_new_from_filename       (const gchar *filename,
+                                                 GError **error);
 
-EamPkg         *eam_pkg_new_from_json_object                     (JsonObject *json,
-                                                                  GError **error);
+EamPkg         *eam_pkg_new_from_json_object    (JsonObject *json,
+                                                 GError **error);
 
-const gchar    *eam_pkg_get_id                                   (const EamPkg *pkg);
+const gchar    *eam_pkg_get_id                  (const EamPkg *pkg);
 
-const gchar    *eam_pkg_get_name                                 (const EamPkg *pkg);
+const gchar    *eam_pkg_get_name                (const EamPkg *pkg);
 
-EamPkgVersion  *eam_pkg_get_version                              (const EamPkg *pkg);
+EamPkgVersion  *eam_pkg_get_version             (const EamPkg *pkg);
 
-const gchar    *eam_pkg_get_locale                               (const EamPkg *pkg);
+const gchar    *eam_pkg_get_locale              (const EamPkg *pkg);
 
 G_END_DECLS
 

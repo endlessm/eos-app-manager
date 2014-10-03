@@ -62,41 +62,40 @@ struct _EamUpdatesClass
   GObjectClass parent_class;
 };
 
-GType           eam_updates_get_type                                 (void) G_GNUC_CONST;
+GType           eam_updates_get_type                    (void) G_GNUC_CONST;
+GQuark          eam_updates_error_quark                 (void) G_GNUC_CONST;
 
-EamUpdates     *eam_updates_new                                      (void);
+EamUpdates     *eam_updates_new                         (void);
 
-void            eam_updates_fetch_async                              (EamUpdates *self,
-								      GCancellable *cancellable,
-								      GAsyncReadyCallback callback,
-								      gpointer data);
+void            eam_updates_fetch_async                 (EamUpdates *self,
+							 GCancellable *cancellable,
+							 GAsyncReadyCallback callback,
+							 gpointer data);
 
-gssize          eam_updates_fetch_finish                             (EamUpdates *self,
-                                                                      GAsyncResult *result,
-                                                                      GError **error);
+gssize          eam_updates_fetch_finish                (EamUpdates *self,
+                                                         GAsyncResult *result,
+                                                         GError **error);
 
-gboolean        eam_updates_parse                                    (EamUpdates *self,
-                                                                      GError **error);
+gboolean        eam_updates_parse                       (EamUpdates *self,
+                                                         GError **error);
 
-gboolean        eam_updates_load                                     (EamUpdates *self,
-                                                                      JsonNode *root,
-                                                                      GError **error);
+gboolean        eam_updates_load                        (EamUpdates *self,
+                                                         JsonNode *root,
+                                                         GError **error);
 
-void            eam_updates_filter                                   (EamUpdates *self,
-                                                                      EamPkgdb *db,
-                                                                      const char *language);
+void            eam_updates_filter                      (EamUpdates *self,
+                                                         EamPkgdb *db,
+                                                         const char *language);
 
-const GList    *eam_updates_get_installables                         (EamUpdates *self);
+const GList    *eam_updates_get_installables            (EamUpdates *self);
 
-const GList    *eam_updates_get_upgradables                          (EamUpdates *self);
+const GList    *eam_updates_get_upgradables             (EamUpdates *self);
 
-gboolean        eam_updates_pkg_is_upgradable                        (EamUpdates *self,
-                                                                      const gchar *appid);
+gboolean        eam_updates_pkg_is_upgradable           (EamUpdates *self,
+                                                         const gchar *appid);
 
-const EamPkg   *eam_updates_pkg_is_installable                       (EamUpdates *self,
-                                                                      const gchar *appid);
-
-GQuark          eam_updates_error_quark                              (void) G_GNUC_CONST;
+const EamPkg   *eam_updates_pkg_is_installable          (EamUpdates *self,
+                                                         const gchar *appid);
 
 G_END_DECLS
 

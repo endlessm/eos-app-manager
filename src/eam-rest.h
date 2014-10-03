@@ -14,8 +14,8 @@ typedef enum {
   EAM_REST_API_V1_GET_APP_UPDATE_BLOB,
 } EamRestMethod;
 
-gchar          *eam_rest_build_uri                               (EamRestMethod method,
-								  ...) G_GNUC_NULL_TERMINATED;
+gchar *         eam_rest_build_uri      (EamRestMethod method,
+                                         ...) G_GNUC_NULL_TERMINATED;
 
 G_END_DECLS
 
