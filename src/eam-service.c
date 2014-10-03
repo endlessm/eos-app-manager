@@ -1382,7 +1382,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
   if (transaction == NULL) {
     transaction = load_introspection ("eam-transaction-interface.xml", &internal_error);
 
-    if (error) {
+    if (internal_error != NULL) {
       g_propagate_error (error, internal_error);
       return FALSE;
     }
@@ -1398,7 +1398,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
                                        remote, NULL,
                                        &internal_error);
 
-  if (!remote->registration_id) {
+  if (internal_error != NULL) {
     g_propagate_error (error, internal_error);
     return FALSE;
   }
