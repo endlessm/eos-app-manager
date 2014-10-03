@@ -77,6 +77,13 @@ AC_ARG_WITH([eos-arch],
     [AS_HELP_STRING([--with-eos-arch=ARCH], [specify the app architecture])],
     [EOS_ARCH=$with_eos_arch])
 
+AC_ARG_ENABLE([debug],
+              [AS_HELP_STRING([--enable-debug], [Enable debug messages])],
+              [enable_debug=$enableval],
+              [enable_debug=yes])
+
+AS_IF([test "x$enable_debug" = xyes], [AC_DEFINE([EAM_ENABLE_DEBUG], [1], [Enable debug code])])
+
 # Try to determine the debian architecture from the GNU host triplet.
 # This is mostly borrowed from the dpkg tables in /usr/share/dpkg and
 # only works for a few architectures that Endless might care about.
