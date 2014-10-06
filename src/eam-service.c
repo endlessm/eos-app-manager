@@ -354,9 +354,11 @@ eam_service_remove_active_transaction (EamService *service,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_log_info_message ("Remove active transaction '%s'", remote->obj_path);
+
   if (priv->active_transactions == NULL ||
       !g_hash_table_remove (priv->active_transactions, remote->obj_path))
-    eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.\n",
+    eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.",
                 remote->obj_path,
                 remote);
 }
@@ -493,6 +495,8 @@ avails_changed_cb (EamService *service, gpointer data)
 
   if (!priv->connection)
     return;
+
+  eam_log_info_message ("Emitting AvailableApplicationsChanged");
 
   GError *error = NULL;
   g_dbus_connection_emit_signal (priv->connection, NULL,
@@ -1221,8 +1225,6 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
 {
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
-
-  g_cancellable_cancel (remote->cancellable);
   g_clear_object (&remote->cancellable);
 
   g_free (remote->obj_path);
@@ -1233,6 +1235,7 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
 static void
 eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 {
+  eam_log_info_message ("Transaction '%s' was cancelled.", remote->obj_path);
   eam_service_remove_active_transaction (remote->service, remote);
 }
 
@@ -1250,21 +1253,33 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  eam_log_info_message ("Transaction '%s' result: %s", remote->obj_path, ret ? "success" : "failure");
+
+  /* if we installed, uninstalled or updated something we reload the
+   * database
+   */
   if (ret) {
-    /* if we installed, uninstalled or updated something we reload the
-     * database */
+    /* ensure that we bind the method invocation to the internal
+     * transaction instance
+     */
+    g_object_set_data (G_OBJECT (priv->trans), "invocation", remote->invocation);
+
+    eam_service_remove_active_transaction (service, remote);
+
+    eam_log_info_message ("Reloading the package database");
     eam_service_set_reloaddb (service, TRUE);
-    eam_pkgdb_load_async (priv->db, remote->cancellable,
+    eam_pkgdb_load_async (priv->db, priv->cancellable,
                           reload_pkgdb_after_transaction_cb,
                           service);
     return;
   }
 
-  GVariant *value = g_variant_new ("(b)", ret);
+  GVariant *value = g_variant_new ("(b)", FALSE);
   g_dbus_method_invocation_return_value (remote->invocation, value);
 
 out:
   eam_service_remove_active_transaction (service, remote);
+  eam_service_clear_transaction (service);
 }
 
 static void
@@ -1292,10 +1307,16 @@ handle_transaction_method_call (GDBusConnection *connection,
     if (bundle_path != NULL && *bundle_path != '\0') {
       EamInstall *install = EAM_INSTALL (remote->transaction);
 
+      eam_log_info_message ("Setting bundle path to '%s' for transaction '%s'",
+        bundle_path,
+        remote->obj_path);
+
       eam_install_set_bundle_location (install, bundle_path);
     }
 
+    /* we don't keep a reference here to avoid cycles */
     remote->invocation = invocation;
+
     eam_transaction_run_async (remote->transaction, remote->cancellable,
                                transaction_install_cb,
                                remote);
@@ -1303,6 +1324,7 @@ handle_transaction_method_call (GDBusConnection *connection,
   }
 
   if (g_strcmp0 (method, "CancelTransaction") == 0) {
+    eam_service_clear_transaction (remote->service);
     eam_remote_transaction_cancel (remote);
     g_dbus_method_invocation_return_value (invocation, NULL);
     return;
@@ -1412,7 +1434,7 @@ eam_remote_transaction_new (EamService *service,
                             EamTransaction *transaction,
                             GError **error)
 {
-  EamRemoteTransaction *res = g_slice_new (EamRemoteTransaction);
+  EamRemoteTransaction *res = g_slice_new0 (EamRemoteTransaction);
 
   res->service = g_object_ref (service);
   res->transaction = g_object_ref (transaction);
