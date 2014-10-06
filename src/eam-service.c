@@ -354,9 +354,11 @@ eam_service_remove_active_transaction (EamService *service,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_log_info_message ("Remove active transaction '%s'", remote->obj_path);
+
   if (priv->active_transactions == NULL ||
       !g_hash_table_remove (priv->active_transactions, remote->obj_path))
-    eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.\n",
+    eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.",
                 remote->obj_path,
                 remote);
 }
@@ -1235,6 +1237,7 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
 static void
 eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 {
+  eam_log_info_message ("Transaction '%s' was cancelled.", remote->obj_path);
   eam_service_remove_active_transaction (remote->service, remote);
 }
 
@@ -1305,11 +1308,16 @@ handle_transaction_method_call (GDBusConnection *connection,
     if (bundle_path != NULL && *bundle_path != '\0') {
       EamInstall *install = EAM_INSTALL (remote->transaction);
 
+      eam_log_info_message ("Setting bundle path to '%s' for transaction '%s'",
+        bundle_path,
+        remote->obj_path);
+
       eam_install_set_bundle_location (install, bundle_path);
     }
 
     /* we don't keep a reference here to avoid cycles */
     remote->invocation = invocation;
+
     eam_transaction_run_async (remote->transaction, remote->cancellable,
                                transaction_install_cb,
                                remote);
