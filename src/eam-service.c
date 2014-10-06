@@ -1225,8 +1225,6 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
 {
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
-
-  g_cancellable_reset (remote->cancellable);
   g_clear_object (&remote->cancellable);
 
   g_free (remote->obj_path);
@@ -1261,16 +1259,16 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
    * database
    */
   if (ret) {
-    /* we need to replace the invocation used by the async pkgdb reload */
+    /* ensure that we bind the method invocation to the internal
+     * transaction instance
+     */
     g_object_set_data (G_OBJECT (priv->trans), "invocation", remote->invocation);
 
-    /* remove the active transaction */
-    remote->invocation = NULL;
     eam_service_remove_active_transaction (service, remote);
 
     eam_log_info_message ("Reloading the package database");
     eam_service_set_reloaddb (service, TRUE);
-    eam_pkgdb_load_async (priv->db, remote->cancellable,
+    eam_pkgdb_load_async (priv->db, priv->cancellable,
                           reload_pkgdb_after_transaction_cb,
                           service);
     return;
@@ -1281,6 +1279,7 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 
 out:
   eam_service_remove_active_transaction (service, remote);
+  eam_service_clear_transaction (service);
 }
 
 static void
@@ -1325,6 +1324,7 @@ handle_transaction_method_call (GDBusConnection *connection,
   }
 
   if (g_strcmp0 (method, "CancelTransaction") == 0) {
+    eam_service_clear_transaction (remote->service);
     eam_remote_transaction_cancel (remote);
     g_dbus_method_invocation_return_value (invocation, NULL);
     return;
@@ -1434,7 +1434,7 @@ eam_remote_transaction_new (EamService *service,
                             EamTransaction *transaction,
                             GError **error)
 {
-  EamRemoteTransaction *res = g_slice_new (EamRemoteTransaction);
+  EamRemoteTransaction *res = g_slice_new0 (EamRemoteTransaction);
 
   res->service = g_object_ref (service);
   res->transaction = g_object_ref (transaction);
