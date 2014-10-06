@@ -494,6 +494,8 @@ avails_changed_cb (EamService *service, gpointer data)
   if (!priv->connection)
     return;
 
+  eam_log_info_message ("Emitting AvailableApplicationsChanged");
+
   GError *error = NULL;
   g_dbus_connection_emit_signal (priv->connection, NULL,
     "/com/endlessm/AppManager", "com.endlessm.AppManager",
@@ -1250,11 +1252,12 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  eam_log_info_message ("Transaction '%s' result: %s", remote->obj_path, ret ? "success" : "failure");
+
   /* if we installed, uninstalled or updated something we reload the
    * database
    */
   if (ret) {
-
     /* we need to replace the invocation used by the async pkgdb reload */
     g_object_set_data (G_OBJECT (priv->trans), "invocation", remote->invocation);
 
@@ -1262,6 +1265,7 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     remote->invocation = NULL;
     eam_service_remove_active_transaction (service, remote);
 
+    eam_log_info_message ("Reloading the package database");
     eam_service_set_reloaddb (service, TRUE);
     eam_pkgdb_load_async (priv->db, remote->cancellable,
                           reload_pkgdb_after_transaction_cb,
@@ -1269,7 +1273,7 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     return;
   }
 
-  GVariant *value = g_variant_new ("(b)", ret);
+  GVariant *value = g_variant_new ("(b)", FALSE);
   g_dbus_method_invocation_return_value (remote->invocation, value);
 
 out:
