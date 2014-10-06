@@ -1250,9 +1250,18 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto out;
   }
 
+  /* if we installed, uninstalled or updated something we reload the
+   * database
+   */
   if (ret) {
-    /* if we installed, uninstalled or updated something we reload the
-     * database */
+
+    /* we need to replace the invocation used by the async pkgdb reload */
+    g_object_set_data (G_OBJECT (priv->trans), "invocation", remote->invocation);
+
+    /* remove the active transaction */
+    remote->invocation = NULL;
+    eam_service_remove_active_transaction (service, remote);
+
     eam_service_set_reloaddb (service, TRUE);
     eam_pkgdb_load_async (priv->db, remote->cancellable,
                           reload_pkgdb_after_transaction_cb,
@@ -1295,6 +1304,7 @@ handle_transaction_method_call (GDBusConnection *connection,
       eam_install_set_bundle_location (install, bundle_path);
     }
 
+    /* we don't keep a reference here to avoid cycles */
     remote->invocation = invocation;
     eam_transaction_run_async (remote->transaction, remote->cancellable,
                                transaction_install_cb,
