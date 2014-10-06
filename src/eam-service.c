@@ -1222,7 +1222,7 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
 
-  g_cancellable_cancel (remote->cancellable);
+  g_cancellable_reset (remote->cancellable);
   g_clear_object (&remote->cancellable);
 
   g_free (remote->obj_path);
