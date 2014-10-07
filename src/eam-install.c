@@ -3,6 +3,7 @@
 #include "config.h"
 
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <json-glib/json-glib.h>
 
 #include "eam-install.h"
@@ -859,6 +860,22 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     download_bundle (self, task);
   }
   else {
+    char *filename = g_strconcat (priv->appid, ".bundle", NULL);
+    char *target = g_build_filename (eam_config_dldir (), filename, NULL);
+    g_free (filename);
+
+    /* move the bundle under the download directory */
+    if (g_rename (priv->bundle_location, target) == -1) {
+      g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
+        EAM_TRANSACTION_ERROR_INVALID_FILE,
+        _("Could not move the downloaded bundle"));
+
+      g_object_unref (task);
+      goto bail;
+    }
+
+    g_clear_pointer (&priv->bundle_location, g_free);
+
     download_signature (self, task);
   }
 
