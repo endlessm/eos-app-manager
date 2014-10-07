@@ -569,8 +569,11 @@ eam_service_clear_transaction (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   g_assert (priv->trans);
 
-  g_cancellable_reset (priv->cancellable);
-  g_clear_object (&priv->trans); /* we don't need you anymore */
+  /* we don't need these anymore */
+  g_clear_object (&priv->cancellable);
+  g_clear_object (&priv->trans);
+
+  priv->cancellable = g_cancellable_new ();
 
   eam_service_check_queue (service);
 }
