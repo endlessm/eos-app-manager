@@ -107,7 +107,7 @@ eam_bundle_new_from_json_object (JsonObject *json, GError **error)
     return NULL;
   }
 
-  EamBundle *bundle = g_slice_new (EamBundle);
+  EamBundle *bundle = g_slice_new0 (EamBundle);
   bundle->download_url = g_strdup (downl);
   bundle->signature_url = g_strdup (sign);
   bundle->hash = g_strdup (hash);
