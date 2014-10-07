@@ -34,27 +34,27 @@ enum _EamRelation {
 
 #define EAM_TYPE_PKG_VERSION (eam_pkg_version_get_type ())
 
-GType           eam_pkg_version_get_type                         (void) G_GNUC_CONST;
+GType           eam_pkg_version_get_type                (void) G_GNUC_CONST;
 
-EamPkgVersion  *eam_pkg_version_new                              (void);
+EamPkgVersion  *eam_pkg_version_new                     (void);
 
-EamPkgVersion  *eam_pkg_version_new_from_string                  (const gchar *string);
+EamPkgVersion  *eam_pkg_version_new_from_string         (const gchar *string);
 
-void            eam_pkg_version_free                             (EamPkgVersion *version);
+void            eam_pkg_version_free                    (EamPkgVersion *version);
 
-EamPkgVersion  *eam_pkg_version_copy                             (const EamPkgVersion *version);
+EamPkgVersion  *eam_pkg_version_copy                    (const EamPkgVersion *version);
 
-gboolean        eam_pkg_version_parse                            (EamPkgVersion *version,
-                                                                  const gchar *string);
+gboolean        eam_pkg_version_parse                   (EamPkgVersion *version,
+                                                         const gchar *string);
 
-gint            eam_pkg_version_compare                          (const EamPkgVersion *a,
-                                                                  const EamPkgVersion *b);
+gint            eam_pkg_version_compare                 (const EamPkgVersion *a,
+                                                         const EamPkgVersion *b);
 
-gboolean        eam_pkg_version_relate                           (const EamPkgVersion *a,
-                                                                  EamRelation rel,
-                                                                  const EamPkgVersion *b);
+gboolean        eam_pkg_version_relate                  (const EamPkgVersion *a,
+                                                         EamRelation rel,
+                                                         const EamPkgVersion *b);
 
-gchar          *eam_pkg_version_as_string                        (const EamPkgVersion *version);
+gchar          *eam_pkg_version_as_string               (const EamPkgVersion *version);
 
 G_END_DECLS
 

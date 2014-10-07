@@ -1,8 +1,8 @@
 /* Copyright 2014 Endless Mobile, Inc. */
-
 #include "config.h"
 
 #include "eam-dbus-utils.h"
+#include "eam-log.h"
 
 uid_t
 eam_dbus_get_uid_for_sender (GDBusConnection *connection,
@@ -24,9 +24,9 @@ eam_dbus_get_uid_for_sender (GDBusConnection *connection,
 
   if (error != NULL)
     {
-      g_critical ("Unable to retrieve the UID for '%s': %s",
-                  sender,
-                  error->message);
+      eam_log_error_message ("Unable to retrieve the UID for '%s': %s",
+                             sender,
+                             error->message);
       g_error_free (error);
       goto out;
     }

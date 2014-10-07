@@ -26,6 +26,7 @@ source_c = \
 	eam-uninstall.c \
 	eam-fs-sanity.c \
 	eam-list-avail.c \
+	eam-log.c \
 	$(NULL)
 
 source_h = \
@@ -48,6 +49,7 @@ source_h = \
 	eam-uninstall.h \
 	eam-fs-sanity.h \
 	eam-list-avail.h \
+	eam-log.h \
 	$(NULL)
 
 BUILT_SOURCES = \

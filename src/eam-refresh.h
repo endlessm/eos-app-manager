@@ -41,10 +41,10 @@ struct _EamRefreshClass
   GObjectClass parent_class;
 };
 
-GType           eam_refresh_get_type                               (void) G_GNUC_CONST;
+GType           eam_refresh_get_type    (void) G_GNUC_CONST;
 
-EamTransaction *eam_refresh_new                                    (EamPkgdb *db,
-                                                                    EamUpdates *updates);
+EamTransaction *eam_refresh_new         (EamPkgdb *db,
+                                         EamUpdates *updates);
 
 G_END_DECLS
 

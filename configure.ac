@@ -48,14 +48,14 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  libsoup-2.4 >= $SOUP_REQUIRED
 		  json-glib-1.0 >= $JSON_GLIB_REQUIRED
 		  systemd
+		  libsystemd-journal
 		  polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
 		  ])
 
 # GResource
 AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources], [no])
-if test x$GLIB_COMPILE_RESOURCES = xno; then
-   AC_MSG_ERROR(["Could not find a glib-compile-resources in your PATH"])
-fi
+AS_IF([test "x$GLIB_COMPILE_RESOURCES" = xno],
+      [AC_MSG_ERROR(["Could not find a glib-compile-resources in your PATH"])])
 
 # systemd
 AC_SUBST([systemdsystemunitdir], [$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
@@ -77,33 +77,36 @@ AC_ARG_WITH([eos-arch],
     [AS_HELP_STRING([--with-eos-arch=ARCH], [specify the app architecture])],
     [EOS_ARCH=$with_eos_arch])
 
+AC_ARG_ENABLE([debug],
+              [AS_HELP_STRING([--enable-debug], [Enable debug messages])],
+              [enable_debug=$enableval],
+              [enable_debug=yes])
+
+AS_IF([test "x$enable_debug" = xyes], [AC_DEFINE([EAM_ENABLE_DEBUG], [1], [Enable debug code])])
+
 # Try to determine the debian architecture from the GNU host triplet.
 # This is mostly borrowed from the dpkg tables in /usr/share/dpkg and
 # only works for a few architectures that Endless might care about.
-if test "x$with_eos_arch" = x; then
-    # Start by looking at OS to determine if we're using armel or armhf.
-    case "$host_os" in
-    linux-gnueabihf)
-        EOS_ARCH=armhf
-        ;;
-    linux-gnueabi)
-        EOS_ARCH=armel
-        ;;
-    esac
+AC_MSG_CHECKING([For the EOS architecture])
+AS_IF([test "x$with_eos_arch" = x], [
+        # Start by looking at OS to determine if we're using armel or armhf.
+        AS_CASE(["$host_os"],
+                [linux-gnueabihf], [EOS_ARCH=armhf],
+                [linux-gnueabi],   [EOS_ARCH=armel])
 
-    # Otherwise, map from the CPU type.
-    case "$host_cpu" in
-    i[3456]86)
-        EOS_ARCH=i386
-        ;;
-    x86_64)
-        EOS_ARCH=amd64
-        ;;
-    esac
+        # Otherwise, map from the CPU type.
+        AS_CASE(["$host_cpu"],
+                [i[3456]86], [EOS_ARCH=i386],
+                [x86_64],    [EOS_ARCH=amd64])
 
-    # Fallback to just using the GNU cpu and hoping it matches.
-    test "x$EOS_ARCH" = x && EOS_ARCH=$host_cpu
-fi
+        # Fallback to just using the GNU cpu and hoping it matches.
+        AS_IF([test "x$EOS_ARCH" = x], [EOS_ARCH="$host_cpu"])
+
+        AC_MSG_RESULT(["$EOS_ARCH"])
+], [
+        AC_MSG_RESULT(["$with_eos_arch (forced)"])
+])
+
 AC_SUBST([EOS_ARCH])
 AC_DEFINE_UNQUOTED([EOS_ARCH], ["$EOS_ARCH"], [EOS app architecture])
 

@@ -9,27 +9,27 @@ G_BEGIN_DECLS
 
 typedef struct _EamConfig EamConfig;
 
-EamConfig      *eam_config_get                                    (void);
+EamConfig      *eam_config_get                  (void);
 
-void            eam_config_free                                   (EamConfig *cfg);
+void            eam_config_free                 (EamConfig *cfg);
 
-void            eam_config_destroy                                (EamConfig *cfg);
+void            eam_config_destroy              (EamConfig *cfg);
 
-gboolean        eam_config_load                                   (EamConfig *cfg,
-                                                                   GKeyFile *keyfile);
+gboolean        eam_config_load                 (EamConfig *cfg,
+                                                 GKeyFile *keyfile);
 
-void            eam_config_set                                    (EamConfig *cfg,
-                                                                   gchar *appdir,
-                                                                   gchar *dldir,
-                                                                   gchar *saddr,
-                                                                   gchar *protver,
-                                                                   gchar *scriptdir,
-                                                                   gchar *gpgkeyring,
-                                                                   guint timeout);
+void            eam_config_set                  (EamConfig *cfg,
+                                                 gchar *appdir,
+                                                 gchar *dldir,
+                                                 gchar *saddr,
+                                                 gchar *protver,
+                                                 gchar *scriptdir,
+                                                 gchar *gpgkeyring,
+                                                 guint timeout);
 
-void            eam_config_dump                                   (EamConfig *cfg);
+void            eam_config_dump                 (EamConfig *cfg);
 
-guint           eam_config_timeout                                ();
+guint           eam_config_timeout              (void);
 
 #define PARAMS_LIST(V) \
   V(appdir) \
@@ -39,7 +39,7 @@ guint           eam_config_timeout                                ();
   V(scriptdir) \
   V(gpgkeyring)
 
-#define GETTERS(p) const gchar *eam_config_##p ();
+#define GETTERS(p) const gchar *eam_config_##p (void);
 PARAMS_LIST(GETTERS)
 #undef GETTERS
 

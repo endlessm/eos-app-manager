@@ -36,13 +36,13 @@ struct _EamDbusServerClass {
   GObjectClass parent_class;
 };
 
-GType          eam_dbus_server_get_type                          (void) G_GNUC_CONST;
+GType          eam_dbus_server_get_type         (void) G_GNUC_CONST;
 
-EamDbusServer *eam_dbus_server_new                               (EamPkgdb *db);
+EamDbusServer *eam_dbus_server_new              (EamPkgdb *db);
 
-gboolean       eam_dbus_server_run                               (EamDbusServer *server);
+gboolean       eam_dbus_server_run              (EamDbusServer *server);
 
-void           eam_dbus_server_quit                              (EamDbusServer *server);
+void           eam_dbus_server_quit             (EamDbusServer *server);
 
 G_END_DECLS
 
