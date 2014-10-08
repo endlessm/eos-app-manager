@@ -881,7 +881,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     download_bundle (self, task);
   }
   else {
-    GCancellable *cancellable = g_task_get_cancellable (task);
+    cancellable = g_task_get_cancellable (task);
     run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
   }
 
