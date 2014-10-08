@@ -96,8 +96,8 @@ AS_IF([test "x$with_eos_arch" = x], [
 
         # Otherwise, map from the CPU type.
         AS_CASE(["$host_cpu"],
-                [i[3456]86], [EOS_ARCH=i386],
-                [x86_64],    [EOS_ARCH=amd64])
+                [i?86],   [EOS_ARCH=i386],
+                [x86_64], [EOS_ARCH=amd64])
 
         # Fallback to just using the GNU cpu and hoping it matches.
         AS_IF([test "x$EOS_ARCH" = x], [EOS_ARCH="$host_cpu"])
