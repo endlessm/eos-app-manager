@@ -1366,7 +1366,7 @@ handle_transaction_get_property (GDBusConnection *connection,
 
     const char *appid = eam_install_get_app_id (install);
     if (appid != NULL && *appid != '\0') {
-      return g_variant_new ("(s)", appid);
+      return g_variant_new ("s", appid);
     }
 
     goto error_out;
