@@ -326,6 +326,8 @@ run_scripts (EamInstall *self, const gchar *scriptdir,
   g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
   g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
   g_setenv ("EAM_GPGKEYRING", eam_config_gpgkeyring (), FALSE);
+  if (priv->bundle_location != NULL)
+    g_setenv ("EAM_EXTDOWNLOAD", "1", FALSE);
 
   EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
   eam_spawner_run_async (spawner, cancellable, callback, task);
@@ -394,11 +396,21 @@ bail:
 }
 
 static inline gchar *
-build_sha256sum_filename (const gchar *appid)
+build_sha256sum_filename (EamInstall *self)
 {
-  gchar *fname = g_strconcat (appid, ".sha256", NULL);
-  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  gchar *dirname;
+
+  if (priv->bundle_location != NULL)
+    dirname = g_path_get_dirname (priv->bundle_location);
+  else
+    dirname = g_strdup (eam_config_dldir ());
+
+  gchar *fname = g_strconcat (priv->appid, ".sha256", NULL);
+  gchar *ret = g_build_filename (dirname, fname, NULL);
   g_free (fname);
+  g_free (dirname);
+
   return ret;
 }
 
@@ -407,7 +419,7 @@ create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  gchar *filename = build_sha256sum_filename (priv->appid);
+  gchar *filename = build_sha256sum_filename (self);
   const gchar *hash;
   if (priv->action == EAM_ACTION_XDELTA_UPDATE)
     hash = priv->xdelta_bundle->hash;
@@ -457,11 +469,21 @@ bail:
 }
 
 static gchar *
-build_sign_filename (const gchar *appid)
+build_sign_filename (EamInstall *self)
 {
-  gchar *fname = g_strconcat (appid, ".asc", NULL);
-  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  gchar *dirname;
+
+  if (priv->bundle_location != NULL)
+    dirname = g_path_get_dirname (priv->bundle_location);
+  else
+    dirname = g_strdup (eam_config_dldir ());
+
+  gchar *fname = g_strconcat (priv->appid, ".asc", NULL);
+  gchar *ret = g_build_filename (dirname, fname, NULL);
   g_free (fname);
+  g_free (dirname);
+
   return ret;
 }
 
@@ -472,7 +494,7 @@ download_signature (EamInstall *self, GTask *task)
   /* @TODO: make all downloads in parallel */
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  gchar *filename = build_sign_filename (priv->appid);
+  gchar *filename = build_sign_filename (self);
   const gchar *download_url;
   if (priv->action == EAM_ACTION_XDELTA_UPDATE)
     download_url = priv->xdelta_bundle->signature_url;
@@ -859,7 +881,8 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     download_bundle (self, task);
   }
   else {
-    download_signature (self, task);
+    GCancellable *cancellable = g_task_get_cancellable (task);
+    run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
   }
 
 bail:

@@ -23,4 +23,6 @@ check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
 APP_ID=$1
 BUNDLE=$2
 
-delete_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+if [ "${EAM_EXTDOWNLOAD}" != "1" ]; then
+    delete_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+fi
