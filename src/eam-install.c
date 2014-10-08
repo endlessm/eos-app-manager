@@ -875,12 +875,9 @@ eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
   return g_task_propagate_boolean (G_TASK (res), error);
 }
 
-const char *
-eam_install_get_download_url (EamInstall *install)
+static gboolean
+ensure_bundle_loaded (EamInstall *install)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-  const gchar *download_url;
-
   JsonParser *parser = json_parser_new ();
   gchar *updates = build_json_updates_filename ();
   GError *error = NULL;
@@ -892,13 +889,62 @@ eam_install_get_download_url (EamInstall *install)
     eam_log_error_message ("Can't load cached updates.json: %s", error->message);
     g_clear_error (&error);
     g_object_unref (parser);
-    return NULL;
+    return FALSE;
   }
 
   if (!load_bundle_info (install, json_parser_get_root (parser))) {
     g_object_unref (parser);
-    return NULL;
+    return FALSE;
   }
+
+  g_object_unref (parser);
+  return TRUE;
+}
+
+const char *
+eam_install_get_bundle_hash (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  const gchar *bundle_hash;
+
+  if (!ensure_bundle_loaded (install))
+    return NULL;
+
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
+    bundle_hash = priv->xdelta_bundle->hash;
+  else
+    bundle_hash = priv->bundle->hash;
+
+  return bundle_hash;
+}
+
+const char *
+eam_install_get_signature_url (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  const gchar *signature_url;
+
+  if (!ensure_bundle_loaded (install))
+    return NULL;
+
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
+    signature_url = priv->xdelta_bundle->signature_url;
+  }
+  else {
+    signature_url = priv->bundle->signature_url;
+  }
+
+  return signature_url;
+}
+
+const char *
+eam_install_get_download_url (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  const gchar *download_url;
+
+  if (!ensure_bundle_loaded (install))
+    return NULL;
 
   if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
     download_url = priv->xdelta_bundle->download_url;
@@ -906,8 +952,6 @@ eam_install_get_download_url (EamInstall *install)
   else {
     download_url = priv->bundle->download_url;
   }
-
-  g_object_unref (parser);
 
   return download_url;
 }

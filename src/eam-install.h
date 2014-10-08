@@ -55,6 +55,9 @@ EamTransaction *eam_install_new_from_version    (const gchar *appid,
                                                  const gchar *from_version);
 
 const char *    eam_install_get_download_url    (EamInstall  *install);
+const char *    eam_install_get_signature_url   (EamInstall  *install);
+const char *    eam_install_get_bundle_hash     (EamInstall  *install);
+
 void            eam_install_set_bundle_location (EamInstall  *install,
                                                  const char  *path);
 
