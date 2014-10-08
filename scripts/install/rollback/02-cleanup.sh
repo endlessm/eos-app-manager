@@ -25,5 +25,8 @@ BUNDLE=$2
 
 delete_dir "${EAM_PREFIX}/${APP_ID}"
 delete_dir "${EAM_TMP}/${APP_ID}"
-delete_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+
+if [ "${EAM_EXTDOWNLOAD}" != "1" ]; then
+    delete_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
+fi
 

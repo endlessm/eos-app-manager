@@ -1,5 +1,3 @@
-INSTALL_SCRIPT = ${INSTALL} -m 750
-
 common_scripts = \
 	utils.sh \
 	config.sh \

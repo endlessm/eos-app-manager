@@ -6,7 +6,9 @@
 <node>
   <interface name="com.endlessm.AppManager.Transaction">
 
+    <property name="BundleHash" type="s" access="read"/>
     <property name="BundleURI" type="s" access="read"/>
+    <property name="SignatureURI" type="s" access="read"/>
     <property name="ApplicationId" type="s" access="read"/>
 
     <method name="CompleteTransaction">
