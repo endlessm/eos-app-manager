@@ -1350,10 +1350,32 @@ handle_transaction_get_property (GDBusConnection *connection,
   if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
     return NULL;
 
+  if (g_strcmp0 (name, "BundleHash") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const char *hash = eam_install_get_bundle_hash (install);
+    if (hash != NULL && *hash != '\0') {
+      return g_variant_new ("s", hash);
+    }
+
+    goto error_out;
+  }
+
   if (g_strcmp0 (name, "BundleURI") == 0) {
     EamInstall *install = EAM_INSTALL (remote->transaction);
 
     const char *uri = eam_install_get_download_url (install);
+    if (uri != NULL && *uri != '\0') {
+      return g_variant_new ("s", uri);
+    }
+
+    goto error_out;
+  }
+
+  if (g_strcmp0 (name, "SignatureURI") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const char *uri = eam_install_get_signature_url (install);
     if (uri != NULL && *uri != '\0') {
       return g_variant_new ("s", uri);
     }
