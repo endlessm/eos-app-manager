@@ -136,10 +136,81 @@ static void subprocess_run_async (GTask *task);
 
 typedef struct {
   GTask *task;
+  char *script_name;
   GMemoryOutputStream *out_buffer;
   GMemoryOutputStream *err_buffer;
-  char *script_name;
 } ScriptData;
+
+static ScriptData *
+script_data_new (GTask *task, const char *file_name, GSubprocess *process)
+{
+  ScriptData *data = g_slice_new (ScriptData);
+
+  data->task = task;
+  data->script_name = g_path_get_basename (file_name);
+
+  data->out_buffer =
+    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  data->err_buffer =
+    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+
+  GError *error = NULL;
+
+  g_output_stream_splice ((GOutputStream *) data->out_buffer,
+                          g_subprocess_get_stdout_pipe (process),
+                          0, NULL, &error);
+  if (error != NULL) {
+    eam_log_error_message ("Unable to splice the stdout pipe: %s", error->message);
+    g_clear_object (&data->out_buffer);
+    g_clear_error (&error);
+  }
+
+  g_output_stream_splice ((GOutputStream *) data->err_buffer,
+                          g_subprocess_get_stderr_pipe (process),
+                          0, NULL, &error);
+  if (error != NULL) {
+    eam_log_error_message ("Unable to splice the stderr pipe: %s", error->message);
+    g_clear_object (&data->err_buffer);
+    g_clear_error (&error);
+  }
+
+  return data;
+}
+
+static void
+script_data_free (ScriptData *data)
+{
+  g_clear_object (&data->out_buffer);
+  g_clear_object (&data->err_buffer);
+  g_free (data->script_name);
+  g_slice_free (ScriptData, data);
+}
+
+static void
+script_data_maybe_log_stdout (ScriptData *data)
+{
+  if (data->out_buffer != NULL) {
+    g_output_stream_write ((GOutputStream *) data->out_buffer, "\0", 1, NULL, NULL);
+    g_output_stream_close ((GOutputStream *) data->out_buffer, NULL, NULL);
+    char *str = g_memory_output_stream_steal_data (data->out_buffer);
+    eam_log_info_message ("Script '%s' wrote to stdout", data->script_name);
+    eam_log_info_message ("%s", str);
+    g_free (str);
+  }
+}
+
+static void
+script_data_maybe_log_stderr (ScriptData *data)
+{
+  if (data->err_buffer != NULL) {
+    g_output_stream_write ((GOutputStream *) data->err_buffer, "\0", 1, NULL, NULL);
+    g_output_stream_close ((GOutputStream *) data->err_buffer, NULL, NULL);
+    char *str = g_memory_output_stream_steal_data (data->err_buffer);
+    eam_log_error_message ("Script '%s' wrote to stderr", data->script_name);
+    eam_log_error_message ("%s", str);
+    g_free (str);
+  }
+}
 
 static void
 subprocess_cb (GObject *source, GAsyncResult *res, gpointer data_)
@@ -150,26 +221,13 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data_)
   GError *error = NULL;
   GSubprocess *process = G_SUBPROCESS (source);
 
+  script_data_maybe_log_stdout (data);
+  script_data_maybe_log_stderr (data);
+
   g_subprocess_wait_finish (process, res, &error);
   if (error) {
     g_task_return_error (task, error);
     goto bail;
-  }
-
-  if (data->out_buffer != NULL) {
-    g_output_stream_write ((GOutputStream *) data->out_buffer, "\0", 1, NULL, NULL);
-    g_output_stream_close ((GOutputStream *) data->out_buffer, NULL, NULL);
-    char *str = g_memory_output_stream_steal_data (data->out_buffer);
-    eam_log_info_message ("Script '%s' output\n%s", script_name, str);
-    g_free (str);
-  }
-
-  if (data->err_buffer != NULL) {
-    g_output_stream_write ((GOutputStream *) data->err_buffer, "\0", 1, NULL, NULL);
-    g_output_stream_close ((GOutputStream *) data->err_buffer, NULL, NULL);
-    char *str = g_memory_output_stream_steal_data (data->err_buffer);
-    eam_log_error_message ("Script '%s' error\n%s", script_name, str);
-    g_free (str);
   }
 
   if (!g_subprocess_get_successful (process)) {
@@ -181,20 +239,14 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data_)
     goto bail;
   }
 
-  g_clear_object (&data->out_buffer);
-  g_clear_object (&data->err_buffer);
-  g_free (data->script_name);
-  g_slice_free (ScriptData, data);
+  script_data_free (data);
 
   subprocess_run_async (task);
 
   return;
 
 bail:
-  g_clear_object (&data->out_buffer);
-  g_clear_object (&data->err_buffer);
-  g_free (data->script_name);
-  g_slice_free (ScriptData, data);
+  script_data_free (data);
   g_object_unref (task);
 }
 
@@ -232,32 +284,7 @@ subprocess_run_async (GTask *task)
     goto bail;
   }
 
-  ScriptData *data = g_slice_new (ScriptData);
-  data->task = task;
-  data->script_name = g_path_get_basename (file_name);
-
-  data->out_buffer =
-    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-  data->err_buffer =
-    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-
-  g_output_stream_splice ((GOutputStream *) data->out_buffer,
-                          g_subprocess_get_stdout_pipe (process),
-                          0, NULL, &error);
-  if (error) {
-    eam_log_error_message ("Unable to splice the stdout pipe: %s", error->message);
-    g_clear_object (&data->out_buffer);
-    g_clear_error (&error);
-  }
-
-  g_output_stream_splice ((GOutputStream *) data->err_buffer,
-                          g_subprocess_get_stderr_pipe (process),
-                          0, NULL, &error);
-  if (error) {
-    eam_log_error_message ("Unable to splice the stderr pipe: %s", error->message);
-    g_clear_object (&data->err_buffer);
-    g_clear_error (&error);
-  }
+  ScriptData *data = script_data_new (task, file_name, process);
 
   /* Freed here as 'file_name' is used in the previous call */
   g_strfreev (argv);
