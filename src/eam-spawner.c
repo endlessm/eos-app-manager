@@ -5,6 +5,7 @@
 #include <glib/gi18n.h>
 
 #include "eam-spawner.h"
+#include "eam-log.h"
 
 typedef struct _EamSpawnerPrivate EamSpawnerPrivate;
 
@@ -133,12 +134,95 @@ eam_spawner_new (const gchar *path, const gchar * const *params)
 
 static void subprocess_run_async (GTask *task);
 
-static void
-subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
+typedef struct {
+  GTask *task;
+  char *script_name;
+  GMemoryOutputStream *out_buffer;
+  GMemoryOutputStream *err_buffer;
+} ScriptData;
+
+static ScriptData *
+script_data_new (GTask *task, const char *file_name, GSubprocess *process)
 {
-  GTask *task = data;
+  ScriptData *data = g_slice_new (ScriptData);
+
+  data->task = task;
+  data->script_name = g_path_get_basename (file_name);
+
+  data->out_buffer =
+    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  data->err_buffer =
+    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+
+  GError *error = NULL;
+
+  g_output_stream_splice ((GOutputStream *) data->out_buffer,
+                          g_subprocess_get_stdout_pipe (process),
+                          0, NULL, &error);
+  if (error != NULL) {
+    eam_log_error_message ("Unable to splice the stdout pipe: %s", error->message);
+    g_clear_object (&data->out_buffer);
+    g_clear_error (&error);
+  }
+
+  g_output_stream_splice ((GOutputStream *) data->err_buffer,
+                          g_subprocess_get_stderr_pipe (process),
+                          0, NULL, &error);
+  if (error != NULL) {
+    eam_log_error_message ("Unable to splice the stderr pipe: %s", error->message);
+    g_clear_object (&data->err_buffer);
+    g_clear_error (&error);
+  }
+
+  return data;
+}
+
+static void
+script_data_free (ScriptData *data)
+{
+  g_clear_object (&data->out_buffer);
+  g_clear_object (&data->err_buffer);
+  g_free (data->script_name);
+  g_slice_free (ScriptData, data);
+}
+
+static void
+script_data_maybe_log_stdout (ScriptData *data)
+{
+  if (data->out_buffer != NULL) {
+    g_output_stream_write ((GOutputStream *) data->out_buffer, "\0", 1, NULL, NULL);
+    g_output_stream_close ((GOutputStream *) data->out_buffer, NULL, NULL);
+    char *str = g_memory_output_stream_steal_data (data->out_buffer);
+    eam_log_info_message ("Script '%s' wrote to stdout", data->script_name);
+    eam_log_info_message ("%s", str);
+    g_free (str);
+  }
+}
+
+static void
+script_data_maybe_log_stderr (ScriptData *data)
+{
+  if (data->err_buffer != NULL) {
+    g_output_stream_write ((GOutputStream *) data->err_buffer, "\0", 1, NULL, NULL);
+    g_output_stream_close ((GOutputStream *) data->err_buffer, NULL, NULL);
+    char *str = g_memory_output_stream_steal_data (data->err_buffer);
+    eam_log_error_message ("Script '%s' wrote to stderr", data->script_name);
+    eam_log_error_message ("%s", str);
+    g_free (str);
+  }
+}
+
+static void
+subprocess_cb (GObject *source, GAsyncResult *res, gpointer data_)
+{
+  ScriptData *data = data_;
+  GTask *task = data->task;
+  const char *script_name = data->script_name;
   GError *error = NULL;
   GSubprocess *process = G_SUBPROCESS (source);
+
+  script_data_maybe_log_stdout (data);
+  script_data_maybe_log_stderr (data);
 
   g_subprocess_wait_finish (process, res, &error);
   if (error) {
@@ -147,17 +231,22 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   if (!g_subprocess_get_successful (process)) {
-    gchar *scriptname = g_object_get_data (source, "scriptname");
     g_task_return_new_error (task, EAM_SPAWNER_ERROR,
-      EAM_SPAWNER_ERROR_SCRIPT_FAILED, _("Script \"%s\" exited with error code %d"),
-      scriptname, g_subprocess_get_exit_status (process));
+      EAM_SPAWNER_ERROR_SCRIPT_FAILED,
+      _("Script \"%s\" exited with error code %d"),
+      script_name, g_subprocess_get_exit_status (process));
+
     goto bail;
   }
 
+  script_data_free (data);
+
   subprocess_run_async (task);
+
   return;
 
 bail:
+  script_data_free (data);
   g_object_unref (task);
 }
 
@@ -186,22 +275,22 @@ subprocess_run_async (GTask *task)
     ++i;
   }
 
-  /* @TODO: connect stdout & stderr to a logging subsystem */
-  GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv, G_SUBPROCESS_FLAGS_NONE, &error);
+  GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv,
+    G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE,
+    &error);
 
   if (error) {
     g_task_return_error (task, error);
     goto bail;
   }
 
-  g_object_set_data_full (G_OBJECT (process), "scriptname", g_path_get_basename (file_name),
-    (GDestroyNotify) g_free);
+  ScriptData *data = script_data_new (task, file_name, process);
 
   /* Freed here as 'file_name' is used in the previous call */
   g_strfreev (argv);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
-  g_subprocess_wait_async (process, cancellable, subprocess_cb, task);
+  g_subprocess_wait_async (process, cancellable, subprocess_cb, data);
   g_object_unref (process);
 
   return;
