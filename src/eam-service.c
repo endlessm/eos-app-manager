@@ -98,7 +98,9 @@ typedef struct {
   GCancellable *cancellable;
   EamService *service;
   GDBusMethodInvocation *invocation;
+  char *sender;
   guint registration_id;
+  guint watch_id;
 } EamRemoteTransaction;
 
 static void eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
@@ -125,6 +127,7 @@ static void eam_service_remove_active_transaction (EamService *service,
                                                    EamRemoteTransaction *remote);
 
 static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
+                                                         const char *sender,
                                                          EamTransaction *transaction,
                                                          GError **error);
 static void eam_remote_transaction_cancel (EamRemoteTransaction *remote);
@@ -811,8 +814,12 @@ run_service_install (EamService *service, const gchar *appid,
     return;
   }
 
+  const char *sender = g_dbus_method_invocation_get_sender (invocation);
+
   GError *error = NULL;
-  EamRemoteTransaction *remote = eam_remote_transaction_new (service, priv->trans, &error);
+  EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
+                                                             priv->trans,
+                                                             &error);
 
   if (remote != NULL) {
     eam_service_add_active_transaction (service, remote);
@@ -820,9 +827,9 @@ run_service_install (EamService *service, const gchar *appid,
   }
   else {
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                             EAM_SERVICE_ERROR_UNIMPLEMENTED,
-                                             _("Internal transaction error: %s"),
-                                             error->message);
+                                           EAM_SERVICE_ERROR_UNIMPLEMENTED,
+                                           _("Internal transaction error: %s"),
+                                           error->message);
     g_clear_object (&priv->trans);
     g_clear_error (&error);
   }
@@ -1226,10 +1233,14 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
 static void
 eam_remote_transaction_free (EamRemoteTransaction *remote)
 {
+  if (remote->watch_id != 0)
+    g_bus_unwatch_name (remote->watch_id);
+
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
   g_clear_object (&remote->cancellable);
 
+  g_free (remote->sender);
   g_free (remote->obj_path);
 
   g_slice_free (EamRemoteTransaction, remote);
@@ -1419,6 +1430,20 @@ get_next_transaction_path (EamService *service)
                           priv->last_transaction++);
 }
 
+static void
+eam_remote_transaction_sender_vanished (GDBusConnection *connection,
+                                        const char *sender,
+                                        gpointer data)
+{
+  EamRemoteTransaction *remote = data;
+
+  /* if the sender disappeared while we still have a transaction
+   * running, cancel the transaction
+   */
+  if (g_strcmp0 (remote->sender, sender) == 0)
+    eam_remote_transaction_cancel (remote);
+}
+
 static gboolean
 eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
                                       EamService *service,
@@ -1451,11 +1476,21 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
     return FALSE;
   }
 
+  remote->watch_id =
+    g_bus_watch_name_on_connection (priv->connection,
+                                    remote->sender,
+                                    G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                    NULL,
+                                    eam_remote_transaction_sender_vanished,
+                                    remote,
+                                    NULL);
+
   return TRUE;
 }
 
 static EamRemoteTransaction *
 eam_remote_transaction_new (EamService *service,
+                            const char *sender,
                             EamTransaction *transaction,
                             GError **error)
 {
@@ -1464,6 +1499,7 @@ eam_remote_transaction_new (EamService *service,
   res->service = g_object_ref (service);
   res->transaction = g_object_ref (transaction);
   res->obj_path = get_next_transaction_path (service);
+  res->sender = g_strdup (sender);
   res->cancellable = g_cancellable_new ();
 
   if (!eam_remote_transaction_register_dbus (res, service, error)) {
