@@ -98,6 +98,7 @@ typedef struct {
   GCancellable *cancellable;
   EamService *service;
   GDBusMethodInvocation *invocation;
+  char *sender;
   guint registration_id;
 } EamRemoteTransaction;
 
@@ -125,6 +126,7 @@ static void eam_service_remove_active_transaction (EamService *service,
                                                    EamRemoteTransaction *remote);
 
 static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
+                                                         const char *sender,
                                                          EamTransaction *transaction,
                                                          GError **error);
 static void eam_remote_transaction_cancel (EamRemoteTransaction *remote);
@@ -811,8 +813,12 @@ run_service_install (EamService *service, const gchar *appid,
     return;
   }
 
+  const char *sender = g_dbus_method_invocation_get_sender (invocation);
+
   GError *error = NULL;
-  EamRemoteTransaction *remote = eam_remote_transaction_new (service, priv->trans, &error);
+  EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
+                                                             priv->trans,
+                                                             &error);
 
   if (remote != NULL) {
     eam_service_add_active_transaction (service, remote);
@@ -820,9 +826,9 @@ run_service_install (EamService *service, const gchar *appid,
   }
   else {
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                             EAM_SERVICE_ERROR_UNIMPLEMENTED,
-                                             _("Internal transaction error: %s"),
-                                             error->message);
+                                           EAM_SERVICE_ERROR_UNIMPLEMENTED,
+                                           _("Internal transaction error: %s"),
+                                           error->message);
     g_clear_object (&priv->trans);
     g_clear_error (&error);
   }
@@ -1230,6 +1236,7 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
   g_clear_object (&remote->transaction);
   g_clear_object (&remote->cancellable);
 
+  g_free (remote->sender);
   g_free (remote->obj_path);
 
   g_slice_free (EamRemoteTransaction, remote);
@@ -1456,6 +1463,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
 
 static EamRemoteTransaction *
 eam_remote_transaction_new (EamService *service,
+                            const char *sender,
                             EamTransaction *transaction,
                             GError **error)
 {
@@ -1464,6 +1472,7 @@ eam_remote_transaction_new (EamService *service,
   res->service = g_object_ref (service);
   res->transaction = g_object_ref (transaction);
   res->obj_path = get_next_transaction_path (service);
+  res->sender = g_strdup (sender);
   res->cancellable = g_cancellable_new ();
 
   if (!eam_remote_transaction_register_dbus (res, service, error)) {
@@ -1521,6 +1530,54 @@ static const GDBusInterfaceVTable service_vtable = {
   NULL,
 };
 
+static void
+on_name_owner_changed (GDBusConnection *connection,
+                       const char *sender_name,
+                       const char *object_path,
+                       const char *interface_name,
+                       const char *signal_name,
+                       GVariant *params,
+                       gpointer user_data)
+{
+  EamService *service = user_data;
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  /* if we don't have any active transactions this is a no-op */
+  if (priv->active_transactions == NULL ||
+      g_hash_table_size (priv->active_transactions) == 0)
+    return;
+
+  const char *name, *old_owner, *new_owner;
+
+  g_variant_get (params, "(&s&s&s)", &name, &old_owner, &new_owner);
+
+  GHashTableIter iter;
+  g_hash_table_iter_init (&iter, priv->active_transactions);
+
+  gpointer value;
+  while (g_hash_table_iter_next (&iter, NULL, &value)) {
+    EamRemoteTransaction *remote = value;
+
+    /* if we got a NameOwnerChanged notification telling us that a
+     * connection owning a transaction just disappeared, we need to
+     * cancel all transactions associated with that name
+     */
+    if (g_strcmp0 (old_owner, remote->sender) == 0 &&
+        (new_owner == NULL || *new_owner == '\0')) {
+      eam_log_info_message ("The sender '%s' that owned transaction '%s' disappeared",
+                            remote->sender,
+                            remote->obj_path);
+
+      /* we cannot call eam_remote_transaction_cancel() here because
+       * the sender may have owned multiple transactions, which means
+       * we need to modify the active transactions hashtable while
+       * iterating it.
+       */
+      g_hash_table_iter_remove (&iter);
+    }
+  }
+}
+
 /**
  * eam_service_dbus_register:
  * @service: a #EamService instance.
@@ -1558,6 +1615,22 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
     g_error_free (error);
     return;
   }
+
+  /* watch NameOwnerChanged for client connections; we use "com.endlessm"
+   * because we want to restrict watching to our own components; if we
+   * ever open up this API to third party users, then we'll have to remove
+   * this restriction
+   */
+  g_dbus_connection_signal_subscribe (connection,
+                                      "org.freedesktop.DBus",
+                                      "org.freedesktop.DBus",
+                                      "NameOwnerChanged",
+                                      "/org/freedesktop/DBus",
+                                      "com.endlessm",
+                                      G_DBUS_SIGNAL_FLAGS_NONE,
+                                      on_name_owner_changed,
+                                      service,
+                                      NULL);
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
