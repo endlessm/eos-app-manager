@@ -48,7 +48,26 @@ struct _EamServicePrivate {
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
 
-G_DEFINE_QUARK (eam-service-error-quark, eam_service_error)
+static const GDBusErrorEntry eam_service_error_entries[] = {
+  { EAM_SERVICE_ERROR_BUSY,           "com.endlessm.AppManager.Error.Busy" },
+  { EAM_SERVICE_ERROR_PKG_UNKNOWN,    "com.endlessm.AppManager.Error.UnknownPackage" },
+  { EAM_SERVICE_ERROR_UNIMPLEMENTED,  "com.endlessm.AppManager.Error.Unimplemented" },
+  { EAM_SERVICE_ERROR_AUTHORIZATION,  "com.endlessm.AppManager.Error.Authorization" },
+  { EAM_SERVICE_ERROR_NOT_AUTHORIZED, "com.endlessm.AppManager.Error.NotAuthorized" },
+};
+
+GQuark
+eam_service_error_quark (void)
+{
+  static volatile gsize quark_volatile = 0;
+
+  g_dbus_error_register_error_domain ("eam-service-error-quark",
+                                      &quark_volatile,
+                                      eam_service_error_entries,
+                                      G_N_ELEMENTS (eam_service_error_entries));
+
+  return quark_volatile;
+}
 
 enum
 {
