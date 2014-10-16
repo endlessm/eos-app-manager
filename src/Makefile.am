@@ -56,14 +56,14 @@ BUILT_SOURCES = \
 	eam-resources.c \
 	$(NULL)
 
-noinst_LTLIBRARIES = libeam-1.0.la
-libeam_1_0_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
-libeam_1_0_la_LIBADD = $(DEPENDENCIES_LIBS)
-libeam_1_0_la_SOURCES = $(source_c) $(source_h)
+noinst_LTLIBRARIES = libeam.la
+libeam_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
+libeam_la_LIBADD = $(DEPENDENCIES_LIBS)
+libeam_la_SOURCES = $(source_c) $(source_h)
 
 eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
 eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
-eam_LDADD = $(DEPENDENCIES_LIBS) libeam-1.0.la
+eam_LDADD = $(DEPENDENCIES_LIBS) libeam.la
 eam_SOURCES =  main.c
 
 gresource_file = $(top_srcdir)/data/eam.gresource.xml
