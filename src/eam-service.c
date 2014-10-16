@@ -100,6 +100,7 @@ typedef struct {
   GDBusMethodInvocation *invocation;
   char *sender;
   guint registration_id;
+  guint watch_id;
 } EamRemoteTransaction;
 
 static void eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
@@ -1232,6 +1233,9 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
 static void
 eam_remote_transaction_free (EamRemoteTransaction *remote)
 {
+  if (remote->watch_id != 0)
+    g_bus_unwatch_name (remote->watch_id);
+
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
   g_clear_object (&remote->cancellable);
@@ -1426,6 +1430,20 @@ get_next_transaction_path (EamService *service)
                           priv->last_transaction++);
 }
 
+static void
+eam_remote_transaction_sender_vanished (GDBusConnection *connection,
+                                        const char *sender,
+                                        gpointer data)
+{
+  EamRemoteTransaction *remote = data;
+
+  /* if the sender disappeared while we still have a transaction
+   * running, cancel the transaction
+   */
+  if (g_strcmp0 (remote->sender, sender) == 0)
+    eam_remote_transaction_cancel (remote);
+}
+
 static gboolean
 eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
                                       EamService *service,
@@ -1457,6 +1475,15 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
     g_propagate_error (error, internal_error);
     return FALSE;
   }
+
+  remote->watch_id =
+    g_bus_watch_name_on_connection (priv->connection,
+                                    remote->sender,
+                                    G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                    NULL,
+                                    eam_remote_transaction_sender_vanished,
+                                    remote,
+                                    NULL);
 
   return TRUE;
 }
@@ -1530,54 +1557,6 @@ static const GDBusInterfaceVTable service_vtable = {
   NULL,
 };
 
-static void
-on_name_owner_changed (GDBusConnection *connection,
-                       const char *sender_name,
-                       const char *object_path,
-                       const char *interface_name,
-                       const char *signal_name,
-                       GVariant *params,
-                       gpointer user_data)
-{
-  EamService *service = user_data;
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  /* if we don't have any active transactions this is a no-op */
-  if (priv->active_transactions == NULL ||
-      g_hash_table_size (priv->active_transactions) == 0)
-    return;
-
-  const char *name, *old_owner, *new_owner;
-
-  g_variant_get (params, "(&s&s&s)", &name, &old_owner, &new_owner);
-
-  GHashTableIter iter;
-  g_hash_table_iter_init (&iter, priv->active_transactions);
-
-  gpointer value;
-  while (g_hash_table_iter_next (&iter, NULL, &value)) {
-    EamRemoteTransaction *remote = value;
-
-    /* if we got a NameOwnerChanged notification telling us that a
-     * connection owning a transaction just disappeared, we need to
-     * cancel all transactions associated with that name
-     */
-    if (g_strcmp0 (old_owner, remote->sender) == 0 &&
-        (new_owner == NULL || *new_owner == '\0')) {
-      eam_log_info_message ("The sender '%s' that owned transaction '%s' disappeared",
-                            remote->sender,
-                            remote->obj_path);
-
-      /* we cannot call eam_remote_transaction_cancel() here because
-       * the sender may have owned multiple transactions, which means
-       * we need to modify the active transactions hashtable while
-       * iterating it.
-       */
-      g_hash_table_iter_remove (&iter);
-    }
-  }
-}
-
 /**
  * eam_service_dbus_register:
  * @service: a #EamService instance.
@@ -1615,22 +1594,6 @@ eam_service_dbus_register (EamService *service, GDBusConnection *connection)
     g_error_free (error);
     return;
   }
-
-  /* watch NameOwnerChanged for client connections; we use "com.endlessm"
-   * because we want to restrict watching to our own components; if we
-   * ever open up this API to third party users, then we'll have to remove
-   * this restriction
-   */
-  g_dbus_connection_signal_subscribe (connection,
-                                      "org.freedesktop.DBus",
-                                      "org.freedesktop.DBus",
-                                      "NameOwnerChanged",
-                                      "/org/freedesktop/DBus",
-                                      "com.endlessm",
-                                      G_DBUS_SIGNAL_FLAGS_NONE,
-                                      on_name_owner_changed,
-                                      service,
-                                      NULL);
 
   priv->connection = connection;
   g_object_add_weak_pointer (G_OBJECT (connection), (gpointer *) &priv->connection);
