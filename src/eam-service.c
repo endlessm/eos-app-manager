@@ -17,6 +17,7 @@
 #include "eam-dbus-utils.h"
 #include "eam-version.h"
 #include "eam-log.h"
+#include "eam-resources.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -202,6 +203,8 @@ static EamServiceAuth auth_action[] = {
 static GDBusNodeInfo*
 load_introspection (const char *name, GError **error)
 {
+  g_resources_register (eam_get_resource ());
+
   char *path = g_strconcat ("/com/endlessm/AppManager/", name, NULL);
   GBytes *data = g_resources_lookup_data (path, G_RESOURCE_LOOKUP_FLAGS_NONE, error);
   g_free (path);
