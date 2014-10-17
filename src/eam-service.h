@@ -12,7 +12,7 @@ G_BEGIN_DECLS
 
 /**
  * EamServiceError:
- * @EAM_SERIVCE_ERROR_BUSY: The serivice is currently busy with other task.
+ * @EAM_SERIVCE_ERROR_BUSY: The service is currently busy with other task.
  * @EAM_SERVICE_ERROR_PKG_UNKNOWN: Requested package is unknown.
  * @EAM_SERVICE_ERROR_UNIMPLEMENTED: Asked for an unimplemented feature.
  *
