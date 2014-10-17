@@ -203,10 +203,10 @@ static EamServiceAuth auth_action[] = {
 static GDBusNodeInfo*
 load_introspection (const char *name, GError **error)
 {
-  GResource *res = eam_get_resource ();
+  g_resources_register (eam_get_resource ());
 
   char *path = g_strconcat ("/com/endlessm/AppManager/", name, NULL);
-  GBytes *data = g_resource_lookup_data (res, path, G_RESOURCE_LOOKUP_FLAGS_NONE, error);
+  GBytes *data = g_resources_lookup_data (path, G_RESOURCE_LOOKUP_FLAGS_NONE, error);
   g_free (path);
 
   if (data == NULL)
