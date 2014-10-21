@@ -1106,6 +1106,8 @@ run_service_list_installed (EamService *service, const gchar *appid,
   g_variant_builder_close (&builder);
   g_dbus_method_invocation_return_value (invocation,
     g_variant_builder_end (&builder));
+
+  eam_service_check_queue (service);
 }
 
 static void
