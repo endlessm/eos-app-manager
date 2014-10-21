@@ -648,7 +648,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
   eam_pkgdb_load_finish (EAM_PKGDB (source), res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (clos->invocation, error);
-    eam_service_clear_transaction (clos->service);
+    eam_service_check_queue (clos->service);
     goto out;
   }
 
