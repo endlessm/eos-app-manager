@@ -885,16 +885,7 @@ run_service_uninstall (EamService *service, const gchar *appid,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  if (!eam_pkgdb_get (priv->db, appid)) {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
-      appid);
-
-    eam_service_check_queue (service);
-    return;
-  }
-
-  priv->trans = eam_uninstall_new (appid);
+  priv->trans = eam_uninstall_new (priv->db, appid);
   run_eam_transaction (service, invocation, uninstall_cb);
 }
 
