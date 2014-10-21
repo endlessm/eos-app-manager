@@ -759,32 +759,12 @@ run_service_install (EamService *service, const gchar *appid,
   GError *error = NULL;
 
   eam_service_reset_timer (service);
-
-  if (eam_updates_pkg_is_upgradable (get_eam_updates (service), appid)) {
-    /* update from the current version to the last version */
-    const EamPkg *pkg = eam_pkgdb_get (priv->db, appid);
-    g_assert (pkg);
-
-    EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
-    gchar *from_version = eam_pkg_version_as_string (pkg_version);
-
-    priv->trans = eam_install_new_from_version (appid, from_version);
-    g_free (from_version);
-  }
-  else if (eam_updates_pkg_is_installable (get_eam_updates (service), appid)) {
-    /* install the latest version */
-    priv->trans = eam_install_new (appid);
-  }
-  else {
-    g_set_error (&error, EAM_ERROR,
-		 EAM_ERROR_PKG_UNKNOWN,
-		 _("Application '%s' is unknown"),
-		 appid);
+  priv->trans = eam_install_new (priv->db, appid, priv->updates, &error);
+  if (error != NULL) {
     goto out;
   }
 
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
-
   GError *internal_error = NULL;
   EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
                                                              priv->trans,
