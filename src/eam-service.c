@@ -776,6 +776,7 @@ run_service_install (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GError *error = NULL;
 
   eam_service_reset_timer (service);
 
@@ -795,31 +796,41 @@ run_service_install (EamService *service, const gchar *appid,
     priv->trans = eam_install_new (appid);
   }
   else {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                           EAM_SERVICE_ERROR_PKG_UNKNOWN,
-                                           _("Application '%s' is unknown"),
-                                           appid);
-    return;
+    g_set_error (&error, EAM_SERVICE_ERROR,
+		 EAM_SERVICE_ERROR_PKG_UNKNOWN,
+		 _("Application '%s' is unknown"),
+		 appid);
+    goto out;
   }
 
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
 
-  GError *error = NULL;
+  GError *internal_error = NULL;
   EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
                                                              priv->trans,
-                                                             &error);
+                                                             &internal_error);
 
-  if (remote != NULL) {
-    eam_service_add_active_transaction (service, remote);
+  if (internal_error != NULL) {
+    g_set_error (&error, EAM_SERVICE_ERROR,
+		 EAM_SERVICE_ERROR_UNIMPLEMENTED,
+		 _("Internal transaction error: %s"),
+		 internal_error->message);
+    g_clear_object (&priv->trans);
+    g_clear_error (&internal_error);
+    goto out;
+  }
+
+  eam_service_add_active_transaction (service, remote);
+
+ out:
+  if (error == NULL) {
     g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
   }
   else {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-                                           EAM_SERVICE_ERROR_UNIMPLEMENTED,
-                                           _("Internal transaction error: %s"),
-                                           error->message);
-    g_clear_object (&priv->trans);
-    g_clear_error (&error);
+    g_dbus_method_invocation_return_gerror (invocation, error);
+    g_error_free (error);
+
+    eam_service_check_queue (service);
   }
 }
 
