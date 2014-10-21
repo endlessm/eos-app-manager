@@ -576,6 +576,14 @@ eam_service_set_reloaddb (EamService *service, gboolean value)
 }
 
 static void
+eam_service_reset_timer (EamService *service)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+
+  g_timer_reset (priv->timer);
+}
+
+static void
 eam_service_check_queue (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -724,14 +732,6 @@ out:
 }
 
 static void
-eam_service_reset_timer (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  g_timer_reset (priv->timer);
-}
-
-static void
 eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
@@ -766,40 +766,6 @@ reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer 
   /* Let's notify the available apps list has changed, as an installed app is
      not available anymore, and uninstalled app becomes available */
   avails_changed_cb (service, NULL);
-
-out:
-  eam_service_clear_transaction (service);
-}
-
-static void
-install_or_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
-  g_assert (invocation);
-
-  EamService *service = EAM_SERVICE (data);
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_assert (source == G_OBJECT (priv->trans));
-
-  GError *error = NULL;
-  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
-  if (error) {
-    g_dbus_method_invocation_take_error (invocation, error);
-    goto out;
-  }
-
-  if (ret) {
-    /* if we installed, uninstalled or updated something we reload the
-     * database */
-    eam_service_set_reloaddb (service, TRUE);
-    eam_pkgdb_load_async (priv->db, priv->cancellable,
-      reload_pkgdb_after_transaction_cb, service);
-    return;
-  }
-
-  g_object_set_data (source, "invocation", NULL);
-  GVariant *value = g_variant_new ("(b)", ret);
-  g_dbus_method_invocation_return_value (invocation, value);
 
 out:
   eam_service_clear_transaction (service);
@@ -870,6 +836,39 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static void
+uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
+  g_assert (invocation);
+
+  EamService *service = EAM_SERVICE (data);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  g_assert (source == G_OBJECT (priv->trans));
+
+  GError *error = NULL;
+  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
+  if (error) {
+    g_dbus_method_invocation_take_error (invocation, error);
+    goto out;
+  }
+
+  if (ret) {
+    /* if we uninstalled or updated something we reload the database */
+    eam_service_set_reloaddb (service, TRUE);
+    eam_pkgdb_load_async (priv->db, priv->cancellable,
+      reload_pkgdb_after_transaction_cb, service);
+    return;
+  }
+
+  g_object_set_data (source, "invocation", NULL);
+  GVariant *value = g_variant_new ("(b)", ret);
+  g_dbus_method_invocation_return_value (invocation, value);
+
+out:
+  eam_service_clear_transaction (service);
+}
+
+static void
 run_service_uninstall (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
@@ -879,10 +878,11 @@ run_service_uninstall (EamService *service, const gchar *appid,
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
       EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
       appid);
-  } else {
-    priv->trans = eam_uninstall_new (appid);
-    run_eam_transaction (service, invocation, install_or_uninstall_cb);
+    return;
   }
+
+  priv->trans = eam_uninstall_new (appid);
+  run_eam_transaction (service, invocation, uninstall_cb);
 }
 
 static void
@@ -892,8 +892,9 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   const gchar *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  run_eam_service_with_load_pkgdb (service, appid, run_service_uninstall,
-    invocation);
+  run_eam_service_with_load_pkgdb (service, appid,
+				   run_service_uninstall,
+				   invocation);
 }
 
 static gboolean
@@ -1066,7 +1067,7 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static void
-build_list_installed (EamService *service, const gchar *appid,
+run_service_list_installed (EamService *service, const gchar *appid,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -1098,7 +1099,7 @@ static void
 eam_service_list_installed (EamService *service,
   GDBusMethodInvocation *invocation, GVariant *params)
 {
-  run_eam_service_with_load_pkgdb (service, NULL, build_list_installed,
+  run_eam_service_with_load_pkgdb (service, NULL, run_service_list_installed,
     invocation);
 }
 
@@ -1137,8 +1138,7 @@ check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   PolkitAuthorizationResult *result;
   GError *error = NULL;
- EamInvocationInfo *info = data;
-
+  EamInvocationInfo *info = data;
   EamServicePrivate *priv = eam_service_get_instance_private (info->service);
   g_assert (source == G_OBJECT (priv->authority));
 
@@ -1173,31 +1173,30 @@ bail:
     g_object_unref (result);
 }
 
-static gboolean
-eam_service_check_authorization_async (EamService *service, GDBusMethodInvocation *invocation,
-  EamServiceMethod method, GVariant *params)
+static void
+run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
+			       EamServiceMethod method, GVariant *params)
 {
-  PolkitDetails *details;
-
   if (!auth_action[method].action_id) {
     /* The service does not any require authorization */
     auth_action[method].run (service, invocation, params);
-    return TRUE;
+    return;
   }
 
   const gchar *sender = g_dbus_method_invocation_get_sender (invocation);
-
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
   if (subject == NULL) {
     eam_log_error_message ("Unable to create the Polkit subject for: %s", sender);
-
-    return FALSE;
+    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
+					   EAM_SERVICE_ERROR_AUTHORIZATION,
+					   _("An error happened during the authorization process"));
+    return;
   }
 
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   priv->authorizing = TRUE;
 
-  details = polkit_details_new ();
+  PolkitDetails *details = polkit_details_new ();
   polkit_details_insert (details, "polkit.message", auth_action[method].message);
   polkit_details_insert (details, "polkit.gettext_domain", GETTEXT_PACKAGE);
 
@@ -1208,22 +1207,6 @@ eam_service_check_authorization_async (EamService *service, GDBusMethodInvocatio
 
   g_object_unref (subject);
   g_object_unref (details);
-
-  return TRUE;
-}
-
-static void
-run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
-			       EamServiceMethod method, GVariant *params)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  /* Run the operation only if the user is authorized to perform the action */
-  if (!eam_service_check_authorization_async (service, invocation, method, params)) {
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_AUTHORIZATION, _("An error happened during the authorization process"));
-    priv->authorizing = FALSE;
-  }
 }
 
 static gboolean
