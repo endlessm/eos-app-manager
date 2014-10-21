@@ -1043,6 +1043,8 @@ out:
   g_variant_builder_close (&builder);
   GVariant *res = g_variant_builder_end (&builder);
   g_dbus_method_invocation_return_value (invocation, res);
+
+  eam_service_check_queue (service);
 }
 
 static void
