@@ -878,6 +878,8 @@ run_service_uninstall (EamService *service, const gchar *appid,
     g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
       EAM_SERVICE_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
       appid);
+
+    eam_service_check_queue (service);
     return;
   }
 
