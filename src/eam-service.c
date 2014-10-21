@@ -8,6 +8,7 @@
 #include <pwd.h>
 #include <grp.h>
 
+#include "eam-error.h"
 #include "eam-service.h"
 #include "eam-updates.h"
 #include "eam-refresh.h"
@@ -48,27 +49,6 @@ struct _EamServicePrivate {
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamService, eam_service, G_TYPE_OBJECT)
-
-static const GDBusErrorEntry eam_service_error_entries[] = {
-  { EAM_SERVICE_ERROR_BUSY,           "com.endlessm.AppManager.Error.Busy" },
-  { EAM_SERVICE_ERROR_PKG_UNKNOWN,    "com.endlessm.AppManager.Error.UnknownPackage" },
-  { EAM_SERVICE_ERROR_UNIMPLEMENTED,  "com.endlessm.AppManager.Error.Unimplemented" },
-  { EAM_SERVICE_ERROR_AUTHORIZATION,  "com.endlessm.AppManager.Error.Authorization" },
-  { EAM_SERVICE_ERROR_NOT_AUTHORIZED, "com.endlessm.AppManager.Error.NotAuthorized" },
-};
-
-GQuark
-eam_service_error_quark (void)
-{
-  static volatile gsize quark_volatile = 0;
-
-  g_dbus_error_register_error_domain ("eam-service-error-quark",
-                                      &quark_volatile,
-                                      eam_service_error_entries,
-                                      G_N_ELEMENTS (eam_service_error_entries));
-
-  return quark_volatile;
-}
 
 enum
 {
@@ -796,8 +776,8 @@ run_service_install (EamService *service, const gchar *appid,
     priv->trans = eam_install_new (appid);
   }
   else {
-    g_set_error (&error, EAM_SERVICE_ERROR,
-		 EAM_SERVICE_ERROR_PKG_UNKNOWN,
+    g_set_error (&error, EAM_ERROR,
+		 EAM_ERROR_PKG_UNKNOWN,
 		 _("Application '%s' is unknown"),
 		 appid);
     goto out;
@@ -811,8 +791,8 @@ run_service_install (EamService *service, const gchar *appid,
                                                              &internal_error);
 
   if (internal_error != NULL) {
-    g_set_error (&error, EAM_SERVICE_ERROR,
-		 EAM_SERVICE_ERROR_UNIMPLEMENTED,
+    g_set_error (&error, EAM_ERROR,
+		 EAM_ERROR_UNIMPLEMENTED,
 		 _("Internal transaction error: %s"),
 		 internal_error->message);
     g_clear_object (&priv->trans);
@@ -1167,8 +1147,8 @@ check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   /* Did not auth */
   if (!polkit_authorization_result_get_is_authorized (result)) {
-    g_dbus_method_invocation_return_error (info->invocation, EAM_SERVICE_ERROR,
-      EAM_SERVICE_ERROR_NOT_AUTHORIZED, _("Not authorized to perform the operation"));
+    g_dbus_method_invocation_return_error (info->invocation, EAM_ERROR,
+      EAM_ERROR_NOT_AUTHORIZED, _("Not authorized to perform the operation"));
     goto bail;
   }
 
@@ -1195,8 +1175,8 @@ run_method_with_authorization (EamService *service, GDBusMethodInvocation *invoc
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
   if (subject == NULL) {
     eam_log_error_message ("Unable to create the Polkit subject for: %s", sender);
-    g_dbus_method_invocation_return_error (invocation, EAM_SERVICE_ERROR,
-					   EAM_SERVICE_ERROR_AUTHORIZATION,
+    g_dbus_method_invocation_return_error (invocation, EAM_ERROR,
+					   EAM_ERROR_AUTHORIZATION,
 					   _("An error happened during the authorization process"));
     return;
   }
@@ -1420,8 +1400,8 @@ handle_transaction_get_property (GDBusConnection *connection,
 
 error_out:
   /* return an error */
-  g_set_error (error, EAM_SERVICE_ERROR,
-               EAM_SERVICE_ERROR_UNIMPLEMENTED,
+  g_set_error (error, EAM_ERROR,
+               EAM_ERROR_UNIMPLEMENTED,
                _("Property '%s' is not implemented"),
                name);
 
@@ -1558,7 +1538,7 @@ handle_get_property (GDBusConnection *connection, const gchar *sender,
     return build_available_updates_variant (service);
 
   /* return an error */
-  g_set_error (error, EAM_SERVICE_ERROR, EAM_SERVICE_ERROR_UNIMPLEMENTED,
+  g_set_error (error, EAM_ERROR, EAM_ERROR_UNIMPLEMENTED,
     "Property '%s' is not implemented", name);
 
   return NULL;

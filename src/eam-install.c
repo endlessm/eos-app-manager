@@ -5,6 +5,7 @@
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
 
+#include "eam-error.h"
 #include "eam-install.h"
 #include "eam-rest.h"
 #include "eam-spawner.h"
@@ -96,13 +97,13 @@ eam_bundle_new_from_json_object (JsonObject *json, GError **error)
   const gchar *hash = json_object_get_string_member (json, "shaHash");
 
   if (!downl || !hash) {
-    g_set_error (error, EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_INVALID_FILE,
+    g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
        _("Not valid application link"));
     return NULL;
   }
 
   if (!sign) {
-    g_set_error (error, EAM_TRANSACTION_ERROR, EAM_TRANSACTION_ERROR_INVALID_FILE,
+    g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
        _("Not valid signature link"));
     return NULL;
   }
@@ -748,8 +749,8 @@ load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
 
   if (!load_bundle_info (self, json_parser_get_root (parser))) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-       EAM_TRANSACTION_ERROR_INVALID_FILE,
+    g_task_return_new_error (task, EAM_ERROR,
+       EAM_ERROR_INVALID_FILE,
        _("Not valid stream with update/install link"));
     goto bail;
   }
@@ -798,8 +799,8 @@ request_json_updates (EamInstall *self, GTask *task)
 {
   /* is it enough? */
   if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-      EAM_TRANSACTION_ERROR_NO_NETWORK, _("Networking is not available"));
+    g_task_return_new_error (task, EAM_ERROR,
+      EAM_ERROR_NO_NETWORK, _("Networking is not available"));
     goto bail;
   }
 
@@ -808,8 +809,8 @@ request_json_updates (EamInstall *self, GTask *task)
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
     priv->appid, NULL, NULL);
   if (!uri) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-      EAM_TRANSACTION_ERROR_PROTOCOL_ERROR, _("Not valid method or protocol version"));
+    g_task_return_new_error (task, EAM_ERROR,
+      EAM_ERROR_PROTOCOL_ERROR, _("Not valid method or protocol version"));
     goto bail;
   }
 
@@ -867,8 +868,8 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   }
 
   if (!load_bundle_info (self, json_parser_get_root (parser))) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-       EAM_TRANSACTION_ERROR_INVALID_FILE,
+    g_task_return_new_error (task, EAM_ERROR,
+       EAM_ERROR_INVALID_FILE,
        _("Not valid stream with update/install link"));
 
     g_object_unref (task);

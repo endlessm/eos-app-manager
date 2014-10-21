@@ -4,6 +4,7 @@
 
 #include <glib/gi18n.h>
 
+#include "eam-error.h"
 #include "eam-updates.h"
 #include "eam-wc.h"
 #include "eam-rest.h"
@@ -22,8 +23,6 @@ struct _EamUpdatesPrivate
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamUpdates, eam_updates, G_TYPE_OBJECT)
-
-G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
 enum {
   AVAILABLE_APPS_CHANGED,
@@ -188,7 +187,7 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   /* is it enough? */
   if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
     g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
-      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_NO_NETWORK,
+      EAM_ERROR, EAM_ERROR_NO_NETWORK,
       _("Networking is not available"));
     return;
   }
@@ -196,7 +195,7 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
   if (!uri) {
     g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
-      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_PROTOCOL_ERROR,
+      EAM_ERROR, EAM_ERROR_PROTOCOL_ERROR,
       _("Not valid method or protocol version"));
     return;
   }
@@ -299,7 +298,7 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   return TRUE;
 
 bail:
-  g_set_error (error, EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_INVALID_FILE,
+  g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
      _("Not valid file with updates list"));
 
   return FALSE;

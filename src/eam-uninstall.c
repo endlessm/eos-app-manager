@@ -2,6 +2,7 @@
 
 #include "config.h"
 
+#include "eam-error.h"
 #include "eam-uninstall.h"
 #include "eam-spawner.h"
 #include "eam-config.h"
@@ -73,8 +74,8 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
   GTask *task = g_task_new (self, cancellable, callback, data);
 
   if (!eam_pkgdb_get (priv->pkgdb, priv->appid)) {
-    g_task_return_new_error (task, EAM_TRANSACTION_ERROR,
-			     EAM_TRANSACTION_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
+    g_task_return_new_error (task, EAM_ERROR,
+			     EAM_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
 			     priv->appid);
     g_object_unref (task);
     return;
