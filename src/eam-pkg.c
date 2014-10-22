@@ -4,6 +4,7 @@
 
 #include <glib/gi18n.h>
 
+#include "eam-error.h"
 #include "eam-pkg.h"
 
 /**
@@ -20,8 +21,6 @@ struct _EamPkg
 };
 
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
-
-G_DEFINE_QUARK (eam-pkg-error-quark, eam_pkg_error)
 
 static const gchar *KEYS[] = { "app_id", "app_name", "version", "locale" };
 static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion", "Locale" };
@@ -201,7 +200,7 @@ bail:
   g_free (name);
   g_free (loc);
 
-  g_set_error (error, EAM_PKG_ERROR, EAM_PKG_ERROR_KEY_NOT_FOUND,
+  g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
     _("Key \"%s\" was not found"), key);
 
   return NULL;

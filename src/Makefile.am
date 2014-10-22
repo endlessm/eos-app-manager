@@ -26,6 +26,7 @@ source_c = \
 	eam-fs-sanity.c \
 	eam-list-avail.c \
 	eam-log.c \
+	eam-error.c \
 	$(NULL)
 
 source_h = \
@@ -49,6 +50,7 @@ source_h = \
 	eam-fs-sanity.h \
 	eam-list-avail.h \
 	eam-log.h \
+	eam-error.h \
 	$(NULL)
 
 eam_built_sources = \

@@ -4,6 +4,7 @@
 
 #include <glib/gi18n.h>
 
+#include "eam-error.h"
 #include "eam-spawner.h"
 #include "eam-log.h"
 
@@ -23,8 +24,6 @@ struct _TaskData
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamSpawner, eam_spawner, G_TYPE_OBJECT)
-
-G_DEFINE_QUARK (eam-spawner-error-quark, eam_spawner_error)
 
 enum {
   PROP_DIR = 1,
@@ -231,8 +230,8 @@ subprocess_cb (GObject *source, GAsyncResult *res, gpointer data_)
   }
 
   if (!g_subprocess_get_successful (process)) {
-    g_task_return_new_error (task, EAM_SPAWNER_ERROR,
-      EAM_SPAWNER_ERROR_SCRIPT_FAILED,
+    g_task_return_new_error (task, EAM_ERROR,
+      EAM_ERROR_FAILED,
       _("Script \"%s\" exited with error code %d"),
       script_name, g_subprocess_get_exit_status (process));
 

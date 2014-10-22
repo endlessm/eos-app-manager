@@ -3,6 +3,7 @@
 #ifndef EAM_UNINSTALL_H
 #define EAM_UNINSTALL_H
 
+#include "eam-pkgdb.h"
 #include "eam-transaction.h"
 
 G_BEGIN_DECLS
@@ -39,7 +40,8 @@ struct _EamUninstallClass
 
 GType           eam_uninstall_get_type  (void) G_GNUC_CONST;
 
-EamTransaction *eam_uninstall_new       (const gchar *appid);
+EamTransaction *eam_uninstall_new       (EamPkgdb *pkgdb,
+					 const gchar *appid);
 
 G_END_DECLS
 

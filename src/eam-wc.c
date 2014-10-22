@@ -5,6 +5,7 @@
 #include <libsoup/soup.h>
 #include <glib/gi18n.h>
 
+#include "eam-error.h"
 #include "eam-wc.h"
 #include "eam-wc-file.h"
 
@@ -19,8 +20,6 @@ struct _EamWcPrivate
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamWc, eam_wc, G_TYPE_OBJECT)
-
-G_DEFINE_QUARK (eam-wc-error-quark, eam_wc_error)
 
 enum {
   PROP_LOG_LEVEL = 1,
@@ -339,8 +338,8 @@ eam_wc_request_with_headers_hash_async (EamWc *self, const gchar *uri,
   SoupURI *suri = soup_uri_new (uri);
   if (!suri) {
     g_task_report_new_error (self, callback, data,
-       eam_wc_request_with_headers_hash_async, EAM_WC_ERROR,
-       EAM_WC_ERROR_PROTOCOL_ERROR, "Invalid URI: %s", uri);
+       eam_wc_request_with_headers_hash_async, EAM_ERROR,
+       EAM_ERROR_PROTOCOL_ERROR, "Invalid URI: %s", uri);
     return;
   }
 
