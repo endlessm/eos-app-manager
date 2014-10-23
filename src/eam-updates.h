@@ -10,23 +10,6 @@
 
 G_BEGIN_DECLS
 
-/**
- * EamUpdatesError:
- * @EAM_UPDATES_ERROR_PROTOCOL_ERROR: Invalid URI.
- * @EAM_UPDATES_ERROR_INVALID_FILE: Invalid updates file.
- * @EAM_UPDATES_ERROR_NO_NETWORK: The nework is not available.
- *
- * These constants identify all the available errors managed by
- * the Endless Application Manager Updates.
- */
-typedef enum {
-  EAM_UPDATES_ERROR_PROTOCOL_ERROR = 1,
-  EAM_UPDATES_ERROR_INVALID_FILE,
-  EAM_UPDATES_ERROR_NO_NETWORK,
-} EamUpdatesError;
-
-#define EAM_UPDATES_ERROR eam_updates_error_quark ()
-
 #define EAM_TYPE_UPDATES (eam_updates_get_type())
 
 #define EAM_UPDATES(o) \
@@ -63,7 +46,6 @@ struct _EamUpdatesClass
 };
 
 GType           eam_updates_get_type                    (void) G_GNUC_CONST;
-GQuark          eam_updates_error_quark                 (void) G_GNUC_CONST;
 
 EamUpdates     *eam_updates_new                         (void);
 

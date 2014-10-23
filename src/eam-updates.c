@@ -4,6 +4,7 @@
 
 #include <glib/gi18n.h>
 
+#include "eam-error.h"
 #include "eam-updates.h"
 #include "eam-wc.h"
 #include "eam-rest.h"
@@ -22,8 +23,6 @@ struct _EamUpdatesPrivate
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamUpdates, eam_updates, G_TYPE_OBJECT)
-
-G_DEFINE_QUARK (eam-updates-error-quark, eam_updates_error)
 
 enum {
   AVAILABLE_APPS_CHANGED,
@@ -188,7 +187,7 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   /* is it enough? */
   if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
     g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
-      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_NO_NETWORK,
+      EAM_ERROR, EAM_ERROR_NO_NETWORK,
       _("Networking is not available"));
     return;
   }
@@ -196,7 +195,7 @@ eam_updates_fetch_async (EamUpdates *self, GCancellable *cancellable,
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_ALL_UPDATES, NULL);
   if (!uri) {
     g_task_report_new_error (self, callback, data, eam_updates_fetch_async,
-      EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_PROTOCOL_ERROR,
+      EAM_ERROR, EAM_ERROR_PROTOCOL_ERROR,
       _("Not valid method or protocol version"));
     return;
   }
@@ -239,34 +238,6 @@ eam_updates_fetch_finish (EamUpdates *self, GAsyncResult *result,
   return g_task_propagate_int (G_TASK (result), error);
 }
 
-static inline gboolean
-pkg_json_is_valid (JsonObject *json)
-{
-  JsonNode *node = json_object_get_member (json, "minOsVersion");
-  if (node) {
-    EamPkgVersion *posver = eam_pkg_version_new_from_string (
-      json_node_get_string (node));
-    EamPkgVersion *osver = eam_pkg_version_new_from_string (
-      eam_os_get_version ());
-
-    gboolean rel = eam_pkg_version_relate (posver, EAM_RELATION_LE, osver);
-    eam_pkg_version_free (posver);
-    eam_pkg_version_free (osver);
-
-    if (!rel)
-      return FALSE;
-  }
-
-  node = json_object_get_member (json, "personality");
-  if (node) {
-    const gchar *personality = json_node_get_string (node);
-    return g_strcmp0 (personality, eam_os_get_personality ()) == 0;
-  }
-
-  return TRUE; /* if it doesn't have version nor personality, let's
-                * assume it's ours. */
-}
-
 static void
 foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
 {
@@ -276,9 +247,6 @@ foreach_json (JsonArray *array, guint index, JsonNode *node, gpointer data)
     return;
 
   JsonObject *json = json_node_get_object (node);
-  if (!pkg_json_is_valid (json))
-    return;
-
   EamPkg *pkg = eam_pkg_new_from_json_object (json, NULL);
   if (!pkg)
     return;
@@ -330,7 +298,7 @@ eam_updates_load (EamUpdates *self, JsonNode *root, GError **error)
   return TRUE;
 
 bail:
-  g_set_error (error, EAM_UPDATES_ERROR, EAM_UPDATES_ERROR_INVALID_FILE,
+  g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
      _("Not valid file with updates list"));
 
   return FALSE;

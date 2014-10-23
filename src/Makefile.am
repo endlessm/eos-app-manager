@@ -11,7 +11,6 @@ source_c = \
 	eam-version.c \
 	eam-dbus-server.c \
 	eam-dbus-utils.c \
-	eam-resources.c \
 	eam-service.c \
 	eam-config.c \
 	eam-wc.c \
@@ -27,6 +26,7 @@ source_c = \
 	eam-fs-sanity.c \
 	eam-list-avail.c \
 	eam-log.c \
+	eam-error.c \
 	$(NULL)
 
 source_h = \
@@ -50,21 +50,13 @@ source_h = \
 	eam-fs-sanity.h \
 	eam-list-avail.h \
 	eam-log.h \
+	eam-error.h \
 	$(NULL)
 
-BUILT_SOURCES = \
+eam_built_sources = \
+	eam-resources.h \
 	eam-resources.c \
 	$(NULL)
-
-eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
-eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
-eam_LDADD = $(DEPENDENCIES_LIBS)
-eam_SOURCES = $(source_c) $(source_h) main.c
-
-noinst_LTLIBRARIES = libeam-1.0.la
-libeam_1_0_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
-libeam_1_0_la_LIBADD = $(DEPENDENCIES_LIBS)
-libeam_1_0_la_SOURCES = $(source_c) $(source_h)
 
 gresource_file = $(top_srcdir)/data/eam.gresource.xml
 resource_files = $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies --sourcedir=$(top_srcdir)/data $(gresource_file))
@@ -73,6 +65,26 @@ eam-resources.c: $(gresource_file) $(resource_files)
 		--sourcedir=$(top_builddir)/data \
 		--target=$@ \
 		--generate-source \
-		$<
+	$<
+eam-resources.h: $(gresource_file) $(resource_files)
+	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) \
+		--sourcedir=$(top_builddir)/data \
+		--target=$@ \
+		--generate-header \
+	$<
+
+BUILT_SOURCES = $(eam_built_sources)
+
+noinst_LTLIBRARIES = libeam.la
+libeam_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
+libeam_la_LIBADD = $(DEPENDENCIES_LIBS)
+libeam_la_SOURCES = $(source_c) $(source_h) $(BUILT_SOURCES)
+nodist_libeam_la_SOURCES = $(eam_built_sources) 
+
+eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
+eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
+eam_LDADD = $(DEPENDENCIES_LIBS) libeam.la
+eam_LDFLAGS = -export-dynamic
+eam_SOURCES = main.c
 
 -include $(top_srcdir)/git.mk
