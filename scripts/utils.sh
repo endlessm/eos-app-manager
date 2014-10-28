@@ -88,7 +88,7 @@ delete_downloaded_file ()
 desktop_updates ()
 {
     glib-compile-schemas $OS_GSETTINGS_DIR
-    gtk-update-icon-cache --ignore-theme-index $OS_DESKTOP_ICONS_DIR
+    gtk-update-icon-cache --quiet --ignore-theme-index $OS_DESKTOP_ICONS_DIR
     update-desktop-database $OS_DESKTOP_FILES_DIR
 }
 
