@@ -175,8 +175,10 @@ script_data_maybe_log_stdout (ScriptData *data)
     g_output_stream_write (buffer, "\0", 1, NULL, NULL);
     g_output_stream_close (buffer, NULL, NULL);
     char *str = g_memory_output_stream_steal_data (G_MEMORY_OUTPUT_STREAM (buffer));
-    eam_log_info_message ("Script '%s' wrote to stdout", data->script_name);
-    eam_log_info_message ("%s", str);
+    if (strlen (str) > 0) {
+      eam_log_info_message ("Script '%s' wrote to stdout", data->script_name);
+      eam_log_info_message ("%s", str);
+    }
     g_free (str);
   }
 
@@ -200,8 +202,10 @@ script_data_maybe_log_stderr (ScriptData *data)
     g_output_stream_write (buffer, "\0", 1, NULL, NULL);
     g_output_stream_close (buffer, NULL, NULL);
     char *str = g_memory_output_stream_steal_data (G_MEMORY_OUTPUT_STREAM (buffer));
-    eam_log_error_message ("Script '%s' wrote to stderr", data->script_name);
-    eam_log_error_message ("%s", str);
+    if (strlen (str) > 0) {
+      eam_log_error_message ("Script '%s' wrote to stderr", data->script_name);
+      eam_log_error_message ("%s", str);
+    }
     g_free (str);
   }
 
