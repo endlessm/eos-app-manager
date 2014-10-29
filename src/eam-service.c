@@ -1430,6 +1430,7 @@ eam_remote_transaction_sender_vanished (GDBusConnection *connection,
    */
   if (g_strcmp0 (remote->sender, sender) == 0) {
     eam_log_info_message ("Remote peer '%s' vanished for transaction '%s'", remote->sender, remote->obj_path);
+    eam_service_reset_timer (remote->service);
     eam_service_clear_transaction (remote->service, remote->transaction);
     eam_remote_transaction_cancel (remote);
   }
