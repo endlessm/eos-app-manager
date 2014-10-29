@@ -97,6 +97,7 @@ typedef struct {
   char *obj_path;
   GCancellable *cancellable;
   EamService *service;
+  GDBusConnection *connection;
   GDBusMethodInvocation *invocation;
   char *sender;
   guint registration_id;
@@ -1209,6 +1210,10 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
   if (remote->watch_id != 0)
     g_bus_unwatch_name (remote->watch_id);
 
+  if (remote->registration_id != 0)
+    g_dbus_connection_unregister_object (remote->connection,
+					 remote->registration_id);
+
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
   g_clear_object (&remote->cancellable);
@@ -1454,6 +1459,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
     return FALSE;
   }
 
+  remote->connection = priv->connection;
   remote->watch_id =
     g_bus_watch_name_on_connection (priv->connection,
                                     remote->sender,
