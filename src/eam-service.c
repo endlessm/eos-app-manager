@@ -1286,6 +1286,8 @@ handle_transaction_method_call (GDBusConnection *connection,
   if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
     return;
 
+  eam_log_info_message ("Received method '%s' on transaction interface", method);
+
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
     const char *bundle_path;
 
@@ -1414,7 +1416,10 @@ eam_remote_transaction_sender_vanished (GDBusConnection *connection,
    * running, cancel the transaction
    */
   if (g_strcmp0 (remote->sender, sender) == 0)
-    eam_remote_transaction_cancel (remote);
+    {
+      eam_log_info_message ("Remote peer '%s' vanished for transaction '%s'", remote->sender, remote->obj_path);
+      eam_remote_transaction_cancel (remote);
+    }
 }
 
 static gboolean
@@ -1493,6 +1498,8 @@ handle_method_call (GDBusConnection *connection, const char *sender,
 
   if (g_strcmp0 (interface, "com.endlessm.AppManager"))
     return;
+
+  eam_log_info_message ("Received method '%s' on manager interface", method);
 
   for (method_i = 0; method_i < G_N_ELEMENTS (auth_action); method_i++) {
     if (g_strcmp0 (method, auth_action[method_i].dbus_name) == 0) {
