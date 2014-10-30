@@ -134,10 +134,9 @@ eam_spawner_new (const gchar *path, const gchar * const *params)
 static void subprocess_run_async (GTask *task);
 
 typedef struct {
+  GSubprocess *process;
   GTask *task;
   char *script_name;
-  GMemoryOutputStream *out_buffer;
-  GMemoryOutputStream *err_buffer;
 } ScriptData;
 
 static ScriptData *
@@ -145,33 +144,9 @@ script_data_new (GTask *task, const char *file_name, GSubprocess *process)
 {
   ScriptData *data = g_slice_new (ScriptData);
 
+  data->process = process;
   data->task = task;
   data->script_name = g_path_get_basename (file_name);
-
-  data->out_buffer =
-    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-  data->err_buffer =
-    (GMemoryOutputStream *) g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-
-  GError *error = NULL;
-
-  g_output_stream_splice ((GOutputStream *) data->out_buffer,
-                          g_subprocess_get_stdout_pipe (process),
-                          0, NULL, &error);
-  if (error != NULL) {
-    eam_log_error_message ("Unable to splice the stdout pipe: %s", error->message);
-    g_clear_object (&data->out_buffer);
-    g_clear_error (&error);
-  }
-
-  g_output_stream_splice ((GOutputStream *) data->err_buffer,
-                          g_subprocess_get_stderr_pipe (process),
-                          0, NULL, &error);
-  if (error != NULL) {
-    eam_log_error_message ("Unable to splice the stderr pipe: %s", error->message);
-    g_clear_object (&data->err_buffer);
-    g_clear_error (&error);
-  }
 
   return data;
 }
@@ -179,8 +154,6 @@ script_data_new (GTask *task, const char *file_name, GSubprocess *process)
 static void
 script_data_free (ScriptData *data)
 {
-  g_clear_object (&data->out_buffer);
-  g_clear_object (&data->err_buffer);
   g_free (data->script_name);
   g_slice_free (ScriptData, data);
 }
@@ -188,27 +161,55 @@ script_data_free (ScriptData *data)
 static void
 script_data_maybe_log_stdout (ScriptData *data)
 {
-  if (data->out_buffer != NULL) {
-    g_output_stream_write ((GOutputStream *) data->out_buffer, "\0", 1, NULL, NULL);
-    g_output_stream_close ((GOutputStream *) data->out_buffer, NULL, NULL);
-    char *str = g_memory_output_stream_steal_data (data->out_buffer);
-    eam_log_info_message ("Script '%s' wrote to stdout", data->script_name);
-    eam_log_info_message ("%s", str);
+  GOutputStream *buffer = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  GError *error = NULL;
+
+  g_output_stream_splice (buffer,
+			  g_subprocess_get_stdout_pipe (data->process),
+                          0, NULL, &error);
+
+ if (error != NULL) {
+    eam_log_error_message ("Unable to splice the stdout pipe: %s", error->message);
+    g_error_free (error);
+  } else {
+    g_output_stream_write (buffer, "\0", 1, NULL, NULL);
+    g_output_stream_close (buffer, NULL, NULL);
+    char *str = g_memory_output_stream_steal_data (G_MEMORY_OUTPUT_STREAM (buffer));
+    if (strlen (str) > 0) {
+      eam_log_info_message ("Script '%s' wrote to stdout", data->script_name);
+      eam_log_info_message ("%s", str);
+    }
     g_free (str);
   }
+
+  g_object_unref (buffer);
 }
 
 static void
 script_data_maybe_log_stderr (ScriptData *data)
 {
-  if (data->err_buffer != NULL) {
-    g_output_stream_write ((GOutputStream *) data->err_buffer, "\0", 1, NULL, NULL);
-    g_output_stream_close ((GOutputStream *) data->err_buffer, NULL, NULL);
-    char *str = g_memory_output_stream_steal_data (data->err_buffer);
-    eam_log_error_message ("Script '%s' wrote to stderr", data->script_name);
-    eam_log_error_message ("%s", str);
+  GOutputStream *buffer = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  GError *error = NULL;
+
+  g_output_stream_splice (buffer,
+			  g_subprocess_get_stderr_pipe (data->process),
+                          0, NULL, &error);
+
+  if (error != NULL) {
+    eam_log_error_message ("Unable to splice the stderr pipe: %s", error->message);
+    g_error_free (error);
+  } else {
+    g_output_stream_write (buffer, "\0", 1, NULL, NULL);
+    g_output_stream_close (buffer, NULL, NULL);
+    char *str = g_memory_output_stream_steal_data (G_MEMORY_OUTPUT_STREAM (buffer));
+    if (strlen (str) > 0) {
+      eam_log_error_message ("Script '%s' wrote to stderr", data->script_name);
+      eam_log_error_message ("%s", str);
+    }
     g_free (str);
   }
+
+  g_object_unref (buffer);
 }
 
 static void

@@ -97,6 +97,7 @@ typedef struct {
   char *obj_path;
   GCancellable *cancellable;
   EamService *service;
+  GDBusConnection *connection;
   GDBusMethodInvocation *invocation;
   char *sender;
   guint registration_id;
@@ -577,16 +578,19 @@ eam_service_check_queue (EamService *service)
 }
 
 static void
-eam_service_clear_transaction (EamService *service)
+eam_service_clear_transaction (EamService *service,
+                               EamTransaction *transaction)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_assert (priv->trans);
 
-  /* we don't need these anymore */
-  g_clear_object (&priv->cancellable);
-  g_clear_object (&priv->trans);
+  /* if the transaction is the one currently running, then we remove it */
+  if (priv->trans == transaction) {
+    g_clear_object (&priv->trans);
 
-  priv->cancellable = g_cancellable_new ();
+    /* do not need the cancellable any more */
+    g_clear_object (&priv->cancellable);
+    priv->cancellable = g_cancellable_new ();
+  }
 
   eam_service_check_queue (service);
 }
@@ -708,7 +712,7 @@ refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation, value);
 
 out:
-  eam_service_clear_transaction (service);
+  eam_service_clear_transaction (service, priv->trans);
 }
 
 static void
@@ -748,7 +752,7 @@ reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer 
   avails_changed_cb (service, NULL);
 
 out:
-  eam_service_clear_transaction (service);
+  eam_service_clear_transaction (service, priv->trans);
 }
 
 static void
@@ -836,7 +840,7 @@ uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation, value);
 
 out:
-  eam_service_clear_transaction (service);
+  eam_service_clear_transaction (service, priv->trans);
 }
 
 static void
@@ -1013,7 +1017,7 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
 
-  eam_service_clear_transaction (service);
+  eam_service_clear_transaction (service, priv->trans);
 }
 
 static void
@@ -1209,6 +1213,10 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
   if (remote->watch_id != 0)
     g_bus_unwatch_name (remote->watch_id);
 
+  if (remote->registration_id != 0)
+    g_dbus_connection_unregister_object (remote->connection,
+					 remote->registration_id);
+
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
   g_clear_object (&remote->cancellable);
@@ -1266,7 +1274,7 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 
 out:
   eam_service_remove_active_transaction (service, remote);
-  eam_service_clear_transaction (service);
+  eam_service_clear_transaction (service, priv->trans);
 }
 
 static void
@@ -1285,6 +1293,8 @@ handle_transaction_method_call (GDBusConnection *connection,
 
   if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
     return;
+
+  eam_log_info_message ("Received method '%s' on transaction interface", method);
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
     const char *bundle_path;
@@ -1311,9 +1321,14 @@ handle_transaction_method_call (GDBusConnection *connection,
   }
 
   if (g_strcmp0 (method, "CancelTransaction") == 0) {
-    eam_service_clear_transaction (remote->service);
+    /* clear the transaction from the queue */
+    eam_service_clear_transaction (remote->service, remote->transaction);
+
+    /* cancel the remote transaction */
     eam_remote_transaction_cancel (remote);
+
     g_dbus_method_invocation_return_value (invocation, NULL);
+
     return;
   }
 }
@@ -1413,8 +1428,12 @@ eam_remote_transaction_sender_vanished (GDBusConnection *connection,
   /* if the sender disappeared while we still have a transaction
    * running, cancel the transaction
    */
-  if (g_strcmp0 (remote->sender, sender) == 0)
+  if (g_strcmp0 (remote->sender, sender) == 0) {
+    eam_log_info_message ("Remote peer '%s' vanished for transaction '%s'", remote->sender, remote->obj_path);
+    eam_service_reset_timer (remote->service);
+    eam_service_clear_transaction (remote->service, remote->transaction);
     eam_remote_transaction_cancel (remote);
+  }
 }
 
 static gboolean
@@ -1449,6 +1468,7 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
     return FALSE;
   }
 
+  remote->connection = priv->connection;
   remote->watch_id =
     g_bus_watch_name_on_connection (priv->connection,
                                     remote->sender,
@@ -1493,6 +1513,8 @@ handle_method_call (GDBusConnection *connection, const char *sender,
 
   if (g_strcmp0 (interface, "com.endlessm.AppManager"))
     return;
+
+  eam_log_info_message ("Received method '%s' on manager interface", method);
 
   for (method_i = 0; method_i < G_N_ELEMENTS (auth_action); method_i++) {
     if (g_strcmp0 (method, auth_action[method_i].dbus_name) == 0) {
