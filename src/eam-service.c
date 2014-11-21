@@ -1621,8 +1621,12 @@ eam_service_get_idle (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_log_info_message ("Service is %s - elapsed since last reset: %.2f seconds",
+                        eam_service_is_busy (service) ? "busy" : "not busy",
+                        g_timer_elapsed (priv->timer, NULL));
+
   if (eam_service_is_busy (service))
-      return 0;
+    return 0;
 
   return g_timer_elapsed (priv->timer, NULL);
 }
