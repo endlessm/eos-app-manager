@@ -95,7 +95,10 @@ eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
     priv->quit_id = g_signal_connect_swapped (priv->service, "quit-requested",
       G_CALLBACK (quit_request_cb), obj);
     if (eam_config_timeout () > 0) {
-      priv->timer_id = g_timeout_add_seconds (eam_config_timeout (), timeout_cb, obj);
+      /* check every minute if the service is idle, but terminate it only
+       * if the configured time has elapsed
+       */
+      priv->timer_id = g_timeout_add_seconds (60, timeout_cb, obj);
       g_source_set_name_by_id (priv->timer_id, "[EAM] timeout poll");
     }
     break;
