@@ -200,6 +200,43 @@ static EamServiceAuth auth_action[] = {
   },
 };
 
+static inline void
+eam_service_perf_mark (const char *format,
+                       ...)
+{
+  static gint64 last_debug_stamp;
+  va_list args;
+
+  gint64 cur_time = g_get_monotonic_time ();
+  gint64 debug_stamp;
+
+  char *stamp;
+
+  if (last_debug_stamp == 0 ||
+      cur_time - last_debug_stamp >= (5 * G_USEC_PER_SEC)) {
+    debug_stamp = cur_time;
+    last_debug_stamp = debug_stamp;
+    stamp = g_strdup_printf ("[%16" G_GINT64_FORMAT "]", debug_stamp);
+  }
+  else {
+    debug_stamp = cur_time - last_debug_stamp;
+    stamp = g_strdup_printf ("[%+16" G_GINT64_FORMAT "]", debug_stamp);
+  }
+
+  char *fmt = g_strconcat (stamp, ":", format, NULL);
+  g_free (stamp);
+
+  char *str;
+
+  va_start (args, format);
+  str = g_strdup_vprintf (fmt, args);
+  g_free (fmt);
+  va_end (args);
+
+  eam_log_info_message (str, NULL);
+  g_free (str);
+}
+
 static GDBusNodeInfo*
 load_introspection (const char *name, GError **error)
 {
@@ -712,6 +749,7 @@ refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (invocation, value);
 
 out:
+  eam_service_perf_mark ("refresh end");
   eam_service_clear_transaction (service, priv->trans);
 }
 
@@ -721,6 +759,7 @@ eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_service_perf_mark ("refresh begin");
   priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
   run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
 }
@@ -1017,6 +1056,8 @@ list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
 
+  eam_service_perf_mark ("list-available end");
+
   eam_service_clear_transaction (service, priv->trans);
 }
 
@@ -1031,6 +1072,8 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
   const char *language = NULL;
 
   g_variant_lookup (opts, "Locale", "&s", &language);
+
+  eam_service_perf_mark ("list-available begin");
 
   priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service), language);
   run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
@@ -1064,6 +1107,7 @@ run_service_list_installed (EamService *service, const gchar *appid,
   g_dbus_method_invocation_return_value (invocation,
     g_variant_builder_end (&builder));
 
+  eam_service_perf_mark ("list-installed end");
   eam_service_check_queue (service);
 }
 
@@ -1071,6 +1115,7 @@ static void
 eam_service_list_installed (EamService *service,
   GDBusMethodInvocation *invocation, GVariant *params)
 {
+  eam_service_perf_mark ("list-installed begin");
   run_eam_service_with_load_pkgdb (service, NULL, run_service_list_installed,
     invocation);
 }
@@ -1621,8 +1666,12 @@ eam_service_get_idle (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
+  eam_log_info_message ("Service is %s - elapsed since last reset: %.2f seconds",
+                        eam_service_is_busy (service) ? "busy" : "not busy",
+                        g_timer_elapsed (priv->timer, NULL));
+
   if (eam_service_is_busy (service))
-      return 0;
+    return 0;
 
   return g_timer_elapsed (priv->timer, NULL);
 }
