@@ -224,10 +224,13 @@ eam_service_perf_mark (const char *format,
   }
 
   char *fmt = g_strconcat (stamp, ":", format, NULL);
+  g_free (stamp);
+
   char *str;
 
   va_start (args, format);
   str = g_strdup_vprintf (fmt, args);
+  g_free (fmt);
   va_end (args);
 
   eam_log_info_message (str, NULL);
