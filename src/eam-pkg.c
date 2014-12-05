@@ -2,10 +2,14 @@
 
 #include "config.h"
 
-#include <glib/gi18n.h>
+#include "eam-pkg.h"
 
 #include "eam-error.h"
-#include "eam-pkg.h"
+#include "eam-log.h"
+
+#include <glib/gi18n.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 /**
  * EamPkg:
@@ -153,6 +157,18 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
 {
   g_return_val_if_fail (filename, NULL);
 
+  struct stat buf;
+  int res = stat (filename, &buf);
+  if (res < 0) {
+    int saved_errno = errno;
+
+    g_set_error (error, EAM_ERROR,
+                 EAM_ERROR_INVALID_FILE,
+                 "Unable to access the metadata file at '%s': %s",
+                 filename, g_strerror (saved_errno));
+    return NULL;
+  }
+
   GKeyFile *keyfile = g_key_file_new ();
   EamPkg *pkg = NULL;
 
@@ -160,6 +176,11 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
     pkg = eam_pkg_load_from_keyfile (keyfile, error);
 
   g_key_file_unref (keyfile);
+
+  /* check if the metadata is on a read-only storage, and toggle the
+   * secondary-storage flag regardless of what's in the metadata
+   */
+  pkg->secondary = (buf.st_mode & S_IWUSR) == 0;
 
   return pkg;
 }
