@@ -1089,23 +1089,52 @@ run_service_list_installed (EamService *service, const gchar *appid,
 
   eam_service_reset_timer (service);
 
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sss))"));
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sss)a(sss))"));
+
+  /* installed */
   g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
 
   while (eam_pkgdb_iter_next (priv->db, &pkg)) {
     if (!pkg)
       continue;
 
-    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (&builder, "(sss)", eam_pkg_get_id (pkg),
-      eam_pkg_get_name (pkg), version);
+    char *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (&builder, "(sss)",
+                           eam_pkg_get_id (pkg),
+                           eam_pkg_get_name (pkg),
+                           version);
+
     g_free (version);
   }
-  eam_pkgdb_iter_reset (priv->db);
 
   g_variant_builder_close (&builder);
-  g_dbus_method_invocation_return_value (invocation,
-    g_variant_builder_end (&builder));
+
+  eam_pkgdb_iter_reset (priv->db);
+
+  /* removable */
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
+
+  while (eam_pkgdb_iter_next (priv->db, &pkg)) {
+    if (!pkg)
+      continue;
+
+    if (eam_pkg_is_on_secondary_storage (pkg))
+      continue;
+
+    char *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
+    g_variant_builder_add (&builder, "(sss)",
+                           eam_pkg_get_id (pkg),
+                           eam_pkg_get_name (pkg),
+                           version);
+
+    g_free (version);
+  }
+
+  g_variant_builder_close (&builder);
+
+  eam_pkgdb_iter_reset (priv->db);
+
+  g_dbus_method_invocation_return_value (invocation, g_variant_builder_end (&builder));
 
   eam_service_perf_mark ("list-installed end");
   eam_service_check_queue (service);

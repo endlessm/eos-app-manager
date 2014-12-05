@@ -111,7 +111,8 @@
     -->
     <method name="ListInstalled" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="a(sss)" direction="out" />
+      <arg type="a(sss)" name="installed" direction="out" />
+      <arg type="a(sss)" name="removable" direction="out" />
     </method>
 
     <!--
