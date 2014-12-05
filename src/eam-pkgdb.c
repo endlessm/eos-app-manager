@@ -5,8 +5,14 @@
 #include <glib/gi18n.h>
 
 #include "eam-pkgdb.h"
+
+#include "eam-error.h"
+#include "eam-log.h"
 #include "eam-utils.h"
 #include "eam-version.h"
+
+#include <string.h>
+#include <glib/gi18n.h>
 
 typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
 
@@ -394,14 +400,17 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
       continue;
 
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);
+
     GError *perr = NULL;
     EamPkg *pkg = eam_pkg_new_from_filename (info, &perr);
     g_free (info);
+
     if (pkg)
       eam_pkgdb_add (pkgdb, appid, pkg);
+
     if (perr) {
-	g_message ("Error loading %s: %s", appid, perr->message);
-	g_clear_error (&perr);
+      eam_log_error_message ("Error loading pkg info for '%s': %s", appid, perr->message);
+      g_clear_error (&perr);
     }
   }
 
