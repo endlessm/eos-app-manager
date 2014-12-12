@@ -25,4 +25,4 @@ APP_ID=$1
 BUNDLE=$2
 
 delete_dir "${EAM_TMP}/${APP_ID}" && mkdir "${EAM_TMP}/${APP_ID}"
-xdelta3-dir-patcher apply --ignore-euid "${EAM_PREFIX}/${APP_ID}" "${BUNDLE}" "${EAM_TMP}/${APP_ID}"
+xdelta3-dir-patcher apply --ignore-euid -d "${APP_ID}" "${EAM_PREFIX}/${APP_ID}" "${BUNDLE}" "${EAM_TMP}/${APP_ID}"
