@@ -4,9 +4,8 @@
 
 #include <glib/gi18n.h>
 
-#include <string.h>
-
 #include "eam-pkgdb.h"
+#include "eam-utils.h"
 #include "eam-version.h"
 
 typedef struct _EamPkgdbPrivate	EamPkgdbPrivate;
@@ -120,35 +119,6 @@ eam_pkgdb_new_with_appdir (const gchar *appdir)
   return g_object_new (EAM_TYPE_PKGDB, "appdir", appdir, NULL);
 }
 
-static gboolean
-appid_is_legal (const char *appid)
-{
-  static const char alsoallowed[] = "-+.";
-  static const char *reserveddirs[] = { "bin", "share" };
-
-  if (!appid || appid[0] == '\0')
-    return FALSE;
-
-  guint i;
-  for (i = 0; i < G_N_ELEMENTS(reserveddirs); i++) {
-    if (g_strcmp0(appid, reserveddirs[i]) == 0)
-      return FALSE;
-  }
-
-  if (!g_ascii_isalnum (appid[0]))
-    return FALSE; /* must start with an alphanumeric character */
-
-  int c;
-  while ((c = *appid++) != '\0')
-    if (!g_ascii_isalnum (c) && !strchr (alsoallowed, c))
-      break;
-
-  if (!c)
-    return TRUE;
-
-  return FALSE;
-}
-
 /**
  * eam_pkgdb_add:
  * @pkgdb: a #EamPkgdb
@@ -166,7 +136,7 @@ eam_pkgdb_add (EamPkgdb *pkgdb, const gchar *appid, EamPkg *pkg)
   g_return_val_if_fail (appid != NULL, FALSE);
   g_return_val_if_fail (pkg, FALSE);
 
-  if (!appid_is_legal (appid))
+  if (!eam_utils_appid_is_legal (appid))
     return FALSE;
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
@@ -200,7 +170,7 @@ eam_pkgdb_replace (EamPkgdb *pkgdb, EamPkg *pkg)
   g_return_val_if_fail (pkg, FALSE);
 
   const gchar *appid = eam_pkg_get_id (pkg);
-  if (!appid_is_legal (appid))
+  if (!eam_utils_appid_is_legal (appid))
     return FALSE;
 
   EamPkgdbPrivate *priv = eam_pkgdb_get_instance_private (pkgdb);
@@ -420,7 +390,7 @@ eam_pkgdb_load (EamPkgdb *pkgdb, GError **error)
 
   const gchar *appid;
   while ((appid = g_dir_read_name (dir))) {
-    if (!appid_is_legal (appid))
+    if (!eam_utils_appid_is_legal (appid))
       continue;
 
     gchar *info = g_build_path (G_DIR_SEPARATOR_S, priv->appdir, appid, ".info", NULL);

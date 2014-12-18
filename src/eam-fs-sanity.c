@@ -7,6 +7,7 @@
 #include "eam-fs-sanity.h"
 #include "eam-config.h"
 #include "eam-log.h"
+#include "eam-utils.h"
 
 #define BIN_SUBDIR "bin"
 #define DESKTOP_FILES_SUBDIR "share/applications"
@@ -131,6 +132,116 @@ applications_directory_symlink_create ()
   return retval;
 }
 
+static gboolean
+is_application_dir (const char *path)
+{
+  g_assert (path);
+
+  if (!g_file_test (path, G_FILE_TEST_IS_DIR))
+    return FALSE;
+
+  gchar *appid = g_path_get_basename (path);
+  gboolean retval = eam_utils_appid_is_legal (appid);
+  g_free (appid);
+
+  return retval;
+}
+
+static gboolean
+fix_permissions_for_application (const gchar *path)
+{
+  GStatBuf buf;
+  GError *error = NULL;
+  gboolean retval = TRUE;
+
+  g_assert (path);
+
+  GFile *file = g_file_new_for_path (path);
+
+  /* We fix permissions for the children of a directory first, so that the
+   * root path is the last thing we fix when everything else has worked as
+   * expected, so that we can try again the next time if something went wrong.
+   */
+  if (g_file_test (path, G_FILE_TEST_IS_DIR)) {
+    GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
+                                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                           NULL, &error);
+    if (error) {
+      eam_log_error_message ("Failed to get the children of '%s': %s", path, error->message);
+      g_clear_error (&error);
+      retval = FALSE;
+      goto bail;
+    }
+
+    GFileInfo *child_info = NULL;
+    while ((child_info = g_file_enumerator_next_file (children, NULL, &error))) {
+      GFile *child = g_file_get_child (file, g_file_info_get_name (child_info));
+      gchar *child_path = g_file_get_path (child);
+      g_object_unref (child_info);
+      g_object_unref (child);
+
+      retval = fix_permissions_for_application (child_path);
+      g_free (child_path);
+    }
+    g_object_unref (children);
+
+    if (error) {
+      eam_log_error_message ("Failure while processing the children of '%s': %s", path, error->message);
+      g_clear_error (&error);
+      retval = FALSE;
+      goto bail;
+    }
+  }
+
+  /* Don't bother updating the current path if something went
+   * wrong already now while looking at its children.
+   */
+  if (!retval)
+    goto bail;
+
+  if (g_stat (path, &buf) == -1) {
+    eam_log_error_message ("Error retrieving information about path '%s'", path);
+    retval = FALSE;
+    goto bail;
+  }
+
+  /* It's impossible to know what the desired permissions are for each file,
+   * so we check 'r-x' permissions for "owner" and apply them to "other".
+   */
+  mode_t mod_mask = buf.st_mode;
+  mod_mask |= (((buf.st_mode & S_IRUSR) | (buf.st_mode & S_IXUSR)) >> 6);
+
+  if (g_chmod (path, mod_mask) == -1) {
+    eam_log_error_message ("Error fixing permissions for path '%s'", path);
+    retval = FALSE;
+    goto bail;
+  }
+
+ bail:
+  g_object_unref (file);
+  return retval;
+}
+
+static void
+fix_application_permissions_if_needed (const gchar *path)
+{
+  GStatBuf buf;
+
+  g_assert (path);
+
+  if (g_stat (path, &buf) == -1) {
+    eam_log_error_message ("Error retrieving information about file '%s'", path);
+    return;
+  }
+
+  /* In order not to take too much time to decide whether fixing the permissions is needed,
+   * we just check the permissions of the top directory for the app instead of doing ir
+   * recursively, since that's probably enough most of the times.
+   */
+  if (!(buf.st_mode & S_IROTH && buf.st_mode & S_IXOTH))
+    fix_permissions_for_application (path);
+}
+
 /**
  * eam_fs_sanity_check:
  * Guarantees the existance of the applications' root installation directory and the
@@ -202,6 +313,39 @@ eam_fs_sanity_check (void)
     retval = FALSE;
   }
 
+  /* Check if application directories have valid permissions, fixing them if needed */
+  GError *error = NULL;
+  GFile *file = g_file_new_for_path (appdir);
+  GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
+                                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                         NULL, &error);
+  if (error) {
+    eam_log_error_message ("Failed to get the children of '%s': %s", appdir, error->message);
+    g_clear_error (&error);
+    retval = FALSE;
+    goto bail;
+  }
+
+  GFileInfo *child_info = NULL;
+  while ((child_info = g_file_enumerator_next_file (children, NULL, &error))) {
+    GFile *dir = g_file_get_child (file, g_file_info_get_name (child_info));
+    gchar *path = g_file_get_path (dir);
+    g_object_unref (child_info);
+    g_object_unref (dir);
+
+    if (is_application_dir (path))
+      fix_application_permissions_if_needed (path);
+
+    g_free (path);
+  }
+
+  if (error) {
+    eam_log_error_message ("Failure while processing the children of '%s': %s", appdir, error->message);
+    g_clear_error (&error);
+    retval = FALSE;
+  }
+
+ bail:
   g_free (bin_dir);
   g_free (desktop_files_dir);
   g_free (desktop_icons_dir);
@@ -209,6 +353,9 @@ eam_fs_sanity_check (void)
   g_free (ekn_data_dir);
   g_free (ekn_manifest_dir);
   g_free (g_schemas_dir);
+
+  g_object_unref (children);
+  g_object_unref (file);
 
   return retval;
 }
