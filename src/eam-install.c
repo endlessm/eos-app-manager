@@ -224,7 +224,10 @@ eam_install_initable_init (GInitable *initable,
 
     EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
     priv->from_version = eam_pkg_version_as_string (pkg_version);
-    priv->action = EAM_ACTION_XDELTA_UPDATE;
+
+    /* FIXME: Initialize this to EAM_ACTION_XDELTA_UPDATE to re-enable
+       xdelta updates once we feel confident about it (see shell/4278) */
+    priv->action = EAM_ACTION_UPDATE;
   }
   else if (eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
     priv->action = EAM_ACTION_INSTALL;
