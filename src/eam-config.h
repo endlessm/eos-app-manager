@@ -25,11 +25,14 @@ void            eam_config_set                  (EamConfig *cfg,
                                                  gchar *protver,
                                                  gchar *scriptdir,
                                                  gchar *gpgkeyring,
-                                                 guint timeout);
+                                                 guint timeout,
+                                                 gboolean deltaupdates);
 
 void            eam_config_dump                 (EamConfig *cfg);
 
 guint           eam_config_timeout              (void);
+
+gboolean        eam_config_deltaupdates         (void);
 
 #define PARAMS_LIST(V) \
   V(appdir) \

@@ -9,6 +9,7 @@ struct _EamConfig
   PARAMS_LIST(GETTERS)
 #undef GETTERS
   guint timeout;
+  gboolean deltaupdates;
 };
 
 static gpointer
@@ -41,12 +42,13 @@ eam_config_get (void)
  * @scriptdir: the new scriptdir or %NULL
  * @gpgkeyring: the new keyring or %NULL
  * @timeout: the new timeout or %0
+ * @deltaupdates: %TRUE to enable delta updates or %FALSE otherwise
  *
  * Updates the values of the configurations if they are not %NULL or %0
  **/
 void
-eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
-  gchar *saddr, gchar *protver, gchar *scriptdir, gchar *gpgkeyring, guint timeout)
+eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir, gchar *saddr,
+  gchar *protver, gchar *scriptdir, gchar *gpgkeyring, guint timeout, gboolean deltaupdates)
 {
   if (!cfg)
     cfg = eam_config_get ();
@@ -60,6 +62,8 @@ eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir,
 
   if (timeout > 0)
     cfg->timeout = timeout;
+
+  cfg->deltaupdates = deltaupdates;
 }
 
 /**
@@ -152,6 +156,7 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   gboolean own = FALSE;
   gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir, *gpgkeyring;
   guint timeout;
+  gboolean deltaupdates;
 
   if (!keyfile) {
     if (!(keyfile = load_default ()))
@@ -167,9 +172,10 @@ eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
   scriptdir = get_str (keyfile, grp, "scriptdir");
   gpgkeyring = get_str (keyfile, grp, "gpgkeyring");
   timeout = g_key_file_get_integer (keyfile, grp, "timeout", NULL);
+  deltaupdates = g_key_file_get_boolean (keyfile, grp, "deltaupdates", NULL);
 
-  eam_config_set (cfg, appdir, dldir, saddr, protver, scriptdir, gpgkeyring,
-    timeout);
+  eam_config_set (cfg, appdir, dldir, saddr, protver,
+    scriptdir, gpgkeyring, timeout, deltaupdates);
 
   ret = TRUE;
 
@@ -199,15 +205,22 @@ eam_config_dump (EamConfig *cfg)
     "\tDownloadDir = %s\n"
     "\tProtocolVersion = %s\n"
     "\tScriptDir = %s\n"
-    "\tTimeOut = %d\n",
+    "\tTimeOut = %d\n"
+    "\tDeltaUpdates = %d\n",
     cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir,
-    cfg->timeout);
+    cfg->timeout, cfg->deltaupdates);
 }
 
 guint
 eam_config_timeout ()
 {
   return eam_config_get ()->timeout;
+}
+
+gboolean
+eam_config_deltaupdates ()
+{
+  return eam_config_get ()->deltaupdates;
 }
 
 #define GETTERS(p) \
