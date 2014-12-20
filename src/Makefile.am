@@ -27,6 +27,7 @@ source_c = \
 	eam-list-avail.c \
 	eam-log.c \
 	eam-error.c \
+	eam-utils.c \
 	$(NULL)
 
 source_h = \
@@ -51,6 +52,7 @@ source_h = \
 	eam-list-avail.h \
 	eam-log.h \
 	eam-error.h \
+	eam-utils.h \
 	$(NULL)
 
 eam_built_sources = \
