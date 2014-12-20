@@ -224,7 +224,7 @@ eam_install_initable_init (GInitable *initable,
 
     EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
     priv->from_version = eam_pkg_version_as_string (pkg_version);
-    priv->action = EAM_ACTION_XDELTA_UPDATE;
+    priv->action = eam_config_deltaupdates () ? EAM_ACTION_XDELTA_UPDATE : EAM_ACTION_UPDATE;
   }
   else if (eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
     priv->action = EAM_ACTION_INSTALL;

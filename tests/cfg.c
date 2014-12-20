@@ -10,7 +10,8 @@
   "protocolversion = v1000\n" \
   "scriptdir = /usr/libexec/eam\n" \
   "gpgkeyring = /usr/share/eam/keyr.gpg\n" \
-  "timeout = 10\n"
+  "timeout = 10\n" \
+  "deltaupdates = true\n"
 
 static void
 test_config_basic (void)
@@ -28,14 +29,16 @@ test_config_basic (void)
   g_assert_cmpstr (eam_config_appdir (), ==, "/");
   g_assert_cmpstr (eam_config_dldir (), ==, "/tmp");
   g_assert_cmpstr (eam_config_gpgkeyring (), ==, "/usr/share/eam/keyr.gpg");
+  g_assert_cmpint (eam_config_deltaupdates (), ==, TRUE);
 
-  eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, NULL, 0);
+  eam_config_set (cfg, NULL, g_strdup ("/var/tmp"), NULL, NULL, NULL, NULL, 0, FALSE);
   g_assert_cmpstr (eam_config_appdir (), ==, "/");
   g_assert_cmpstr (eam_config_dldir (), ==, "/var/tmp");
   g_assert_cmpstr (eam_config_saddr (), ==, "http://nohost");
   g_assert_cmpstr (eam_config_protver (), ==, "v1000");
   g_assert_cmpstr (eam_config_scriptdir (), ==, "/usr/libexec/eam");
   g_assert_cmpint (eam_config_timeout (), ==, 10);
+  g_assert_cmpint (eam_config_deltaupdates (), ==, FALSE);
 }
 
 static void
