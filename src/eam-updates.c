@@ -462,21 +462,19 @@ eam_updates_pkg_is_upgradable (EamUpdates *self, const gchar *appid)
   g_return_val_if_fail (appid, FALSE);
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  GList *l;
+  gboolean retval = FALSE;
 
-  for (l = priv->updates; l; l = l->next) {
+  for (GList *l = priv->updates; l; l = l->next) {
     EamPkg *pkg = l->data;
 
-    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0) {
-      /* applications on secondary storage cannot be updated */
-      if (eam_pkg_is_on_secondary_storage (pkg))
-        continue;
-
-      return TRUE;
+    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0 &&
+        !eam_pkg_is_on_secondary_storage (pkg)) {
+      retval = TRUE;
+      break;
     }
   }
 
-  return FALSE;
+  return retval;
 }
 
 /**
