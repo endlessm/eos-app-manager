@@ -107,7 +107,10 @@
     <!--
 	ListInstalled:
 
-        Returns a list of all the installed applications.
+        Returns two arrays of (id, name, version) tuples:
+
+          * a list of installed applications
+          * a list of installed applications that can be removed
     -->
     <method name="ListInstalled" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
