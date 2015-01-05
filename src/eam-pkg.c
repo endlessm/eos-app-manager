@@ -22,7 +22,7 @@ struct _EamPkg
   gchar *name;
   EamPkgVersion *version;
   gchar *locale;
-  gboolean secondary;
+  gboolean secondary_storage;
 };
 
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
@@ -52,7 +52,7 @@ eam_pkg_copy (EamPkg *pkg)
   copy->name = g_strdup (pkg->name);
   copy->version = eam_pkg_version_copy (pkg->version);
   copy->locale = g_strdup (pkg->locale);
-  copy->secondary = pkg->secondary;
+  copy->secondary_storage = pkg->secondary_storage;
 
   return copy;
 }
@@ -62,7 +62,7 @@ create_pkg (gchar *id,
             gchar *name,
             const gchar *ver,
             gchar *locale,
-            gboolean secondary)
+            gboolean secondary_storage)
 {
   EamPkgVersion *version = eam_pkg_version_new_from_string (ver);
   if (!version)
@@ -73,7 +73,7 @@ create_pkg (gchar *id,
   pkg->name = name;
   pkg->version = version;
   pkg->locale = locale;
-  pkg->secondary = secondary;
+  pkg->secondary_storage = secondary_storage;
 
   return pkg;
 }
@@ -84,7 +84,7 @@ static EamPkg *
 eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
 {
   gchar *ver, *id, *name, *locale;
-  gboolean secondary = FALSE;
+  gboolean secondary_storage;
 
   ver = id = name = locale = NULL;
 
@@ -107,9 +107,9 @@ eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
   locale = g_key_file_get_string (keyfile, GROUP, KEYS[LOCALE], NULL);
 
   /* "secondary_storage" is not required */
-  secondary = g_key_file_get_boolean (keyfile, GROUP, KEYS[SECONDARY_STORAGE], NULL);
+  secondary_storage = g_key_file_get_boolean (keyfile, GROUP, KEYS[SECONDARY_STORAGE], NULL);
 
-  EamPkg *pkg = create_pkg (id, name, ver, locale, secondary);
+  EamPkg *pkg = create_pkg (id, name, ver, locale, secondary_storage);
 
   g_free (ver); /* we don't need it anymore */
 
@@ -180,7 +180,7 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
   /* check if the metadata is on a read-only storage, and toggle the
    * secondary-storage flag regardless of what's in the metadata
    */
-  pkg->secondary = (buf.st_mode & S_IWUSR) == 0;
+  pkg->secondary_storage = (buf.st_mode & S_IWUSR) == 0;
 
   return pkg;
 }
@@ -279,5 +279,5 @@ eam_pkg_get_locale (const EamPkg *pkg)
 gboolean
 eam_pkg_is_on_secondary_storage (const EamPkg *pkg)
 {
-  return pkg->secondary;
+  return pkg->secondary_storage;
 }
