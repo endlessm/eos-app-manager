@@ -8,7 +8,7 @@
 #include "eam-log.h"
 
 #include <glib/gi18n.h>
-#include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
 
 /**
@@ -157,8 +157,7 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
 {
   g_return_val_if_fail (filename, NULL);
 
-  struct stat buf;
-  int res = stat (filename, &buf);
+  int res = access (filename, W_OK);
   if (res < 0) {
     int saved_errno = errno;
 
@@ -180,7 +179,7 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
   /* check if the metadata is on a read-only storage, and toggle the
    * secondary-storage flag regardless of what's in the metadata
    */
-  pkg->secondary_storage = (buf.st_mode & S_IWUSR) == 0;
+  pkg->secondary_storage = (res == 0) ? FALSE : TRUE;
 
   return pkg;
 }
