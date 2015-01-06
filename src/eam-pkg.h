@@ -38,6 +38,8 @@ EamPkgVersion  *eam_pkg_get_version             (const EamPkg *pkg);
 
 const gchar    *eam_pkg_get_locale              (const EamPkg *pkg);
 
+gboolean        eam_pkg_is_on_secondary_storage (const EamPkg *pkg);
+
 G_END_DECLS
 
 #endif /* EAM_PKG_H */

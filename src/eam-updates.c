@@ -392,8 +392,16 @@ eam_updates_filter (EamUpdates *self, EamPkgdb *db, const char *language)
     if (!fpkg) {
       priv->installs = g_list_prepend (priv->installs, apkg);
     } else {
-      if (eam_pkg_version_relate (eam_pkg_get_version (apkg), EAM_RELATION_GT,
-                                  eam_pkg_get_version (fpkg)))
+      gboolean newer, secondary_storage;
+
+      newer = eam_pkg_version_relate (eam_pkg_get_version (apkg),
+                                      EAM_RELATION_GT,
+                                      eam_pkg_get_version (fpkg));
+
+      /* we need to check the package in the existing database */
+      secondary_storage = eam_pkg_is_on_secondary_storage (fpkg);
+
+      if (newer && !secondary_storage)
         priv->updates = g_list_prepend (priv->updates, (gpointer) apkg);
     }
   }
@@ -454,15 +462,19 @@ eam_updates_pkg_is_upgradable (EamUpdates *self, const gchar *appid)
   g_return_val_if_fail (appid, FALSE);
 
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  GList *l;
+  gboolean retval = FALSE;
 
-  for (l = priv->updates; l; l = l->next) {
+  for (GList *l = priv->updates; l; l = l->next) {
     EamPkg *pkg = l->data;
-    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0)
-      return TRUE;
+
+    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0 &&
+        !eam_pkg_is_on_secondary_storage (pkg)) {
+      retval = TRUE;
+      break;
+    }
   }
 
-  return FALSE;
+  return retval;
 }
 
 /**

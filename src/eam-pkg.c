@@ -2,10 +2,14 @@
 
 #include "config.h"
 
-#include <glib/gi18n.h>
+#include "eam-pkg.h"
 
 #include "eam-error.h"
-#include "eam-pkg.h"
+#include "eam-log.h"
+
+#include <glib/gi18n.h>
+#include <unistd.h>
+#include <errno.h>
 
 /**
  * EamPkg:
@@ -18,13 +22,14 @@ struct _EamPkg
   gchar *name;
   EamPkgVersion *version;
   gchar *locale;
+  gboolean secondary_storage;
 };
 
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
-static const gchar *KEYS[] = { "app_id", "app_name", "version", "locale" };
-static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion", "Locale" };
-enum { APP_ID, APP_NAME, CODE_VERSION, LOCALE };
+static const gchar *KEYS[] = { "app_id", "app_name", "version", "locale", "secondary_storage" };
+static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion", "Locale", "secondaryStorage" };
+enum { APP_ID, APP_NAME, CODE_VERSION, LOCALE, SECONDARY_STORAGE };
 
 void
 eam_pkg_free (EamPkg *pkg)
@@ -47,12 +52,17 @@ eam_pkg_copy (EamPkg *pkg)
   copy->name = g_strdup (pkg->name);
   copy->version = eam_pkg_version_copy (pkg->version);
   copy->locale = g_strdup (pkg->locale);
+  copy->secondary_storage = pkg->secondary_storage;
 
   return copy;
 }
 
 static inline EamPkg *
-create_pkg (gchar *id, gchar *name, const gchar *ver, gchar *locale)
+create_pkg (gchar *id,
+            gchar *name,
+            const gchar *ver,
+            gchar *locale,
+            gboolean secondary_storage)
 {
   EamPkgVersion *version = eam_pkg_version_new_from_string (ver);
   if (!version)
@@ -63,37 +73,43 @@ create_pkg (gchar *id, gchar *name, const gchar *ver, gchar *locale)
   pkg->name = name;
   pkg->version = version;
   pkg->locale = locale;
+  pkg->secondary_storage = secondary_storage;
 
   return pkg;
 }
+
+#define GROUP   "Bundle"
 
 static EamPkg *
 eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
 {
   gchar *ver, *id, *name, *locale;
-  const gchar *group = "Bundle";
+  gboolean secondary_storage;
 
   ver = id = name = locale = NULL;
 
-  if (!g_key_file_has_group (keyfile, group))
+  if (!g_key_file_has_group (keyfile, GROUP))
     goto bail;
 
-  id = g_key_file_get_string (keyfile, group, KEYS[APP_ID], error);
+  id = g_key_file_get_string (keyfile, GROUP, KEYS[APP_ID], error);
   if (!id)
     goto bail;
 
-  name = g_key_file_get_string (keyfile, group, KEYS[APP_NAME], error);
+  name = g_key_file_get_string (keyfile, GROUP, KEYS[APP_NAME], error);
   if (!name)
     goto bail;
 
-  ver = g_key_file_get_string (keyfile, group, KEYS[CODE_VERSION], error);
+  ver = g_key_file_get_string (keyfile, GROUP, KEYS[CODE_VERSION], error);
   if (!ver)
     goto bail;
 
   /* "locale" is not required */
-  locale = g_key_file_get_string (keyfile, group, KEYS[LOCALE], NULL);
+  locale = g_key_file_get_string (keyfile, GROUP, KEYS[LOCALE], NULL);
 
-  EamPkg *pkg = create_pkg (id, name, ver, locale);
+  /* "secondary_storage" is not required */
+  secondary_storage = g_key_file_get_boolean (keyfile, GROUP, KEYS[SECONDARY_STORAGE], NULL);
+
+  EamPkg *pkg = create_pkg (id, name, ver, locale, secondary_storage);
 
   g_free (ver); /* we don't need it anymore */
 
@@ -107,6 +123,8 @@ bail:
 
   return NULL;
 }
+
+#undef GROUP
 
 /**
  * eam_pkg_new_from_keyfile:
@@ -139,6 +157,17 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
 {
   g_return_val_if_fail (filename, NULL);
 
+  int res = access (filename, W_OK);
+  if (res < 0) {
+    int saved_errno = errno;
+
+    g_set_error (error, EAM_ERROR,
+                 EAM_ERROR_INVALID_FILE,
+                 "Unable to access the metadata file at '%s': %s",
+                 filename, g_strerror (saved_errno));
+    return NULL;
+  }
+
   GKeyFile *keyfile = g_key_file_new ();
   EamPkg *pkg = NULL;
 
@@ -146,6 +175,11 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
     pkg = eam_pkg_load_from_keyfile (keyfile, error);
 
   g_key_file_unref (keyfile);
+
+  /* check if the metadata is on a read-only storage, and toggle the
+   * secondary-storage flag regardless of what's in the metadata
+   */
+  pkg->secondary_storage = (res == 0) ? FALSE : TRUE;
 
   return pkg;
 }
@@ -166,8 +200,10 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
   const gchar *ver, *key;
   gchar *id, *name, *loc;
   JsonNode *node;
+  gboolean secondary;
 
   id = name = loc = NULL;
+  secondary = FALSE;
 
   key = JSON_KEYS[APP_ID];
   node = json_object_get_member (json, key);
@@ -193,7 +229,13 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
   if (node)
     loc = json_node_dup_string (node);
 
-  return create_pkg (id, name, ver, loc);
+  /* "secondaryStorage" is not required */
+  key = JSON_KEYS[SECONDARY_STORAGE];
+  node = json_object_get_member (json, key);
+  if (node)
+    secondary = json_node_get_boolean (node);
+
+  return create_pkg (id, name, ver, loc, secondary);
 
 bail:
   g_free (id);
@@ -231,4 +273,10 @@ eam_pkg_get_locale (const EamPkg *pkg)
     return pkg->locale;
 
   return "All";
+}
+
+gboolean
+eam_pkg_is_on_secondary_storage (const EamPkg *pkg)
+{
+  return pkg->secondary_storage;
 }
