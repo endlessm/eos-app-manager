@@ -176,40 +176,34 @@ check_secondary_storage (const char *filename)
    *    bit, but that bit is not exposed by the kernel headers, so we would
    *    have to do assume that the overlayfs magic bit never changes.
    */
-  gboolean retval = FALSE;
-
   struct stat statbuf;
   g_assert (stat (filename, &statbuf) == 0);
 
   /* we extract the major,minor numbers of the device for the file */
   unsigned int file_major = major (statbuf.st_dev);
   unsigned int file_minor = minor (statbuf.st_dev);
+  unsigned int file_stdev = statbuf.st_dev;
 
-  /* we walk throught the list of mounted devices and we check that
-   * the file resides on a volume mounted with overlayfs
+  /* and we compare them with the same fields of a list of known
+   * mount points
    */
-  FILE *mounts = fopen ("/proc/self/mounts", "r");
-  g_assert (mounts != NULL);
+  const char *known_mount_points[] = {
+    "/var/endless-extra",
+  };
 
-  struct mntent *mnt;
-  while ((mnt = getmntent (mounts)) != NULL) {
-    struct stat mnt_statbuf;
-    g_assert (stat (mnt->mnt_dir, &mnt_statbuf) == 0);
+  for (int i = 0; i < G_N_ELEMENTS (known_mount_points); i++) {
+    if (stat (known_mount_points[i], &statbuf) < 0) {
+      return FALSE;
+    }
 
-    unsigned int mnt_major = major (mnt_statbuf.st_dev);
-    unsigned int mnt_minor = minor (mnt_statbuf.st_dev);
-
-    if (g_strcmp0 (mnt->mnt_fsname, "overlayfs") == 0 &&
-        mnt_major == file_major &&
-        mnt_minor == file_minor) {
-      retval = TRUE;
-      break;
+    if (file_major == major (statbuf.st_dev) &&
+        file_minor == minor (statbuf.st_dev) &&
+        file_stdev == statbuf.st_dev) {
+      return TRUE;
     }
   }
 
-  fclose (mounts);
-
-  return retval;
+  return FALSE;
 }
 
 /**
