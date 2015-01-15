@@ -8,8 +8,12 @@
 #include "eam-log.h"
 
 #include <glib/gi18n.h>
+
+#include <stdio.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <mntent.h>
 
 /**
  * EamPkg:
@@ -143,6 +147,60 @@ eam_pkg_new_from_keyfile (GKeyFile *keyfile, GError **error)
   return eam_pkg_load_from_keyfile (keyfile, error);
 }
 
+/*< private >
+ * check_secondary_storage:
+ * @filename: the full path to the bundle info file
+ *
+ * Returns: %TRUE if the bundle info resides on secondary storage
+ */
+static gboolean
+check_secondary_storage (const char *filename)
+{
+  /* we have various heuristics in place to check if a bundle resides on
+   * the secondary storage device
+   */
+
+  /* 1. check if the file is read-only; secondary storage is read-only
+   *    for the time being. we don't check for ENOENT or EACCESS, because
+   *    by the time this function is called, we know that we could load
+   *    the file in question.
+   */
+  int res = access (filename, W_OK);
+  if (res < 0) {
+    return TRUE;
+  }
+
+  /* 2. we check if the file resides on a volume mounted using overlayfs.
+   *    this is a bit more convoluted; in theory, we could check if the
+   *    directory in which @filename is located has the overlayfs magic
+   *    bit, but that bit is not exposed by the kernel headers, so we would
+   *    have to do assume that the overlayfs magic bit never changes.
+   */
+  struct stat statbuf;
+  g_assert (stat (filename, &statbuf) == 0);
+
+  dev_t file_stdev = statbuf.st_dev;
+
+  /* and we compare them with the same fields of a list of known
+   * mount points
+   */
+  const char *known_mount_points[] = {
+    "/var/endless-extra",
+  };
+
+  for (int i = 0; i < G_N_ELEMENTS (known_mount_points); i++) {
+    if (stat (known_mount_points[i], &statbuf) < 0) {
+      return FALSE;
+    }
+
+    if (file_stdev == statbuf.st_dev) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
 /**
  * eam_pkg_new_from_filename:
  * @filename: the bundle info file
@@ -157,17 +215,6 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
 {
   g_return_val_if_fail (filename, NULL);
 
-  int res = access (filename, W_OK);
-  if (res < 0) {
-    int saved_errno = errno;
-
-    g_set_error (error, EAM_ERROR,
-                 EAM_ERROR_INVALID_FILE,
-                 "Unable to access the metadata file at '%s': %s",
-                 filename, g_strerror (saved_errno));
-    return NULL;
-  }
-
   GKeyFile *keyfile = g_key_file_new ();
   EamPkg *pkg = NULL;
 
@@ -179,7 +226,7 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
   /* check if the metadata is on a read-only storage, and toggle the
    * secondary-storage flag regardless of what's in the metadata
    */
-  pkg->secondary_storage = (res == 0) ? FALSE : TRUE;
+  pkg->secondary_storage = check_secondary_storage (filename);
 
   return pkg;
 }
