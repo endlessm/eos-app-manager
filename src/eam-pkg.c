@@ -179,10 +179,7 @@ check_secondary_storage (const char *filename)
   struct stat statbuf;
   g_assert (stat (filename, &statbuf) == 0);
 
-  /* we extract the major,minor numbers of the device for the file */
-  unsigned int file_major = major (statbuf.st_dev);
-  unsigned int file_minor = minor (statbuf.st_dev);
-  unsigned int file_stdev = statbuf.st_dev;
+  dev_t file_stdev = statbuf.st_dev;
 
   /* and we compare them with the same fields of a list of known
    * mount points
@@ -196,9 +193,7 @@ check_secondary_storage (const char *filename)
       return FALSE;
     }
 
-    if (file_major == major (statbuf.st_dev) &&
-        file_minor == minor (statbuf.st_dev) &&
-        file_stdev == statbuf.st_dev) {
+    if (file_stdev == statbuf.st_dev) {
       return TRUE;
     }
   }
