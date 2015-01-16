@@ -26,4 +26,4 @@ Section: non-free/admin
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, gpgv, xdelta3-dir-patcher, wget
 Description: Endless Application Manager
- DBus service for installing, removing and updagrading Endless applications.
+ DBus service for installing, removing and upgrading Endless applications.
