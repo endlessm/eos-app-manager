@@ -9,7 +9,7 @@ gboolean
 eam_utils_appid_is_legal (const char *appid)
 {
   static const char alsoallowed[] = "-+.";
-  static const char *reserveddirs[] = { "bin", "share" };
+  static const char *reserveddirs[] = { "bin", "share", "lost+found" };
 
   if (!appid || appid[0] == '\0')
     return FALSE;
