@@ -26,4 +26,13 @@ Section: non-free/admin
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, gpgv, xdelta3-dir-patcher, wget
 Description: Endless Application Manager
- DBus service for installing, removing and updagrading Endless applications.
+ DBus service for installing, removing and upgrading Endless applications.
+
+Package: eos-app-manager-dbg
+Section: debug
+Architecture: any
+Depends: ${misc:Depends}, eos-app-manager (= ${binary:Version})
+Description: Endless Application Manager debugging symbols
+ DBus service for installing, removing and upgrading Endless applications.
+ .
+ This package contains the debugging symbols for eos-app-manager.
