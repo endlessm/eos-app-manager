@@ -257,9 +257,9 @@ load_introspection (const char *name, GError **error)
 
 static EamInvocationInfo *
 eam_invocation_info_new (EamService *service,
-			 GDBusMethodInvocation *invocation,
-			 EamServiceMethod method,
-			 GVariant *params)
+                         GDBusMethodInvocation *invocation,
+                         EamServiceMethod method,
+                         GVariant *params)
 {
   EamInvocationInfo *info;
 
@@ -815,9 +815,9 @@ run_service_install (EamService *service, const gchar *appid,
 
   if (internal_error != NULL) {
     g_set_error (&error, EAM_ERROR,
-		 EAM_ERROR_UNIMPLEMENTED,
-		 _("Internal transaction error: %s"),
-		 internal_error->message);
+                 EAM_ERROR_UNIMPLEMENTED,
+                 _("Internal transaction error: %s"),
+                 internal_error->message);
     g_clear_object (&priv->trans);
     g_clear_error (&internal_error);
     goto out;
@@ -900,8 +900,8 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   g_variant_get (params, "(&s)", &appid);
 
   run_eam_service_with_load_pkgdb (service, appid,
-				   run_service_uninstall,
-				   invocation);
+                                   run_service_uninstall,
+                                   invocation);
 }
 
 static gboolean
@@ -1024,7 +1024,7 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
     EAM_SERVICE_METHOD_INSTALL);
   can_uninstall = eam_service_check_auth_by_method (service, subject,
     EAM_SERVICE_METHOD_UNINSTALL);
-  can_refresh = TRUE; 
+  can_refresh = TRUE;
 
 out:
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a{sv})"));
@@ -1221,7 +1221,7 @@ bail:
 
 static void
 run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
-			       EamServiceMethod method, GVariant *params)
+                               EamServiceMethod method, GVariant *params)
 {
   if (!auth_action[method].action_id) {
     /* The service does not any require authorization */
@@ -1234,8 +1234,8 @@ run_method_with_authorization (EamService *service, GDBusMethodInvocation *invoc
   if (subject == NULL) {
     eam_log_error_message ("Unable to create the Polkit subject for: %s", sender);
     g_dbus_method_invocation_return_error (invocation, EAM_ERROR,
-					   EAM_ERROR_AUTHORIZATION,
-					   _("An error happened during the authorization process"));
+                                           EAM_ERROR_AUTHORIZATION,
+                                           _("An error happened during the authorization process"));
     return;
   }
 
@@ -1289,7 +1289,7 @@ eam_remote_transaction_free (EamRemoteTransaction *remote)
 
   if (remote->registration_id != 0)
     g_dbus_connection_unregister_object (remote->connection,
-					 remote->registration_id);
+                                         remote->registration_id);
 
   g_clear_object (&remote->service);
   g_clear_object (&remote->transaction);
