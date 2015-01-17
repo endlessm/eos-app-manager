@@ -81,6 +81,27 @@
     <method name="Install" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg type="s" direction="in" />
+      <arg type="o" direction="out">
+      <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      </arg>
+    </method>
+
+    <!--
+      Update:
+
+      Updates a package.
+
+      Expects:
+
+       * Application ID for the app that is to be updated
+       * Flag whether we are fine with using deltas for the process
+
+      Returns:
+       * Transaction DBus path if successful or an error
+    -->
+    <method name="Update" >
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
+      <arg type="s" direction="in" />
       <arg type="b" direction="in" />
       <arg type="o" direction="out">
       <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
