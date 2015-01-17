@@ -352,41 +352,36 @@ run_scripts (EamInstall *self, const gchar *scriptdir,
   g_object_unref (spawner);
 }
 
-static void download_bundle (EamInstall *self, GTask *task);
-
-static void
-xdelta_rollback_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  /* Fallback mode: do a full update */
-  priv->action = EAM_ACTION_UPDATE;
-  download_bundle (self, task);
-}
-
 static void
 rollback (GTask *task, GError *error)
 {
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  GCancellable *cancellable = g_task_get_cancellable (task);
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE && priv->bundle) {
-    run_scripts (self, get_rollback_scriptdir (self), cancellable,
-      xdelta_rollback_cb, task);
-
+  /* Log some messages about what happened */
+  switch (priv->action) {
+  case EAM_ACTION_XDELTA_UPDATE:
     eam_log_error_message ("Incremental update failed: %s", error->message);
-    g_clear_error (&error);
+    break;
+  case EAM_ACTION_UPDATE:
+    eam_log_error_message ("Full update failed: %s", error->message);
+    break;
+  case EAM_ACTION_INSTALL:
+    eam_log_error_message ("Install failed: %s", error->message);
+  }
+
+  /* Rollback action if possible */
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE && !priv->bundle) {
+    eam_log_error_message ("Can't rollback xdelta update - bundle not present.");
   } else {
     /* Use cancellable == NULL as we are returning immediately after
        using g_task_return. */
     run_scripts (self, get_rollback_scriptdir (self), NULL, NULL, NULL);
-
-    g_task_return_error (task, error);
-    g_object_unref (task);
   }
+
+  /* Clean up */
+  g_task_return_error (task, error);
+  g_object_unref (task);
 }
 
 static void
