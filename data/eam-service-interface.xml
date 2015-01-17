@@ -13,20 +13,20 @@
   <interface name="com.endlessm.AppManager">
 
     <!--
-	AvailableUpdates as read-only:
+      AvailableUpdates as read-only:
 
-	Specifies the list of updates currently available by app_id
+      Specifies the list of updates currently available by app_id
     -->
     <property name="AvailableUpdates" type="as" access="read">
       <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true" />
     </property>
 
     <!--
-          AvailableApplicationsChanged (as available_applications):
+      AvailableApplicationsChanged (as available_applications):
 
-	  A signal to which other processes can subscribe, indicating that the
-	  list of available applications has been updated. The passed-in array
-	  of strings is the new value returned by ListAvailable()
+      A signal to which other processes can subscribe, indicating that the
+      list of available applications has been updated. The passed-in array
+      of strings is the new value returned by ListAvailable()
     -->
     <signal name="AvailableApplicationsChanged">
       <arg type="a(sss)" direction="out" />
@@ -34,17 +34,17 @@
     </signal>
 
     <!--
-         GetUserCapabilities:
+      GetUserCapabilities:
 
-         Retrieves a list of capabilities for the UID that called
-         this method.
+      Retrieves a list of capabilities for the UID that called
+      this method.
 
-         The returned array of key, value pairs has the following
-         keys and value types:
+      The returned array of key, value pairs has the following
+      keys and value types:
 
-          * "CanInstall", bool
-          * "CanUpdate", bool
-          * "CanUninstall", bool
+       * "CanInstall", bool
+       * "CanUpdate", bool
+       * "CanUninstall", bool
     -->
     <method name="GetUserCapabilities">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
@@ -54,34 +54,34 @@
     </method>
 
     <!--
-	Refresh:
+      Refresh:
 
-        Refreshes the package database.
+      Refreshes the package database.
     -->
     <method name="Refresh" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg type="b" direction="out">
-	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
 
     <!--
-	Install:
+      Install:
 
-        Installs a package.
+      Installs a package.
     -->
     <method name="Install" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg type="s" direction="in" />
       <arg type="o" direction="out">
-	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
 
     <!--
-	Uninstall:
+      Uninstall:
 
-        Uninstalls a package.
+      Uninstalls a package.
     -->
     <method name="Uninstall" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
@@ -92,10 +92,10 @@
     </method>
 
     <!--
-	ListAvailable:
+      ListAvailable:
 
-        Returns a list of all applications available for installation
-        and for updates.
+      Returns a list of all applications available for installation
+      and for updates.
     -->
     <method name="ListAvailable" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
@@ -105,12 +105,12 @@
     </method>
 
     <!--
-	ListInstalled:
+      ListInstalled:
 
-        Returns two arrays of (id, name, version) tuples:
+      Returns two arrays of (id, name, version) tuples:
 
-          * a list of installed applications
-          * a list of installed applications that can be removed
+        * a list of installed applications
+        * a list of installed applications that can be removed
     -->
     <method name="ListInstalled" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
@@ -119,16 +119,16 @@
     </method>
 
     <!--
-	Quit:
+      Quit:
 
-	Suggest to the daemon to quit.
+      Suggest to the daemon to quit.
     -->
     <method name="Quit" />
 
     <!--
-	Cancel:
+      Cancel:
 
-	Suggest to the daemon to cancel the current transaction.
+      Suggest to the daemon to cancel the current transaction.
     -->
     <method name="Cancel" />
 
