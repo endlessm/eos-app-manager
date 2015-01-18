@@ -177,7 +177,9 @@ check_secondary_storage (const char *filename)
    *    have to do assume that the overlayfs magic bit never changes.
    */
   struct stat statbuf;
-  g_assert (stat (filename, &statbuf) == 0);
+  if (stat (filename, &statbuf) < 0) {
+    return FALSE;
+  }
 
   dev_t file_stdev = statbuf.st_dev;
 
