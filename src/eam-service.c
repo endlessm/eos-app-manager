@@ -65,6 +65,7 @@ static guint signals[SIGNAL_MAX];
 
 typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
+  EAM_SERVICE_METHOD_UPDATE,
   EAM_SERVICE_METHOD_UNINSTALL,
   EAM_SERVICE_METHOD_REFRESH,
   EAM_SERVICE_METHOD_LIST_AVAILABLE,
@@ -106,6 +107,8 @@ typedef struct {
 
 static void eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
+static void eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params);
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
@@ -140,7 +143,15 @@ static EamServiceAuth auth_action[] = {
     .dbus_name = "Install",
     .run = eam_service_install,
     .action_id = "com.endlessm.app-installer.install-application",
-    .message = N_("Authentication is required to install or update software"),
+    .message = N_("Authentication is required to install software"),
+  },
+
+  [EAM_SERVICE_METHOD_UPDATE] = {
+    .method = EAM_SERVICE_METHOD_UPDATE,
+    .dbus_name = "Update",
+    .run = eam_service_update,
+    .action_id = "com.endlessm.app-installer.update-application",
+    .message = N_("Authentication is required to update software"),
   },
 
   [EAM_SERVICE_METHOD_UNINSTALL] = {
@@ -838,6 +849,13 @@ run_service_install (EamService *service, const gchar *appid,
 }
 
 static void
+run_service_update (EamService *service, const gchar *appid,
+  GDBusMethodInvocation *invocation)
+{
+    eam_log_info_message("Not implemented yet");
+}
+
+static void
 eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
@@ -846,6 +864,19 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
 
   run_eam_service_with_load_pkgdb (service, appid,
                                    run_service_install,
+                                   invocation);
+}
+
+static void
+eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
+{
+  const gchar *appid = NULL;
+  gboolean allow_deltas = FALSE;
+  g_variant_get (params, "(&sb)", &appid, allow_deltas);
+
+  run_eam_service_with_load_pkgdb (service, appid,
+                                   run_service_update,
                                    invocation);
 }
 
