@@ -655,7 +655,7 @@ run_eam_transaction (EamService *service, GDBusMethodInvocation *invocation,
   eam_transaction_run_async (priv->trans, priv->cancellable, callback, service);
 }
 
-typedef void (*EamRunService) (EamService *service, const gchar *appid,
+typedef void (*EamRunService) (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation);
 
 struct _load_pkgdb_clos {
@@ -663,9 +663,34 @@ struct _load_pkgdb_clos {
   GDBusMethodInvocation *invocation;
   GAsyncReadyCallback callback;
 
-  gchar *appid;
+  gpointer params;
   EamRunService run_service;
 };
+
+/* Structure that holds parameters that a service might use */
+struct _eam_service_params_clos {
+  gchar *appid;
+  gboolean allow_deltas;
+};
+
+static void
+eam_service_free_params_clos(struct _eam_service_params_clos *params)
+{
+  g_free(params->appid);
+  g_slice_free(struct _eam_service_params_clos, params);
+}
+
+/* Helper method to populate the params structure */
+static const gpointer
+eam_service_populate_param_clos(const gchar *appid, const gboolean allow_deltas)
+{
+  struct _eam_service_params_clos *clos = g_slice_new0 (struct _eam_service_params_clos);
+
+  clos->appid = g_strdup(appid);
+  clos->allow_deltas = allow_deltas;
+
+  return (gpointer) clos;
+}
 
 static void
 load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
@@ -687,17 +712,17 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
   eam_service_set_reloaddb (clos->service, FALSE);
 
   if (clos->run_service)
-    clos->run_service (clos->service, clos->appid, clos->invocation);
+    clos->run_service (clos->service, clos->params, clos->invocation);
   else
     run_eam_transaction (clos->service, clos->invocation, clos->callback);
 
 out:
-  g_free (clos->appid);
+  eam_service_free_params_clos((struct _eam_service_params_clos *) clos->params);
   g_slice_free (struct _load_pkgdb_clos, clos);
 }
 
 static void
-run_eam_service_with_load_pkgdb (EamService *service, const gchar *appid,
+run_eam_service_with_load_pkgdb (EamService *service, const gpointer params,
   EamRunService run_service, GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
@@ -706,7 +731,7 @@ run_eam_service_with_load_pkgdb (EamService *service, const gchar *appid,
     struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
     clos->service = service;
     clos->invocation = invocation;
-    clos->appid = g_strdup (appid);
+    clos->params = params;
     clos->run_service = run_service;
 
     priv->trans = GINT_TO_POINTER (1); /* let's say we're running a transaction */
@@ -716,7 +741,7 @@ run_eam_service_with_load_pkgdb (EamService *service, const gchar *appid,
   }
 
   if (run_service)
-    run_service (service, appid, invocation);
+    run_service (service, params, invocation);
 }
 
 static void
@@ -806,14 +831,16 @@ out:
 }
 
 static void
-run_service_install (EamService *service, const gchar *appid,
+run_service_install (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   GError *error = NULL;
 
+  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
+
   eam_service_reset_timer (service);
-  priv->trans = eam_install_new (priv->db, appid, priv->updates, &error);
+  priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
   if (error != NULL) {
     goto out;
   }
@@ -837,6 +864,8 @@ run_service_install (EamService *service, const gchar *appid,
   eam_service_add_active_transaction (service, remote);
 
  out:
+  eam_service_free_params_clos (clos);
+
   if (error == NULL) {
     g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
   }
@@ -849,33 +878,47 @@ run_service_install (EamService *service, const gchar *appid,
 }
 
 static void
-run_service_update (EamService *service, const gchar *appid,
-  GDBusMethodInvocation *invocation)
-{
-    eam_log_info_message("Not implemented yet");
-}
-
-static void
 eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
-  const gchar *appid = NULL;
+  gchar *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  run_eam_service_with_load_pkgdb (service, appid,
+  gpointer svc_params = eam_service_populate_param_clos(appid, FALSE);
+
+  g_free(appid);
+
+  run_eam_service_with_load_pkgdb (service, svc_params,
                                    run_service_install,
                                    invocation);
+}
+
+static void
+run_service_update (EamService *service, const gpointer params,
+  GDBusMethodInvocation *invocation)
+{
+  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
+
+  eam_log_info_message("Not implemented yet (%s, %s)", clos->appid,
+                         clos->allow_deltas ? "true" : "false");
+
+  eam_service_free_params_clos (clos);
 }
 
 static void
 eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
-  const gchar *appid = NULL;
+  gchar *appid = NULL;
   gboolean allow_deltas = FALSE;
   g_variant_get (params, "(&sb)", &appid, allow_deltas);
 
-  run_eam_service_with_load_pkgdb (service, appid,
+  gpointer svc_params = eam_service_populate_param_clos(appid,
+                                                        allow_deltas);
+
+  g_free(appid);
+
+  run_eam_service_with_load_pkgdb (service, svc_params,
                                    run_service_update,
                                    invocation);
 }
@@ -914,23 +957,31 @@ out:
 }
 
 static void
-run_service_uninstall (EamService *service, const gchar *appid,
+run_service_uninstall (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  priv->trans = eam_uninstall_new (priv->db, appid);
+  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
+
+  priv->trans = eam_uninstall_new (priv->db, clos->appid);
   run_eam_transaction (service, invocation, uninstall_cb);
+
+  eam_service_free_params_clos (clos);
 }
 
 static void
 eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
-  const gchar *appid = NULL;
+  gchar *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  run_eam_service_with_load_pkgdb (service, appid,
+  gpointer svc_params = eam_service_populate_param_clos(appid, FALSE);
+
+  g_free(appid);
+
+  run_eam_service_with_load_pkgdb (service, svc_params,
                                    run_service_uninstall,
                                    invocation);
 }
@@ -1111,7 +1162,7 @@ eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static void
-run_service_list_installed (EamService *service, const gchar *appid,
+run_service_list_installed (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
