@@ -676,8 +676,10 @@ struct _eam_service_params_clos {
 static void
 eam_service_free_params_clos(struct _eam_service_params_clos *params)
 {
-  g_free(params->appid);
-  g_slice_free(struct _eam_service_params_clos, params);
+  if (params) {
+    g_free(params->appid);
+    g_slice_free(struct _eam_service_params_clos, params);
+  }
 }
 
 /* Helper method to populate the params structure */
@@ -718,6 +720,7 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
 
 out:
   eam_service_free_params_clos((struct _eam_service_params_clos *) clos->params);
+
   g_slice_free (struct _load_pkgdb_clos, clos);
 }
 
