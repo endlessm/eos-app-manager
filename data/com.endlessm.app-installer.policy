@@ -20,6 +20,17 @@
     </defaults>
   </action>
 
+  <action id="com.endlessm.app-installer.update-application">
+    <description>Update software</description>
+    <message>Authentication is required to update software</message>
+    <annotate key="org.freedesktop.policykit.owner">unix-user:app-manager</annotate>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
   <action id="com.endlessm.app-installer.cancel-request">
     <description>Cancel request</description>
     <message>Authentication is required to cancel the application manager ongoing task</message>
