@@ -29,8 +29,8 @@
       of strings is the new value returned by ListAvailable()
     -->
     <signal name="AvailableApplicationsChanged">
-      <arg type="a(sss)" direction="out" />
-      <arg type="a(sss)" direction="out" />
+      <arg name="available" type="a(sss)" direction="out" />
+      <arg name="updatable" type="a(sss)" direction="out" />
     </signal>
 
     <!--
@@ -48,7 +48,7 @@
     -->
     <method name="GetUserCapabilities">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="a{sv}" name="capabilities" direction="out">
+      <arg name="capabilities" type="a{sv}" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
@@ -60,8 +60,8 @@
     -->
     <method name="Refresh" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="b" direction="out">
-      <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      <arg name="success" type="b" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
 
@@ -80,9 +80,9 @@
     -->
     <method name="Install" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="s" direction="in" />
-      <arg type="o" direction="out">
-      <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      <arg name="appid" type="s" direction="in" />
+      <arg name="transaction" type="o" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
 
@@ -101,10 +101,10 @@
     -->
     <method name="Update" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="s" direction="in" />
-      <arg type="b" direction="in" />
-      <arg type="o" direction="out">
-      <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
+      <arg name="appid" type="s" direction="in" />
+      <arg name="allow_deltas" type="b" direction="in" />
+      <arg name="transaction" type="o" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
 
@@ -115,8 +115,8 @@
     -->
     <method name="Uninstall" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="s" direction="in" />
-      <arg type="b" direction="out">
+      <arg name="appid" type="s" direction="in" />
+      <arg name="transaction" type="b" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
@@ -129,9 +129,9 @@
     -->
     <method name="ListAvailable" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="a{sv}" direction="in" />
-      <arg type="a(sss)" direction="out" />
-      <arg type="a(sss)" direction="out" />
+      <arg name="filters" type="a{sv}" direction="in" />
+      <arg name="installable" type="a(sss)" direction="out" />
+      <arg name="updatable" type="a(sss)" direction="out" />
     </method>
 
     <!--
@@ -144,8 +144,8 @@
     -->
     <method name="ListInstalled" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg type="a(sss)" name="installed" direction="out" />
-      <arg type="a(sss)" name="removable" direction="out" />
+      <arg name="installed" type="a(sss)" direction="out" />
+      <arg name="removable" type="a(sss)" direction="out" />
     </method>
 
     <!--
