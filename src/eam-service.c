@@ -1549,6 +1549,14 @@ handle_transaction_get_property (GDBusConnection *connection,
     goto error_out;
   }
 
+  if (g_strcmp0 (name, "IsDelta") == 0) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+
+    const gboolean is_delta = eam_install_is_delta_update (install);
+
+    return g_variant_new ("b", is_delta);
+  }
+
 error_out:
   /* return an error */
   g_set_error (error, EAM_ERROR,

@@ -10,6 +10,7 @@
     <property name="BundleURI" type="s" access="read"/>
     <property name="SignatureURI" type="s" access="read"/>
     <property name="ApplicationId" type="s" access="read"/>
+    <property name="IsDelta" type="b" access="read"/>
 
     <method name="CompleteTransaction">
       <arg type="s" name="path" direction="in"/>

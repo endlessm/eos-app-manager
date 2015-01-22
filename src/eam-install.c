@@ -1005,3 +1005,11 @@ eam_install_get_app_id (EamInstall *install)
 
   return priv->appid;
 }
+
+const gboolean
+eam_install_is_delta_update (EamInstall *install)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  return (priv->action == EAM_ACTION_XDELTA_UPDATE);
+}
