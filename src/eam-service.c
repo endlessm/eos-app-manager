@@ -896,16 +896,57 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
                                    invocation);
 }
 
+// TODO: combine commonalities with run_service_install
 static void
 run_service_update (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation)
 {
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  GError *error = NULL;
+
   struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
 
-  eam_log_info_message("Not implemented yet (%s, %s)", clos->appid,
-                         clos->allow_deltas ? "true" : "false");
+  eam_log_error_message("Not implemented yet (%s, %s)", clos->appid,
+                        clos->allow_deltas ? "true" : "false");
 
+  eam_service_reset_timer (service);
+
+  // TODO: Change to eam_update_new
+  priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
+  if (error != NULL) {
+    goto out;
+  }
+
+  const char *sender = g_dbus_method_invocation_get_sender (invocation);
+  GError *internal_error = NULL;
+  EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
+                                                             priv->trans,
+                                                             &internal_error);
+
+  if (internal_error != NULL) {
+    g_set_error (&error, EAM_ERROR,
+                 EAM_ERROR_UNIMPLEMENTED,
+                 _("Internal transaction error: %s"),
+                 internal_error->message);
+    g_clear_object (&priv->trans);
+    g_clear_error (&internal_error);
+    goto out;
+  }
+
+  eam_service_add_active_transaction (service, remote);
+
+ out:
   eam_service_free_params_clos (clos);
+
+  if (error == NULL) {
+    g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
+  }
+  else {
+    g_dbus_method_invocation_return_gerror (invocation, error);
+    g_error_free (error);
+
+    eam_service_check_queue (service);
+  }
 }
 
 static void
