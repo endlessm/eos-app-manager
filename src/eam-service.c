@@ -677,7 +677,9 @@ static void
 eam_service_free_params_clos(struct _eam_service_params_clos *params)
 {
   if (params) {
-    g_free(params->appid);
+    if (params -> appid)
+        g_free(params->appid);
+
     g_slice_free(struct _eam_service_params_clos, params);
   }
 }
