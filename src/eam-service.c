@@ -835,22 +835,13 @@ out:
   eam_service_clear_transaction (service, priv->trans);
 }
 
-static void
-run_service_install (EamService *service, const gpointer params,
-  GDBusMethodInvocation *invocation)
+static EamRemoteTransaction *
+start_dbus_transaction (EamService *service, GDBusMethodInvocation *invocation,
+  GError *error)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-  GError *error = NULL;
-
-  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
-
-  eam_service_reset_timer (service);
-  priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
-  if (error != NULL) {
-    goto out;
-  }
-
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
+
   GError *internal_error = NULL;
   EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
                                                              priv->trans,
@@ -863,16 +854,42 @@ run_service_install (EamService *service, const gpointer params,
                  internal_error->message);
     g_clear_object (&priv->trans);
     g_clear_error (&internal_error);
-    goto out;
+
+    return NULL;
   }
 
   eam_service_add_active_transaction (service, remote);
 
- out:
+  return remote;
+}
+
+static void
+run_service_install (EamService *service, const gpointer params,
+  GDBusMethodInvocation *invocation)
+{
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
+  EamRemoteTransaction *remote_transaction = NULL;
+  GError *error = NULL;
+
+  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
+
+  eam_service_reset_timer (service);
+
+  priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
+
+  /* Free the params before handling the error */
   eam_service_free_params_clos (clos);
 
-  if (error == NULL) {
-    g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
+  if (error != NULL)
+    goto out;
+
+  remote_transaction = start_dbus_transaction (service, invocation, error);
+
+ out:
+  if (error == NULL && remote_transaction != NULL) {
+    g_dbus_method_invocation_return_value (invocation,
+                                           g_variant_new ("(o)",
+                                                          remote_transaction->obj_path));
   }
   else {
     g_dbus_method_invocation_return_gerror (invocation, error);
@@ -904,45 +921,31 @@ run_service_update (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+  EamRemoteTransaction *remote_transaction = NULL;
   GError *error = NULL;
 
   struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
 
-  eam_log_error_message("Not implemented yet (%s, %s)", clos->appid,
-                        clos->allow_deltas ? "true" : "false");
+  eam_log_error_message ("Update service callback (%s, %s)", clos->appid,
+                         clos->allow_deltas ? "true" : "false");
 
   eam_service_reset_timer (service);
 
-  // TODO: Change to eam_update_new
   priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
-  if (error != NULL) {
-    eam_log_error_message("Update of %s failed: %s", clos->appid, error->message);
-    goto out;
-  }
 
-  const char *sender = g_dbus_method_invocation_get_sender (invocation);
-  GError *internal_error = NULL;
-  EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
-                                                             priv->trans,
-                                                             &internal_error);
-
-  if (internal_error != NULL) {
-    g_set_error (&error, EAM_ERROR,
-                 EAM_ERROR_UNIMPLEMENTED,
-                 _("Internal transaction error: %s"),
-                 internal_error->message);
-    g_clear_object (&priv->trans);
-    g_clear_error (&internal_error);
-    goto out;
-  }
-
-  eam_service_add_active_transaction (service, remote);
-
- out:
+  /* Free the params before handling the error */
   eam_service_free_params_clos (clos);
 
-  if (error == NULL) {
-    g_dbus_method_invocation_return_value (invocation, g_variant_new ("(o)", remote->obj_path));
+  if (error != NULL)
+    goto out;
+
+  remote_transaction = start_dbus_transaction (service, invocation, error);
+
+ out:
+  if (error == NULL && remote_transaction != NULL) {
+    g_dbus_method_invocation_return_value (invocation,
+                                           g_variant_new ("(o)",
+                                                          remote_transaction->obj_path));
   }
   else {
     g_dbus_method_invocation_return_gerror (invocation, error);
