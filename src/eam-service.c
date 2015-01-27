@@ -887,7 +887,7 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
   gchar *appid = NULL;
-  g_variant_get (params, "(&s)", &appid);
+  g_variant_get (params, "(s)", &appid);
 
   gpointer svc_params = eam_service_populate_param_clos(appid, FALSE);
 
@@ -1026,7 +1026,7 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
   gchar *appid = NULL;
-  g_variant_get (params, "(&s)", &appid);
+  g_variant_get (params, "(s)", &appid);
 
   gpointer svc_params = eam_service_populate_param_clos(appid, FALSE);
 
@@ -1509,9 +1509,9 @@ handle_transaction_method_call (GDBusConnection *connection,
   eam_log_info_message ("Received method '%s' on transaction interface", method);
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
-    const char *bundle_path;
+    char *bundle_path;
 
-    g_variant_get (params, "(&s)", &bundle_path);
+    g_variant_get (params, "(s)", &bundle_path);
 
     if (bundle_path != NULL && *bundle_path != '\0') {
       EamInstall *install = EAM_INSTALL (remote->transaction);
@@ -1521,6 +1521,8 @@ handle_transaction_method_call (GDBusConnection *connection,
         remote->obj_path);
 
       eam_install_set_bundle_location (install, bundle_path);
+
+      g_free (bundle_path);
     }
 
     /* we don't keep a reference here to avoid cycles */
