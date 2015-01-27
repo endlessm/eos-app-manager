@@ -916,6 +916,7 @@ run_service_update (EamService *service, const gpointer params,
   // TODO: Change to eam_update_new
   priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
   if (error != NULL) {
+    eam_log_error_message("Update of %s failed: %s", clos->appid, error->message);
     goto out;
   }
 
@@ -1081,6 +1082,9 @@ user_is_in_admin_group (uid_t user, const char *admin_group)
 
   g_free (groups);
 
+  if (!retval)
+    eam_log_error_message("Matching admin group not found in invocation");
+
   return retval;
 }
 
@@ -1193,6 +1197,8 @@ static void
 eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
+  eam_log_info_message("List available apps service invoked");
+
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   GVariant *opts = g_variant_get_child_value (params, 0);
