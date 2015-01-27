@@ -958,7 +958,11 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
 {
   gchar *appid = NULL;
   gboolean allow_deltas = FALSE;
-  g_variant_get (params, "(&sb)", &appid, allow_deltas);
+
+  g_variant_get (params, "(sb)", &appid, &allow_deltas);
+
+  eam_log_info_message ("Update service called (appid: %s, deltas: %s)", appid,
+                        allow_deltas ? "True" : "False");
 
   gpointer svc_params = eam_service_populate_param_clos(appid,
                                                         allow_deltas);
