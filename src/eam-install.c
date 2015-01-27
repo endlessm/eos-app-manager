@@ -17,10 +17,6 @@
 
 #define INSTALL_SCRIPTDIR "install/run"
 #define INSTALL_ROLLBACKDIR "install/rollback"
-#define UPDATE_SCRIPTDIR "update/full"
-#define UPDATE_ROLLBACKDIR "update/rollback"
-#define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
-#define XDELTA_UPDATE_ROLLBACKDIR "update/rollback"
 
 typedef struct _EamBundle        EamBundle;
 
@@ -31,21 +27,13 @@ struct _EamBundle
   gchar *hash;
 };
 
-typedef enum {
-  EAM_ACTION_INSTALL,       /* Install */
-  EAM_ACTION_UPDATE,        /* Update downloading the complete bundle */
-  EAM_ACTION_XDELTA_UPDATE, /* Update applying xdelta diff files */
-} EamAction;
-
 typedef struct _EamInstallPrivate	EamInstallPrivate;
 
 struct _EamInstallPrivate
 {
   gchar *appid;
   gchar *from_version;
-  EamAction action;
   EamBundle *bundle;
-  EamBundle *xdelta_bundle;
   char *bundle_location;
 
   EamPkgdb *pkgdb;
@@ -126,7 +114,6 @@ eam_install_finalize (GObject *obj)
   g_clear_pointer (&priv->appid, g_free);
   g_clear_pointer (&priv->bundle_location, g_free);
   g_clear_pointer (&priv->bundle, eam_bundle_free);
-  g_clear_pointer (&priv->xdelta_bundle, eam_bundle_free);
 
   g_clear_object (&priv->updates);
   g_clear_object (&priv->pkgdb);
@@ -217,19 +204,7 @@ eam_install_initable_init (GInitable *initable,
   EamInstall *install = EAM_INSTALL (initable);
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
 
-  if (eam_updates_pkg_is_upgradable (priv->updates, priv->appid)) {
-    /* update from the current version to the last version */
-    const EamPkg *pkg = eam_pkgdb_get (priv->pkgdb, priv->appid);
-    g_assert (pkg);
-
-    EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
-    priv->from_version = eam_pkg_version_as_string (pkg_version);
-    priv->action = eam_config_deltaupdates () ? EAM_ACTION_XDELTA_UPDATE : EAM_ACTION_UPDATE;
-  }
-  else if (eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
-    priv->action = EAM_ACTION_INSTALL;
-  }
-  else {
+  if (!eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
     g_set_error (error, EAM_ERROR,
 		 EAM_ERROR_PKG_UNKNOWN,
 		 _("Application '%s' is unknown"),
@@ -292,35 +267,13 @@ build_tarball_filename (EamInstall *self)
 static const gchar *
 get_rollback_scriptdir (EamInstall *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  switch (priv->action) {
-  case EAM_ACTION_INSTALL:
-    return INSTALL_ROLLBACKDIR;
-  case EAM_ACTION_UPDATE:
-    return UPDATE_ROLLBACKDIR;
-  case EAM_ACTION_XDELTA_UPDATE:
-    return XDELTA_UPDATE_ROLLBACKDIR;
-  default:
-    g_assert_not_reached ();
-  }
+  return INSTALL_ROLLBACKDIR;
 }
 
 static const gchar *
 get_scriptdir (EamInstall *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  switch (priv->action) {
-  case EAM_ACTION_INSTALL:
-    return INSTALL_SCRIPTDIR;
-  case EAM_ACTION_UPDATE:
-    return UPDATE_SCRIPTDIR;
-  case EAM_ACTION_XDELTA_UPDATE:
-    return XDELTA_UPDATE_SCRIPTDIR;
-  default:
-    g_assert_not_reached ();
-  }
+  return INSTALL_SCRIPTDIR;
 }
 
 static void
@@ -356,28 +309,14 @@ static void
 rollback (GTask *task, GError *error)
 {
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   /* Log some messages about what happened */
-  switch (priv->action) {
-  case EAM_ACTION_XDELTA_UPDATE:
-    eam_log_error_message ("Incremental update failed: %s", error->message);
-    break;
-  case EAM_ACTION_UPDATE:
-    eam_log_error_message ("Full update failed: %s", error->message);
-    break;
-  case EAM_ACTION_INSTALL:
-    eam_log_error_message ("Install failed: %s", error->message);
-  }
+  eam_log_error_message ("Install failed: %s", error->message);
 
   /* Rollback action if possible */
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE && !priv->bundle) {
-    eam_log_error_message ("Can't rollback xdelta update - bundle not present.");
-  } else {
-    /* Use cancellable == NULL as we are returning immediately after
-       using g_task_return. */
-    run_scripts (self, get_rollback_scriptdir (self), NULL, NULL, NULL);
-  }
+  /* Use cancellable == NULL as we are returning immediately after
+     using g_task_return. */
+  run_scripts (self, get_rollback_scriptdir (self), NULL, NULL, NULL);
 
   /* Clean up */
   g_task_return_error (task, error);
@@ -430,13 +369,7 @@ create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   gchar *filename = build_sha256sum_filename (self);
-  const gchar *hash;
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    hash = priv->xdelta_bundle->hash;
-  else
-    hash = priv->bundle->hash;
-
-  gchar *contents = g_strconcat (hash, "\t", tarball, "\n", NULL);
+  gchar *contents = g_strconcat (priv->bundle->hash, "\t", tarball, "\n", NULL);
 
   g_file_set_contents (filename, contents, -1, error);
 
@@ -505,15 +438,11 @@ download_signature (EamInstall *self, GTask *task)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   gchar *filename = build_sign_filename (self);
-  const gchar *download_url;
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    download_url = priv->xdelta_bundle->signature_url;
-  else
-    download_url = priv->bundle->signature_url;
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   EamWc *wc = eam_wc_new ();
-  eam_wc_request_async (wc, download_url, filename, cancellable, dl_sign_cb, task);
+  eam_wc_request_async (wc, priv->bundle->signature_url, filename, cancellable,
+                        dl_sign_cb, task);
 
   g_object_unref (wc);
   g_free (filename);
@@ -550,41 +479,14 @@ download_bundle (EamInstall *self, GTask *task)
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   gchar *filename = build_tarball_filename (self);
-  const gchar *download_url;
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    download_url = priv->xdelta_bundle->download_url;
-  else
-    download_url = priv->bundle->download_url;
 
   EamWc *wc = eam_wc_new ();
   GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_wc_request_async (wc, download_url, filename, cancellable, dl_bundle_cb, task);
+  eam_wc_request_async (wc, priv->bundle->download_url, filename, cancellable,
+                        dl_bundle_cb, task);
 
   g_object_unref (wc);
   g_free (filename);
-}
-
-static gboolean
-xdelta_is_candidate (EamInstall *self, JsonObject *json)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  if (priv->action != EAM_ACTION_XDELTA_UPDATE)
-    return FALSE;
-
-  const gchar *from_version = json_object_get_string_member (json, "fromVersion");
-  if (!from_version)
-    return FALSE;
-
-  EamPkgVersion *app_pkg_from_ver = eam_pkg_version_new_from_string (priv->from_version);
-  EamPkgVersion *pkg_from_ver = eam_pkg_version_new_from_string (from_version);
-
-  gboolean equal = eam_pkg_version_relate (app_pkg_from_ver, EAM_RELATION_EQ, pkg_from_ver);
-
-  eam_pkg_version_free (app_pkg_from_ver);
-  eam_pkg_version_free (pkg_from_ver);
-
-  return equal;
 }
 
 /* Returns: 0 if both versions are equal, <0 if a is smaller than b,
@@ -620,13 +522,12 @@ compare_version_from_json (JsonObject *a, JsonObject *b)
 
 static void
 parse_json (EamInstall *self, JsonNode *root,
-  JsonObject **bundle_json, JsonObject **xdelta_json)
+  JsonObject **bundle_json)
 {
   JsonObject *json = NULL;
   gboolean is_diff;
   const gchar *appid;
 
-  *xdelta_json = NULL;
   *bundle_json = NULL;
 
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
@@ -639,12 +540,9 @@ parse_json (EamInstall *self, JsonNode *root,
       return;
 
     is_diff = json_object_get_boolean_member (json, "isDiff");
-    if (is_diff) {
-      if (xdelta_is_candidate (self, json))
-        *xdelta_json = json;
-    } else {
+    if (!is_diff)
       *bundle_json = json;
-    }
+
     return;
   }
 
@@ -668,13 +566,9 @@ parse_json (EamInstall *self, JsonNode *root,
         continue;
 
       is_diff = json_object_get_boolean_member (json, "isDiff");
-      if (is_diff) {
-        if (xdelta_is_candidate (self, json)) {
-          if (compare_version_from_json (json, *xdelta_json) > 0)
-            *xdelta_json = json;
-        }
+      if (is_diff)
         continue;
-      }
+
       if (compare_version_from_json (json, *bundle_json) > 0)
         *bundle_json = json;
   }
@@ -699,44 +593,16 @@ parse_json (EamInstall *self, JsonNode *root,
 static gboolean
 load_bundle_info (EamInstall *self, JsonNode *root)
 {
-  JsonObject *xdelta_json = NULL;
   JsonObject *bundle_json = NULL;
 
-  parse_json (self, root, &bundle_json, &xdelta_json);
+  parse_json (self, root, &bundle_json);
 
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
-    if (xdelta_json && bundle_json) {
-      /* If they have different versions, discard the oldest one.
-         The AppManager always updates to the newest version available. */
-      gint result = compare_version_from_json (bundle_json, xdelta_json);
-      if (result < 0)
-        bundle_json = NULL;
-      else if (result > 0)
-        xdelta_json = NULL;
-    }
+  if (bundle_json)
+    priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
 
-    /* If there is no xdelta, do a full update */
-    if (!xdelta_json)
-      priv->action = EAM_ACTION_UPDATE;
-  }
-
-  switch (priv->action) {
-  case EAM_ACTION_XDELTA_UPDATE:
-    priv->xdelta_bundle = eam_bundle_new_from_json_object (xdelta_json, NULL);
-    if (bundle_json)
-      /* Used as fallback if the xdelta update fails */
-      priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
-    break;
-  case EAM_ACTION_UPDATE:
-  case EAM_ACTION_INSTALL:
-    if (bundle_json)
-      priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
-    break;
-  }
-
-  return (priv->bundle || priv->xdelta_bundle);
+  return priv->bundle != NULL;
 }
 
 static void
@@ -937,55 +803,33 @@ const char *
 eam_install_get_bundle_hash (EamInstall *install)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
-  const gchar *bundle_hash;
 
   if (!ensure_bundle_loaded (install))
     return NULL;
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    bundle_hash = priv->xdelta_bundle->hash;
-  else
-    bundle_hash = priv->bundle->hash;
-
-  return bundle_hash;
+  return priv->bundle->hash;
 }
 
 const char *
 eam_install_get_signature_url (EamInstall *install)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
-  const gchar *signature_url;
 
   if (!ensure_bundle_loaded (install))
     return NULL;
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
-    signature_url = priv->xdelta_bundle->signature_url;
-  }
-  else {
-    signature_url = priv->bundle->signature_url;
-  }
-
-  return signature_url;
+  return priv->bundle->signature_url;
 }
 
 const char *
 eam_install_get_download_url (EamInstall *install)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
-  const gchar *download_url;
 
   if (!ensure_bundle_loaded (install))
     return NULL;
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
-    download_url = priv->xdelta_bundle->download_url;
-  }
-  else {
-    download_url = priv->bundle->download_url;
-  }
-
-  return download_url;
+  return priv->bundle->download_url;
 }
 
 void
@@ -1009,7 +853,6 @@ eam_install_get_app_id (EamInstall *install)
 const gboolean
 eam_install_is_delta_update (EamInstall *install)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-
-  return (priv->action == EAM_ACTION_XDELTA_UPDATE);
+  /* New install is always treated as a non-delta one */
+  return FALSE;
 }
