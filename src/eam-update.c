@@ -5,6 +5,7 @@
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
 
+#include "eam-log.h"
 #include "eam-error.h"
 #include "eam-update.h"
 #include "eam-rest.h"
@@ -13,7 +14,7 @@
 #include "eam-config.h"
 #include "eam-os.h"
 #include "eam-version.h"
-#include "eam-log.h"
+#include "eam-utils.c"
 
 #define UPDATE_SCRIPTDIR "update/full"
 #define UPDATE_ROLLBACKDIR "update/rollback"
@@ -324,27 +325,13 @@ run_scripts (EamUpdate *self, const gchar *scriptdir,
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  /* scripts directory path */
-  char *dir = g_build_filename (eam_config_scriptdir (), scriptdir, NULL);
-
-  /* scripts parameters */
-  GStrv params = g_new0 (gchar *, 3);
-  params[0] = g_strdup (priv->appid);
-  params[1] = build_tarball_filename (self);
-
-  /* prefix environment */
-  g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
-  g_setenv ("EAM_GPGKEYRING", eam_config_gpgkeyring (), FALSE);
-  if (priv->bundle_location != NULL)
-    g_setenv ("EAM_EXTDOWNLOAD", "1", FALSE);
-
-  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
-  eam_spawner_run_async (spawner, cancellable, callback, task);
-
-  g_free (dir);
-  g_strfreev (params);
-  g_object_unref (spawner);
+  eam_utils_run_bundle_scripts (priv->appid,
+                                build_tarball_filename (self),
+                                scriptdir,
+                                priv->bundle_location != NULL, /* external download? */
+                                cancellable,
+                                callback,
+                                task);
 }
 
 static void
