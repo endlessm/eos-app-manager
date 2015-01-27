@@ -34,7 +34,7 @@ typedef enum {
   EAM_ACTION_XDELTA_UPDATE, /* Update applying xdelta diff files */
 } EamAction;
 
-typedef struct _EamUpdatePrivate	EamUpdatePrivate;
+typedef struct _EamUpdatePrivate        EamUpdatePrivate;
 
 struct _EamUpdatePrivate
 {
@@ -208,8 +208,8 @@ eam_update_class_init (EamUpdateClass *klass)
 
 static gboolean
 eam_update_initable_init (GInitable *initable,
-			   GCancellable *cancellable,
-			   GError **error)
+                          GCancellable *cancellable,
+                          GError **error)
 {
   EamUpdate *update = EAM_UPDATE (initable);
   EamUpdatePrivate *priv = eam_update_get_instance_private (update);
@@ -228,9 +228,9 @@ eam_update_initable_init (GInitable *initable,
   }
   else {
     g_set_error (error, EAM_ERROR,
-		 EAM_ERROR_PKG_UNKNOWN,
-		 _("Application '%s' is unknown"),
-		 priv->appid);
+                 EAM_ERROR_PKG_UNKNOWN,
+                 _("Application '%s' is unknown"),
+                 priv->appid);
     return FALSE;
   }
 
@@ -260,17 +260,17 @@ eam_update_init (EamUpdate *self)
  */
 EamTransaction *
 eam_update_new (EamPkgdb *pkgdb,
-		 const gchar *appid,
-		 const gboolean allow_deltas,
-		 EamUpdates *updates,
-		 GError **error)
+                const gchar *appid,
+                const gboolean allow_deltas,
+                EamUpdates *updates,
+                GError **error)
 {
   return g_initable_new (EAM_TYPE_UPDATE,
-			 NULL, error,
-			 "pkgdb", pkgdb,
-			 "appid", appid,
-			 "updates", updates,
-			 NULL);
+                         NULL, error,
+                         "pkgdb", pkgdb,
+                         "appid", appid,
+                         "updates", updates,
+                         NULL);
 }
 
 static gchar *
