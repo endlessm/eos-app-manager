@@ -930,16 +930,6 @@ run_service_update (EamService *service, const gpointer params,
   eam_log_info_message ("Update service callback (%s, %s)", clos->appid,
                         clos->allow_deltas ? "true" : "false");
 
-  /* If we aren't allowing diffs, then we defer the logic to eam_install */
-  if (!clos->allow_deltas) {
-    eam_log_info_message ("Transferring control to eam_install since deltas"
-                          "are disabled");
-
-    run_service_install (service, params, invocation);
-
-    return;
-  }
-
   eam_service_reset_timer (service);
 
   priv->trans = eam_update_new (priv->db,
