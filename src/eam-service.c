@@ -13,6 +13,7 @@
 #include "eam-updates.h"
 #include "eam-refresh.h"
 #include "eam-install.h"
+#include "eam-update.h"
 #include "eam-uninstall.h"
 #include "eam-list-avail.h"
 #include "eam-dbus-utils.h"
@@ -926,12 +927,26 @@ run_service_update (EamService *service, const gpointer params,
 
   struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
 
-  eam_log_error_message ("Update service callback (%s, %s)", clos->appid,
-                         clos->allow_deltas ? "true" : "false");
+  eam_log_info_message ("Update service callback (%s, %s)", clos->appid,
+                        clos->allow_deltas ? "true" : "false");
+
+  /* If we aren't allowing diffs, then we defer the logic to eam_install */
+  if (!clos->allow_deltas) {
+    eam_log_info_message ("Transferring control to eam_install since deltas"
+                          "are disabled");
+
+    run_service_install (service, params, invocation);
+
+    return;
+  }
 
   eam_service_reset_timer (service);
 
-  priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
+  priv->trans = eam_update_new (priv->db,
+                                clos->appid,
+                                clos->allow_deltas,
+                                priv->updates,
+                                &error);
 
   /* Free the params before handling the error */
   eam_service_free_params_clos (clos);
