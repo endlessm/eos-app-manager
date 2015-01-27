@@ -27,7 +27,7 @@ struct _EamBundle
   gchar *hash;
 };
 
-typedef struct _EamInstallPrivate	EamInstallPrivate;
+typedef struct _EamInstallPrivate        EamInstallPrivate;
 
 struct _EamInstallPrivate
 {
@@ -198,17 +198,17 @@ eam_install_class_init (EamInstallClass *klass)
 
 static gboolean
 eam_install_initable_init (GInitable *initable,
-			   GCancellable *cancellable,
-			   GError **error)
+                           GCancellable *cancellable,
+                           GError **error)
 {
   EamInstall *install = EAM_INSTALL (initable);
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
 
   if (!eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
     g_set_error (error, EAM_ERROR,
-		 EAM_ERROR_PKG_UNKNOWN,
-		 _("Application '%s' is unknown"),
-		 priv->appid);
+                 EAM_ERROR_PKG_UNKNOWN,
+                 _("Application '%s' is unknown"),
+                 priv->appid);
     return FALSE;
   }
 
@@ -237,16 +237,16 @@ eam_install_init (EamInstall *self)
  */
 EamTransaction *
 eam_install_new (EamPkgdb *pkgdb,
-		 const gchar *appid,
-		 EamUpdates *updates,
-		 GError **error)
+                 const gchar *appid,
+                 EamUpdates *updates,
+                 GError **error)
 {
   return g_initable_new (EAM_TYPE_INSTALL,
-			 NULL, error,
-			 "pkgdb", pkgdb,
-			 "appid", appid,
-			 "updates", updates,
-			 NULL);
+                         NULL, error,
+                         "pkgdb", pkgdb,
+                         "appid", appid,
+                         "updates", updates,
+                         NULL);
 }
 
 static gchar *
