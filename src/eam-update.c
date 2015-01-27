@@ -6,7 +6,7 @@
 #include <json-glib/json-glib.h>
 
 #include "eam-error.h"
-#include "eam-install.h"
+#include "eam-update.h"
 #include "eam-rest.h"
 #include "eam-spawner.h"
 #include "eam-wc.h"
@@ -15,8 +15,6 @@
 #include "eam-version.h"
 #include "eam-log.h"
 
-#define INSTALL_SCRIPTDIR "install/run"
-#define INSTALL_ROLLBACKDIR "install/rollback"
 #define UPDATE_SCRIPTDIR "update/full"
 #define UPDATE_ROLLBACKDIR "update/rollback"
 #define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
@@ -32,14 +30,13 @@ struct _EamBundle
 };
 
 typedef enum {
-  EAM_ACTION_INSTALL,       /* Install */
   EAM_ACTION_UPDATE,        /* Update downloading the complete bundle */
   EAM_ACTION_XDELTA_UPDATE, /* Update applying xdelta diff files */
 } EamAction;
 
-typedef struct _EamInstallPrivate	EamInstallPrivate;
+typedef struct _EamUpdatePrivate	EamUpdatePrivate;
 
-struct _EamInstallPrivate
+struct _EamUpdatePrivate
 {
   gchar *appid;
   gchar *from_version;
@@ -54,15 +51,15 @@ struct _EamInstallPrivate
 
 static void initable_iface_init (GInitableIface *iface);
 static void transaction_iface_init (EamTransactionInterface *iface);
-static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
+static void eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
    GAsyncReadyCallback callback, gpointer data);
-static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
+static gboolean eam_update_finish (EamTransaction *trans, GAsyncResult *res,
    GError **error);
 
-G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
-  G_ADD_PRIVATE (EamInstall));
+  G_ADD_PRIVATE (EamUpdate));
 
 enum
 {
@@ -74,8 +71,8 @@ enum
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
-  iface->run_async = eam_install_run_async;
-  iface->finish = eam_install_finish;
+  iface->run_async = eam_update_run_async;
+  iface->finish = eam_update_finish;
 }
 
 static EamBundle *
@@ -118,10 +115,10 @@ eam_bundle_free (EamBundle *bundle)
 }
 
 static void
-eam_install_finalize (GObject *obj)
+eam_update_finalize (GObject *obj)
 {
-  EamInstall *self = EAM_INSTALL (obj);
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdate *self = EAM_UPDATE (obj);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   g_clear_pointer (&priv->appid, g_free);
   g_clear_pointer (&priv->bundle_location, g_free);
@@ -131,14 +128,14 @@ eam_install_finalize (GObject *obj)
   g_clear_object (&priv->updates);
   g_clear_object (&priv->pkgdb);
 
-  G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
+  G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
 
 static void
-eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
+eam_update_set_property (GObject *obj, guint prop_id, const GValue *value,
   GParamSpec *pspec)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (EAM_INSTALL (obj));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (EAM_UPDATE (obj));
 
   switch (prop_id) {
   case PROP_APPID:
@@ -157,10 +154,10 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
 }
 
 static void
-eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
+eam_update_get_property (GObject *obj, guint prop_id, GValue *value,
   GParamSpec *pspec)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (EAM_INSTALL (obj));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (EAM_UPDATE (obj));
 
   switch (prop_id) {
   case PROP_APPID:
@@ -173,25 +170,25 @@ eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
 }
 
 static void
-eam_install_class_init (EamInstallClass *klass)
+eam_update_class_init (EamUpdateClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->finalize = eam_install_finalize;
-  object_class->get_property = eam_install_get_property;
-  object_class->set_property = eam_install_set_property;
+  object_class->finalize = eam_update_finalize;
+  object_class->get_property = eam_update_get_property;
+  object_class->set_property = eam_update_set_property;
 
   /**
-   * EamInstall:appid:
+   * EamUpdate:appid:
    *
-   * The application ID to install or update.
+   * The application ID to update
    */
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   /**
-   * EamInstall:pkgdb:
+   * EamUpdate:pkgdb:
    *
    * The package database.
    */
@@ -200,7 +197,7 @@ eam_install_class_init (EamInstallClass *klass)
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
 
   /**
-   * EamInstall:updates:
+   * EamUpdate:updates:
    *
    * The updates manager.
    */
@@ -210,12 +207,12 @@ eam_install_class_init (EamInstallClass *klass)
 }
 
 static gboolean
-eam_install_initable_init (GInitable *initable,
+eam_update_initable_init (GInitable *initable,
 			   GCancellable *cancellable,
 			   GError **error)
 {
-  EamInstall *install = EAM_INSTALL (initable);
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdate *update = EAM_UPDATE (initable);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
 
   if (eam_updates_pkg_is_upgradable (priv->updates, priv->appid)) {
     /* update from the current version to the last version */
@@ -227,7 +224,7 @@ eam_install_initable_init (GInitable *initable,
     priv->action = eam_config_deltaupdates () ? EAM_ACTION_XDELTA_UPDATE : EAM_ACTION_UPDATE;
   }
   else if (eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
-    priv->action = EAM_ACTION_INSTALL;
+    // priv->action = EAM_ACTION_INSTALL;
   }
   else {
     g_set_error (error, EAM_ERROR,
@@ -243,30 +240,32 @@ eam_install_initable_init (GInitable *initable,
 static void
 initable_iface_init (GInitableIface *iface)
 {
-  iface->init = eam_install_initable_init;
+  iface->init = eam_update_initable_init;
 }
 
 static void
-eam_install_init (EamInstall *self)
+eam_update_init (EamUpdate *self)
 {
 }
 
 /**
- * eam_install_new:
+ * eam_update_new:
  * @pkgdb: an #EamPkgdb
- * @appid: the application ID to install.
+ * @appid: the application ID to update.
+ * @allow_deltas: whether to allow incremental updates
  * @updates: an #EamUpdates
  * @error: location to store a #GError
  *
- * Returns: a new instance of #EamInstall with #EamTransaction interface.
+ * Returns: a new instance of #EamUpdate with #EamTransaction interface.
  */
 EamTransaction *
-eam_install_new (EamPkgdb *pkgdb,
+eam_update_new (EamPkgdb *pkgdb,
 		 const gchar *appid,
+		 const gboolean allow_deltas,
 		 EamUpdates *updates,
 		 GError **error)
 {
-  return g_initable_new (EAM_TYPE_INSTALL,
+  return g_initable_new (EAM_TYPE_UPDATE,
 			 NULL, error,
 			 "pkgdb", pkgdb,
 			 "appid", appid,
@@ -275,9 +274,9 @@ eam_install_new (EamPkgdb *pkgdb,
 }
 
 static gchar *
-build_tarball_filename (EamInstall *self)
+build_tarball_filename (EamUpdate *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (priv->bundle_location != NULL)
     return g_strdup (priv->bundle_location);
@@ -290,13 +289,11 @@ build_tarball_filename (EamInstall *self)
 }
 
 static const gchar *
-get_rollback_scriptdir (EamInstall *self)
+get_rollback_scriptdir (EamUpdate *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   switch (priv->action) {
-  case EAM_ACTION_INSTALL:
-    return INSTALL_ROLLBACKDIR;
   case EAM_ACTION_UPDATE:
     return UPDATE_ROLLBACKDIR;
   case EAM_ACTION_XDELTA_UPDATE:
@@ -307,13 +304,11 @@ get_rollback_scriptdir (EamInstall *self)
 }
 
 static const gchar *
-get_scriptdir (EamInstall *self)
+get_scriptdir (EamUpdate *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   switch (priv->action) {
-  case EAM_ACTION_INSTALL:
-    return INSTALL_SCRIPTDIR;
   case EAM_ACTION_UPDATE:
     return UPDATE_SCRIPTDIR;
   case EAM_ACTION_XDELTA_UPDATE:
@@ -324,10 +319,10 @@ get_scriptdir (EamInstall *self)
 }
 
 static void
-run_scripts (EamInstall *self, const gchar *scriptdir,
+run_scripts (EamUpdate *self, const gchar *scriptdir,
   GCancellable *cancellable, GAsyncReadyCallback callback, GTask *task)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   /* scripts directory path */
   char *dir = g_build_filename (eam_config_scriptdir (), scriptdir, NULL);
@@ -355,8 +350,8 @@ run_scripts (EamInstall *self, const gchar *scriptdir,
 static void
 rollback (GTask *task, GError *error)
 {
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   /* Log some messages about what happened */
   switch (priv->action) {
@@ -366,8 +361,6 @@ rollback (GTask *task, GError *error)
   case EAM_ACTION_UPDATE:
     eam_log_error_message ("Full update failed: %s", error->message);
     break;
-  case EAM_ACTION_INSTALL:
-    eam_log_error_message ("Install failed: %s", error->message);
   }
 
   /* Rollback action if possible */
@@ -406,9 +399,9 @@ bail:
 }
 
 static inline gchar *
-build_sha256sum_filename (EamInstall *self)
+build_sha256sum_filename (EamUpdate *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
   gchar *dirname;
 
   if (priv->bundle_location != NULL)
@@ -425,9 +418,9 @@ build_sha256sum_filename (EamInstall *self)
 }
 
 static inline void
-create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
+create_sha256sum_file (EamUpdate *self, const gchar *tarball, GError **error)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   gchar *filename = build_sha256sum_filename (self);
   const gchar *hash;
@@ -459,7 +452,7 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
   gchar *tarball = build_tarball_filename (self);
   create_sha256sum_file (self, tarball, &error);
   g_free (tarball);
@@ -479,9 +472,9 @@ bail:
 }
 
 static gchar *
-build_sign_filename (EamInstall *self)
+build_sign_filename (EamUpdate *self)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
   gchar *dirname;
 
   if (priv->bundle_location != NULL)
@@ -498,11 +491,11 @@ build_sign_filename (EamInstall *self)
 }
 
 static void
-download_signature (EamInstall *self, GTask *task)
+download_signature (EamUpdate *self, GTask *task)
 {
   /* download signature */
   /* @TODO: make all downloads in parallel */
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   gchar *filename = build_sign_filename (self);
   const gchar *download_url;
@@ -534,7 +527,7 @@ dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
 
   download_signature (self, task);
 
@@ -545,9 +538,9 @@ bail:
 }
 
 static void
-download_bundle (EamInstall *self, GTask *task)
+download_bundle (EamUpdate *self, GTask *task)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   gchar *filename = build_tarball_filename (self);
   const gchar *download_url;
@@ -565,9 +558,9 @@ download_bundle (EamInstall *self, GTask *task)
 }
 
 static gboolean
-xdelta_is_candidate (EamInstall *self, JsonObject *json)
+xdelta_is_candidate (EamUpdate *self, JsonObject *json)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (priv->action != EAM_ACTION_XDELTA_UPDATE)
     return FALSE;
@@ -619,7 +612,7 @@ compare_version_from_json (JsonObject *a, JsonObject *b)
 }
 
 static void
-parse_json (EamInstall *self, JsonNode *root,
+parse_json (EamUpdate *self, JsonNode *root,
   JsonObject **bundle_json, JsonObject **xdelta_json)
 {
   JsonObject *json = NULL;
@@ -629,7 +622,7 @@ parse_json (EamInstall *self, JsonNode *root,
   *xdelta_json = NULL;
   *bundle_json = NULL;
 
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (JSON_NODE_HOLDS_OBJECT (root)) {
     json = json_node_get_object (root);
@@ -697,14 +690,14 @@ parse_json (EamInstall *self, JsonNode *root,
  * }
  **/
 static gboolean
-load_bundle_info (EamInstall *self, JsonNode *root)
+load_bundle_info (EamUpdate *self, JsonNode *root)
 {
   JsonObject *xdelta_json = NULL;
   JsonObject *bundle_json = NULL;
 
   parse_json (self, root, &bundle_json, &xdelta_json);
 
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
     if (xdelta_json && bundle_json) {
@@ -730,7 +723,6 @@ load_bundle_info (EamInstall *self, JsonNode *root)
       priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
     break;
   case EAM_ACTION_UPDATE:
-  case EAM_ACTION_INSTALL:
     if (bundle_json)
       priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
     break;
@@ -755,12 +747,12 @@ load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
 
   if (!load_bundle_info (self, json_parser_get_root (parser))) {
     g_task_return_new_error (task, EAM_ERROR,
        EAM_ERROR_INVALID_FILE,
-       _("Not valid stream with update/install link"));
+       _("Not valid stream with update link"));
     goto bail;
   }
 
@@ -804,7 +796,7 @@ bail:
 }
 
 static void
-request_json_updates (EamInstall *self, GTask *task)
+request_json_updates (EamUpdate *self, GTask *task)
 {
   /* is it enough? */
   if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
@@ -813,7 +805,7 @@ request_json_updates (EamInstall *self, GTask *task)
     goto bail;
   }
 
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
     priv->appid, NULL, NULL);
@@ -851,10 +843,10 @@ build_json_updates_filename (void)
  * 4. Rollback if something fails
  */
 static void
-eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
+eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
   GAsyncReadyCallback callback, gpointer data)
 {
-  g_return_if_fail (EAM_IS_INSTALL (trans));
+  g_return_if_fail (EAM_IS_UPDATE (trans));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
@@ -865,7 +857,7 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   json_parser_load_from_file (parser, updates, &error);
   g_free (updates);
 
-  EamInstall *self = EAM_INSTALL (trans);
+  EamUpdate *self = EAM_UPDATE (trans);
   GTask *task = g_task_new (self, cancellable, callback, data);
 
   if (error) {
@@ -879,13 +871,13 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   if (!load_bundle_info (self, json_parser_get_root (parser))) {
     g_task_return_new_error (task, EAM_ERROR,
        EAM_ERROR_INVALID_FILE,
-       _("Not valid stream with update/install link"));
+       _("Not valid stream with update link"));
 
     g_object_unref (task);
     goto bail;
   }
 
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (priv->bundle_location == NULL) {
     download_bundle (self, task);
@@ -899,16 +891,16 @@ bail:
 }
 
 static gboolean
-eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
+eam_update_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 {
-  g_return_val_if_fail (EAM_IS_INSTALL (trans), FALSE);
+  g_return_val_if_fail (EAM_IS_UPDATE (trans), FALSE);
   g_return_val_if_fail (g_task_is_valid (res, trans), FALSE);
 
   return g_task_propagate_boolean (G_TASK (res), error);
 }
 
 static gboolean
-ensure_bundle_loaded (EamInstall *install)
+ensure_bundle_loaded (EamUpdate *update)
 {
   JsonParser *parser = json_parser_new ();
   gchar *updates = build_json_updates_filename ();
@@ -924,7 +916,7 @@ ensure_bundle_loaded (EamInstall *install)
     return FALSE;
   }
 
-  if (!load_bundle_info (install, json_parser_get_root (parser))) {
+  if (!load_bundle_info (update, json_parser_get_root (parser))) {
     g_object_unref (parser);
     return FALSE;
   }
@@ -934,12 +926,12 @@ ensure_bundle_loaded (EamInstall *install)
 }
 
 const char *
-eam_install_get_bundle_hash (EamInstall *install)
+eam_update_get_bundle_hash (EamUpdate *update)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
   const gchar *bundle_hash;
 
-  if (!ensure_bundle_loaded (install))
+  if (!ensure_bundle_loaded (update))
     return NULL;
 
   if (priv->action == EAM_ACTION_XDELTA_UPDATE)
@@ -951,12 +943,12 @@ eam_install_get_bundle_hash (EamInstall *install)
 }
 
 const char *
-eam_install_get_signature_url (EamInstall *install)
+eam_update_get_signature_url (EamUpdate *update)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
   const gchar *signature_url;
 
-  if (!ensure_bundle_loaded (install))
+  if (!ensure_bundle_loaded (update))
     return NULL;
 
   if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
@@ -970,12 +962,12 @@ eam_install_get_signature_url (EamInstall *install)
 }
 
 const char *
-eam_install_get_download_url (EamInstall *install)
+eam_update_get_download_url (EamUpdate *update)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
   const gchar *download_url;
 
-  if (!ensure_bundle_loaded (install))
+  if (!ensure_bundle_loaded (update))
     return NULL;
 
   if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
@@ -989,27 +981,27 @@ eam_install_get_download_url (EamInstall *install)
 }
 
 void
-eam_install_set_bundle_location (EamInstall *install,
+eam_update_set_bundle_location (EamUpdate *update,
                                  const char *path)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
 
   g_free (priv->bundle_location);
   priv->bundle_location = g_strdup (path);
 }
 
 const char *
-eam_install_get_app_id (EamInstall *install)
+eam_update_get_app_id (EamUpdate *update)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
 
   return priv->appid;
 }
 
 const gboolean
-eam_install_is_delta_update (EamInstall *install)
+eam_update_is_delta_update (EamUpdate *update)
 {
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
 
   return (priv->action == EAM_ACTION_XDELTA_UPDATE);
 }
