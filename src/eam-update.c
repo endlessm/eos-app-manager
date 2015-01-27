@@ -21,6 +21,9 @@
 #define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
 #define XDELTA_UPDATE_ROLLBACKDIR "update/rollback"
 
+#define UPDATE_BUNDLE_EXT ".xdelta"
+#define INSTALL_BUNDLE_EXT ".bundle"
+
 typedef struct _EamBundle        EamBundle;
 
 struct _EamBundle
@@ -282,7 +285,15 @@ build_tarball_filename (EamUpdate *self)
   if (priv->bundle_location != NULL)
     return g_strdup (priv->bundle_location);
 
-  gchar *fname = g_strconcat (priv->appid, ".bundle", NULL);
+  gchar *fname = NULL;
+
+  switch (priv->action) {
+  case EAM_ACTION_XDELTA_UPDATE:
+    fname = g_strconcat (priv->appid, UPDATE_BUNDLE_EXT, NULL);
+  default:
+    fname = g_strconcat (priv->appid, INSTALL_BUNDLE_EXT, NULL);
+  }
+
   gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
   g_free (fname);
 

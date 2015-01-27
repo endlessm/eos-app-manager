@@ -19,6 +19,8 @@
 #define INSTALL_SCRIPTDIR "install/run"
 #define INSTALL_ROLLBACKDIR "install/rollback"
 
+#define INSTALL_BUNDLE_EXT ".bundle"
+
 typedef struct _EamBundle        EamBundle;
 
 struct _EamBundle
@@ -258,7 +260,7 @@ build_tarball_filename (EamInstall *self)
   if (priv->bundle_location != NULL)
     return g_strdup (priv->bundle_location);
 
-  gchar *fname = g_strconcat (priv->appid, ".bundle", NULL);
+  gchar *fname = g_strconcat (priv->appid, INSTALL_BUNDLE_EXT, NULL);
   gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
   g_free (fname);
 
