@@ -6,6 +6,7 @@
 #include "eam-utils.h"
 #include "eam-config.h"
 #include "eam-spawner.h"
+#include "eam-wc.h"
 
 gboolean
 eam_utils_appid_is_legal (const char *appid)
@@ -36,7 +37,7 @@ eam_utils_appid_is_legal (const char *appid)
   return FALSE;
 }
 
-gchar *
+static char *
 eam_utils_build_sign_filename (const char *bundle_location, const char *appid)
 {
   gchar *dirname;
@@ -52,6 +53,25 @@ eam_utils_build_sign_filename (const char *bundle_location, const char *appid)
   g_free (dirname);
 
   return ret;
+}
+
+void
+eam_utils_download_bundle_signature (GTask *task, GAsyncReadyCallback callback,
+  const char *signature_url, const char *bundle_location,
+  const char *appid)
+{
+  /* download signature */
+  /* @TODO: make all downloads in parallel */
+  gchar *filename =  eam_utils_build_sign_filename (bundle_location,
+                                                    appid);
+
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  EamWc *wc = eam_wc_new ();
+  eam_wc_request_async (wc, signature_url, filename, cancellable, callback,
+                        task);
+
+  g_object_unref (wc);
+  g_free (filename);
 }
 
 void

@@ -467,29 +467,6 @@ bail:
 }
 
 static void
-download_signature (EamUpdate *self, GTask *task)
-{
-  /* download signature */
-  /* @TODO: make all downloads in parallel */
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  gchar *filename =  eam_utils_build_sign_filename (priv->bundle_location,
-                                                    priv->appid);
-  const gchar *download_url;
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    download_url = priv->xdelta_bundle->signature_url;
-  else
-    download_url = priv->bundle->signature_url;
-
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  EamWc *wc = eam_wc_new ();
-  eam_wc_request_async (wc, download_url, filename, cancellable, dl_sign_cb, task);
-
-  g_object_unref (wc);
-  g_free (filename);
-}
-
-static void
 dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
   GTask *task = data;
@@ -505,8 +482,12 @@ dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
 
   EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  download_signature (self, task);
+  eam_utils_download_bundle_signature (task, dl_sign_cb,
+                                       priv->bundle->signature_url,
+                                       priv->bundle_location,
+                                       priv->appid);
 
   return;
 
