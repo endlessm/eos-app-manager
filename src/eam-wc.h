@@ -55,31 +55,31 @@ GType           eam_wc_get_type                                  (void) G_GNUC_C
 EamWc          *eam_wc_new                                       (void);
 
 void            eam_wc_request_async                             (EamWc *self,
-								  const gchar *uri,
+                                                                  const gchar *uri,
                                                                   const gchar *filename,
-								  GCancellable *cancellable,
-								  GAsyncReadyCallback callback,
-								  gpointer data);
+                                                                  GCancellable *cancellable,
+                                                                  GAsyncReadyCallback callback,
+                                                                  gpointer data);
 
 void            eam_wc_request_with_headers_hash_async           (EamWc *self,
-								  const gchar *uri,
+                                                                  const gchar *uri,
                                                                   const gchar *filename,
-								  GHashTable *headers,
-								  GCancellable *cancellable,
-								  GAsyncReadyCallback callback,
-								  gpointer data);
+                                                                  GHashTable *headers,
+                                                                  GCancellable *cancellable,
+                                                                  GAsyncReadyCallback callback,
+                                                                  gpointer data);
 
 void            eam_wc_request_with_headers_async                (EamWc *self,
-								  const gchar *uri,
+                                                                  const gchar *uri,
                                                                   const gchar *filename,
-								  GCancellable *cancellable,
-								  GAsyncReadyCallback callback,
-								  gpointer user_data,
-								  ...) G_GNUC_NULL_TERMINATED;
+                                                                  GCancellable *cancellable,
+                                                                  GAsyncReadyCallback callback,
+                                                                  gpointer user_data,
+                                                                  ...) G_GNUC_NULL_TERMINATED;
 
 gssize          eam_wc_request_finish                            (EamWc *self,
-								  GAsyncResult *result,
-								  GError **error);
+                                                                  GAsyncResult *result,
+                                                                  GError **error);
 
 void            eam_wc_request_instream_with_headers_async       (EamWc *self,
                                                                   const gchar *uri,
@@ -94,7 +94,7 @@ GInputStream   *eam_wc_request_instream_finish                   (EamWc *self,
                                                                   GError **error);
 
 void           eam_wc_set_log_level                              (EamWc *self,
-								  guint level);
+                                                                  guint level);
 
 G_END_DECLS
 
