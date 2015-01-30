@@ -279,22 +279,17 @@ build_tarball_filename (EamUpdate *self)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  if (priv->bundle_location != NULL)
-    return g_strdup (priv->bundle_location);
-
-  gchar *fname = NULL;
+  const gchar *extension = NULL;
 
   switch (priv->action) {
   case EAM_ACTION_XDELTA_UPDATE:
-    fname = g_strconcat (priv->appid, UPDATE_BUNDLE_EXT, NULL);
+    extension = UPDATE_BUNDLE_EXT;
   default:
-    fname = g_strconcat (priv->appid, INSTALL_BUNDLE_EXT, NULL);
+    extension = INSTALL_BUNDLE_EXT;
   }
 
-  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
-  g_free (fname);
-
-  return ret;
+  return eam_utils_build_tarball_filename (priv->bundle_location, priv->appid,
+                                           extension);
 }
 
 static const gchar *

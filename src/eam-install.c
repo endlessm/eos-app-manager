@@ -257,14 +257,8 @@ build_tarball_filename (EamInstall *self)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  if (priv->bundle_location != NULL)
-    return g_strdup (priv->bundle_location);
-
-  gchar *fname = g_strconcat (priv->appid, INSTALL_BUNDLE_EXT, NULL);
-  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
-  g_free (fname);
-
-  return ret;
+  return eam_utils_build_tarball_filename (priv->bundle_location, priv->appid,
+                                           INSTALL_BUNDLE_EXT);
 }
 
 static const gchar *

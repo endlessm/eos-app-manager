@@ -30,6 +30,10 @@ void     eam_utils_create_bundle_hash_file   (const char *hash,
                                               const char *appid,
                                               GError **error);
 
+char *   eam_utils_build_tarball_filename    (const char *bundle_location,
+                                              const char *appid,
+                                              const char *extension);
+
 G_END_DECLS
 
 #endif

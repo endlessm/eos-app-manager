@@ -37,6 +37,22 @@ eam_utils_appid_is_legal (const char *appid)
   return FALSE;
 }
 
+char *
+eam_utils_build_tarball_filename (const char *bundle_location, const char *appid,
+  const char *extension)
+{
+  if (bundle_location != NULL)
+    return g_strdup (bundle_location);
+
+  gchar *fname = NULL;
+  fname = g_strconcat (appid, extension, NULL);
+
+  gchar *ret = g_build_filename (eam_config_dldir (), fname, NULL);
+  g_free (fname);
+
+  return ret;
+}
+
 static char *
 eam_utils_build_sign_filename (const char *bundle_location, const char *appid)
 {
