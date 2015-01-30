@@ -24,6 +24,12 @@ void     eam_utils_download_bundle_signature (GTask *task,
                                               const char *bundle_location,
                                               const char *appid);
 
+void     eam_utils_create_bundle_hash_file   (const char *hash,
+                                              const char *tarball,
+                                              const char *bundle_location,
+                                              const char *appid,
+                                              GError **error);
+
 G_END_DECLS
 
 #endif

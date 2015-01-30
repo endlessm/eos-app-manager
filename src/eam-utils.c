@@ -74,6 +74,39 @@ eam_utils_download_bundle_signature (GTask *task, GAsyncReadyCallback callback,
   g_free (filename);
 }
 
+static char *
+eam_utils_build_bundle_hash_filename (const char *bundle_location,
+  const char *appid)
+{
+  gchar *dirname;
+
+  if (bundle_location != NULL)
+    dirname = g_path_get_dirname (bundle_location);
+  else
+    dirname = g_strdup (eam_config_dldir ());
+
+  gchar *fname = g_strconcat (appid, ".sha256", NULL);
+  gchar *ret = g_build_filename (dirname, fname, NULL);
+  g_free (fname);
+  g_free (dirname);
+
+  return ret;
+}
+
+void
+eam_utils_create_bundle_hash_file (const char *hash, const char *tarball,
+  const char *bundle_location, const char *appid, GError **error)
+{
+  gchar *filename = eam_utils_build_bundle_hash_filename (bundle_location,
+                                                          appid);
+  gchar *contents = g_strconcat (hash, "\t", tarball, "\n", NULL);
+
+  g_file_set_contents (filename, contents, -1, error);
+
+  g_free (filename);
+  g_free (contents);
+}
+
 void
 eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
   const gchar *scriptdir, const gboolean external_download,

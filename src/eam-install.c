@@ -333,39 +333,6 @@ bail:
   g_object_unref (task);
 }
 
-static inline gchar *
-build_sha256sum_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  gchar *dirname;
-
-  if (priv->bundle_location != NULL)
-    dirname = g_path_get_dirname (priv->bundle_location);
-  else
-    dirname = g_strdup (eam_config_dldir ());
-
-  gchar *fname = g_strconcat (priv->appid, ".sha256", NULL);
-  gchar *ret = g_build_filename (dirname, fname, NULL);
-  g_free (fname);
-  g_free (dirname);
-
-  return ret;
-}
-
-static inline void
-create_sha256sum_file (EamInstall *self, const gchar *tarball, GError **error)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  gchar *filename = build_sha256sum_filename (self);
-  gchar *contents = g_strconcat (priv->bundle->hash, "\t", tarball, "\n", NULL);
-
-  g_file_set_contents (filename, contents, -1, error);
-
-  g_free (filename);
-  g_free (contents);
-}
-
 static void
 dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
 {
@@ -382,8 +349,15 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
 
   EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
   gchar *tarball = build_tarball_filename (self);
-  create_sha256sum_file (self, tarball, &error);
+
+  eam_utils_create_bundle_hash_file (priv->bundle->hash, tarball,
+                                     priv->bundle_location,
+                                     priv->appid,
+                                     &error);
+
   g_free (tarball);
 
   if (error) {
