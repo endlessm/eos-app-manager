@@ -400,25 +400,6 @@ bail:
   g_object_unref (task);
 }
 
-static gchar *
-build_sign_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-  gchar *dirname;
-
-  if (priv->bundle_location != NULL)
-    dirname = g_path_get_dirname (priv->bundle_location);
-  else
-    dirname = g_strdup (eam_config_dldir ());
-
-  gchar *fname = g_strconcat (priv->appid, ".asc", NULL);
-  gchar *ret = g_build_filename (dirname, fname, NULL);
-  g_free (fname);
-  g_free (dirname);
-
-  return ret;
-}
-
 static void
 download_signature (EamInstall *self, GTask *task)
 {
@@ -426,7 +407,8 @@ download_signature (EamInstall *self, GTask *task)
   /* @TODO: make all downloads in parallel */
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  gchar *filename = build_sign_filename (self);
+  gchar *filename =  eam_utils_build_sign_filename (priv->bundle_location,
+                                                    priv->appid);
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   EamWc *wc = eam_wc_new ();

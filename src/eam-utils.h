@@ -18,6 +18,9 @@ void     eam_utils_run_bundle_scripts   (const gchar *appid,
                                          GAsyncReadyCallback callback,
                                          GTask *task);
 
+gchar *  eam_utils_build_sign_filename  (const char *bundle_location,
+                                         const char *appid);
+
 G_END_DECLS
 
 #endif

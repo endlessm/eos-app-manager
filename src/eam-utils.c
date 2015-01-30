@@ -36,6 +36,24 @@ eam_utils_appid_is_legal (const char *appid)
   return FALSE;
 }
 
+gchar *
+eam_utils_build_sign_filename (const char *bundle_location, const char *appid)
+{
+  gchar *dirname;
+
+  if (bundle_location != NULL)
+    dirname = g_path_get_dirname (bundle_location);
+  else
+    dirname = g_strdup (eam_config_dldir ());
+
+  gchar *fname = g_strconcat (appid, ".asc", NULL);
+  gchar *ret = g_build_filename (dirname, fname, NULL);
+  g_free (fname);
+  g_free (dirname);
+
+  return ret;
+}
+
 void
 eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
   const gchar *scriptdir, const gboolean external_download,

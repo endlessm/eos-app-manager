@@ -466,25 +466,6 @@ bail:
   g_object_unref (task);
 }
 
-static gchar *
-build_sign_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-  gchar *dirname;
-
-  if (priv->bundle_location != NULL)
-    dirname = g_path_get_dirname (priv->bundle_location);
-  else
-    dirname = g_strdup (eam_config_dldir ());
-
-  gchar *fname = g_strconcat (priv->appid, ".asc", NULL);
-  gchar *ret = g_build_filename (dirname, fname, NULL);
-  g_free (fname);
-  g_free (dirname);
-
-  return ret;
-}
-
 static void
 download_signature (EamUpdate *self, GTask *task)
 {
@@ -492,7 +473,8 @@ download_signature (EamUpdate *self, GTask *task)
   /* @TODO: make all downloads in parallel */
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  gchar *filename = build_sign_filename (self);
+  gchar *filename =  eam_utils_build_sign_filename (priv->bundle_location,
+                                                    priv->appid);
   const gchar *download_url;
   if (priv->action == EAM_ACTION_XDELTA_UPDATE)
     download_url = priv->xdelta_bundle->signature_url;
