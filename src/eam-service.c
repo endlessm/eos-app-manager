@@ -1523,12 +1523,18 @@ handle_transaction_method_call (GDBusConnection *connection,
 
     if (bundle_path != NULL && *bundle_path != '\0') {
       eam_log_info_message ("Setting bundle path to '%s' for transaction '%s'",
-        bundle_path,
-        remote->obj_path);
+                            bundle_path,
+                            remote->obj_path);
 
-      EamInstall *install = EAM_INSTALL (remote->transaction);
-
-      eam_install_set_bundle_location (install, bundle_path);
+      if (EAM_IS_INSTALL (remote->transaction)) {
+        EamInstall *install = EAM_INSTALL (remote->transaction);
+        eam_install_set_bundle_location (install, bundle_path);
+      } else if (EAM_IS_UPDATE (remote->transaction)) {
+        EamUpdate *update = EAM_UPDATE (remote->transaction);
+        eam_update_set_bundle_location (update, bundle_path);
+      } else {
+        eam_log_error_message ("Completion of transaction is not update nor install type.");
+      }
 
       g_free (bundle_path);
     }
@@ -1556,28 +1562,12 @@ handle_transaction_method_call (GDBusConnection *connection,
 }
 
 static GVariant *
-handle_transaction_get_property (GDBusConnection *connection,
-                                 const gchar *sender,
-                                 const gchar *path,
-                                 const gchar *interface,
-                                 const gchar *name,
-                                 GError **error,
-                                 gpointer data)
+get_install_transaction_property (EamInstall *install, const gchar *name, GError **error)
 {
-  EamRemoteTransaction *remote = data;
+  const char *   (*text_property_getter)(EamInstall *) = NULL;
+  const gboolean (*bool_property_getter)(EamInstall *) = NULL;
 
-  eam_service_reset_timer (remote->service);
-
-  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
-    return NULL;
-
-  if (remote->transaction == NULL)
-    goto error_out;
-
-  EamInstall *install = EAM_INSTALL (remote->transaction);
-
-  const char     *(*text_property_getter)(EamInstall *) = NULL;
-  const gboolean  (*bool_property_getter)(EamInstall *) = NULL;
+  eam_log_info_message ("Retrieving Install property %s", name);
 
   if (g_strcmp0 (name, "BundleHash") == 0)
     text_property_getter = &eam_install_get_bundle_hash;
@@ -1602,14 +1592,96 @@ handle_transaction_get_property (GDBusConnection *connection,
   if (bool_property_getter != NULL)
     return g_variant_new ("b", bool_property_getter (install));
 
-error_out:
-  /* return an error */
+  /* Set an error if we got to here without returning a value */
   g_set_error (error, EAM_ERROR,
                EAM_ERROR_UNIMPLEMENTED,
                _("Property '%s' is not implemented"),
                name);
 
   return NULL;
+}
+
+static GVariant *
+get_update_transaction_property (EamUpdate *update, const gchar *name, GError **error)
+{
+  const char *   (*text_property_getter)(EamUpdate *) = NULL;
+  const gboolean (*bool_property_getter)(EamUpdate *) = NULL;
+
+  eam_log_info_message ("Retrieving Update property %s", name);
+
+  if (g_strcmp0 (name, "BundleHash") == 0)
+    text_property_getter = &eam_update_get_bundle_hash;
+  else if (g_strcmp0 (name, "BundleURI") == 0)
+    text_property_getter = &eam_update_get_download_url;
+  else if (g_strcmp0 (name, "SignatureURI") == 0)
+    text_property_getter = &eam_update_get_signature_url;
+  else if (g_strcmp0 (name, "ApplicationId") == 0)
+    text_property_getter = &eam_update_get_app_id;
+  else if (g_strcmp0 (name, "IsDelta") == 0)
+    bool_property_getter = &eam_update_is_delta_update;
+
+  /* Handler for text values */
+  if (text_property_getter != NULL) {
+    const char *property_text_value = text_property_getter (update);
+    if (property_text_value != NULL && *property_text_value != '\0') {
+      return g_variant_new ("s", property_text_value);
+    }
+  }
+
+  /* Handler for boolean values */
+  if (bool_property_getter != NULL)
+    return g_variant_new ("b", bool_property_getter (update));
+
+  /* Set an error if we got to here without returning a value */
+  g_set_error (error, EAM_ERROR,
+               EAM_ERROR_UNIMPLEMENTED,
+               _("Property '%s' is not implemented"),
+               name);
+
+  return NULL;
+}
+
+static GVariant *
+handle_transaction_get_property (GDBusConnection *connection,
+                                 const gchar *sender,
+                                 const gchar *path,
+                                 const gchar *interface,
+                                 const gchar *name,
+                                 GError **error,
+                                 gpointer data)
+{
+  GVariant *retval = NULL;
+  EamRemoteTransaction *remote = data;
+
+  eam_service_reset_timer (remote->service);
+
+  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
+    return NULL;
+
+  if (remote->transaction == NULL) {
+    eam_log_error_message ("Transaction is null. Bailing.");
+
+    return NULL;
+  }
+
+  /* Delegate to proper handler */
+  if (EAM_IS_UPDATE (remote->transaction)) {
+    EamUpdate *update = EAM_UPDATE (remote->transaction);
+    retval = get_update_transaction_property (update, name, error);
+  }
+  else if (EAM_IS_INSTALL (remote->transaction)) {
+    EamInstall *install = EAM_INSTALL (remote->transaction);
+    retval = get_install_transaction_property (install, name, error);
+  }
+  else {
+    eam_log_error_message ("Transaction type is unknown. Bailing.");
+    return NULL;
+  }
+
+  if (error != NULL)
+    eam_log_error_message ("Transaction property '%s' is unknown.", name);
+
+  return retval;
 }
 
 static const GDBusInterfaceVTable transaction_vtable = {
