@@ -46,6 +46,17 @@ void     eam_utils_request_json_updates      (GTask *task,
                                               GAsyncReadyCallback callback,
                                               const char *appid);
 
+void     eam_utils_parse_json_with_updates   (JsonNode *root,
+                                              JsonObject **bundle_json,
+                                              JsonObject **xdelta_json,
+                                              const char *appid,
+                                              const char *from_version,
+                                              const gboolean ignore_deltas);
+
+void     eam_utils_parse_json                (JsonNode *root,
+                                              JsonObject **bundle_json,
+                                              const char *appid);
+
 int      eam_utils_compare_bundle_json_version (JsonObject *a,
                                                 JsonObject *b);
 

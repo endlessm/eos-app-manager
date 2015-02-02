@@ -464,93 +464,6 @@ bail:
   g_object_unref (task);
 }
 
-static gboolean
-xdelta_is_candidate (EamUpdate *self, JsonObject *json)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  if (priv->action != EAM_ACTION_XDELTA_UPDATE)
-    return FALSE;
-
-  const gchar *from_version = json_object_get_string_member (json, "fromVersion");
-  if (!from_version)
-    return FALSE;
-
-  EamPkgVersion *app_pkg_from_ver = eam_pkg_version_new_from_string (priv->from_version);
-  EamPkgVersion *pkg_from_ver = eam_pkg_version_new_from_string (from_version);
-
-  gboolean equal = eam_pkg_version_relate (app_pkg_from_ver, EAM_RELATION_EQ, pkg_from_ver);
-
-  eam_pkg_version_free (app_pkg_from_ver);
-  eam_pkg_version_free (pkg_from_ver);
-
-  return equal;
-}
-
-static void
-parse_json (EamUpdate *self, JsonNode *root,
-  JsonObject **bundle_json, JsonObject **xdelta_json)
-{
-  JsonObject *json = NULL;
-  gboolean is_diff;
-  const gchar *appid;
-
-  *xdelta_json = NULL;
-  *bundle_json = NULL;
-
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  if (JSON_NODE_HOLDS_OBJECT (root)) {
-    json = json_node_get_object (root);
-
-    appid = json_object_get_string_member (json, "appId");
-    if (!appid || g_strcmp0 (appid, priv->appid) != 0)
-      return;
-
-    is_diff = json_object_get_boolean_member (json, "isDiff");
-    if (is_diff) {
-      if (xdelta_is_candidate (self, json))
-        *xdelta_json = json;
-    } else {
-      *bundle_json = json;
-    }
-    return;
-  }
-
-  if (!JSON_NODE_HOLDS_ARRAY (root))
-    return;
-
-  GList *el = json_array_get_elements (json_node_get_array (root));
-  if (!el)
-    return;
-
-  GList *l;
-  for (l = el; l; l = l->next) {
-      JsonNode *node = l->data;
-      if (!JSON_NODE_HOLDS_OBJECT (node))
-        continue;
-
-      json = json_node_get_object (node);
-
-      appid = json_object_get_string_member (json, "appId");
-      if (!appid || g_strcmp0 (appid, priv->appid) != 0)
-        continue;
-
-      is_diff = json_object_get_boolean_member (json, "isDiff");
-      if (is_diff) {
-        if (xdelta_is_candidate (self, json)) {
-          if (eam_utils_compare_bundle_json_version (json, *xdelta_json) > 0)
-            *xdelta_json = json;
-        }
-        continue;
-      }
-      if (eam_utils_compare_bundle_json_version (json, *bundle_json) > 0)
-        *bundle_json = json;
-  }
-    g_list_free (el);
-}
-
-
 /**
  * expected json format:
  *
@@ -571,9 +484,14 @@ load_bundle_info (EamUpdate *self, JsonNode *root)
   JsonObject *xdelta_json = NULL;
   JsonObject *bundle_json = NULL;
 
-  parse_json (self, root, &bundle_json, &xdelta_json);
-
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+
+  eam_utils_parse_json_with_updates (root,
+                                     &bundle_json,
+                                     &xdelta_json,
+                                     priv->appid,
+                                     priv->from_version,
+                                     priv->action == EAM_ACTION_UPDATE); /* ignore deltas */
 
   if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
     if (xdelta_json && bundle_json) {

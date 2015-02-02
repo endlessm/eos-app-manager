@@ -227,6 +227,110 @@ bail:
   g_object_unref (task);
 }
 
+static gboolean
+delta_is_candidate (JsonObject *json, const char *from_version)
+{
+    /*
+  if (priv->action != EAM_ACTION_XDELTA_UPDATE)
+    return FALSE;
+    */
+
+  const gchar *json_from_version = json_object_get_string_member (json, "fromVersion");
+  if (!json_from_version)
+    return FALSE;
+
+  EamPkgVersion *app_pkg_from_ver = eam_pkg_version_new_from_string (from_version);
+  EamPkgVersion *pkg_from_ver = eam_pkg_version_new_from_string (json_from_version);
+
+  gboolean equal = eam_pkg_version_relate (app_pkg_from_ver, EAM_RELATION_EQ, pkg_from_ver);
+
+  eam_pkg_version_free (app_pkg_from_ver);
+  eam_pkg_version_free (pkg_from_ver);
+
+  return equal;
+}
+
+void
+eam_utils_parse_json_with_updates (JsonNode *root, JsonObject **bundle_json,
+  JsonObject **xdelta_json, const char *appid, const char *from_version,
+  const gboolean ignore_deltas)
+{
+  JsonObject *json = NULL;
+  gboolean is_diff;
+  const gchar *json_appid;
+
+  *bundle_json = NULL;
+
+  if (!ignore_deltas)
+    *xdelta_json = NULL;
+
+  if (JSON_NODE_HOLDS_OBJECT (root)) {
+    json = json_node_get_object (root);
+
+    json_appid = json_object_get_string_member (json, "appId");
+    if (!json_appid || g_strcmp0 (json_appid, appid) != 0)
+      return;
+
+    is_diff = json_object_get_boolean_member (json, "isDiff");
+    if (is_diff) {
+      if (!ignore_deltas && delta_is_candidate (json, from_version))
+        *xdelta_json = json;
+    } else {
+      *bundle_json = json;
+    }
+    return;
+  }
+
+  if (!JSON_NODE_HOLDS_ARRAY (root))
+    return;
+
+  GList *el = json_array_get_elements (json_node_get_array (root));
+  if (!el)
+    return;
+
+  GList *l;
+  for (l = el; l; l = l->next) {
+      JsonNode *node = l->data;
+      if (!JSON_NODE_HOLDS_OBJECT (node))
+        continue;
+
+      json = json_node_get_object (node);
+
+      json_appid = json_object_get_string_member (json, "appId");
+      if (!json_appid || g_strcmp0 (json_appid, appid) != 0)
+        continue;
+
+      is_diff = json_object_get_boolean_member (json, "isDiff");
+      if (is_diff) {
+        if (!ignore_deltas && delta_is_candidate (json, from_version)) {
+          if (eam_utils_compare_bundle_json_version (json, *xdelta_json) > 0)
+            *xdelta_json = json;
+        }
+        continue;
+      }
+      if (eam_utils_compare_bundle_json_version (json, *bundle_json) > 0)
+        *bundle_json = json;
+  }
+    g_list_free (el);
+}
+
+void
+eam_utils_parse_json (JsonNode *root, JsonObject **bundle_json, const char *appid)
+{
+  /* There's no "from_version" needed */
+  const char *from_version = NULL;
+
+  /* Ignore updates as well */
+  const gboolean ignore_deltas = TRUE;
+
+  eam_utils_parse_json_with_updates (root, bundle_json,
+                                     (JsonObject **) NULL,   /* We don't care about deltas */
+                                     appid,
+                                     from_version,
+                                     ignore_deltas);
+}
+
+
 gchar *
 eam_utils_get_json_updates_filename (void)
 {

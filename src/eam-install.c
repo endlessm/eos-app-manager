@@ -396,62 +396,6 @@ bail:
   g_object_unref (task);
 }
 
-static void
-parse_json (EamInstall *self, JsonNode *root,
-  JsonObject **bundle_json)
-{
-  JsonObject *json = NULL;
-  gboolean is_diff;
-  const gchar *appid;
-
-  *bundle_json = NULL;
-
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  if (JSON_NODE_HOLDS_OBJECT (root)) {
-    json = json_node_get_object (root);
-
-    appid = json_object_get_string_member (json, "appId");
-    if (!appid || g_strcmp0 (appid, priv->appid) != 0)
-      return;
-
-    is_diff = json_object_get_boolean_member (json, "isDiff");
-    if (!is_diff)
-      *bundle_json = json;
-
-    return;
-  }
-
-  if (!JSON_NODE_HOLDS_ARRAY (root))
-    return;
-
-  GList *el = json_array_get_elements (json_node_get_array (root));
-  if (!el)
-    return;
-
-  GList *l;
-  for (l = el; l; l = l->next) {
-      JsonNode *node = l->data;
-      if (!JSON_NODE_HOLDS_OBJECT (node))
-        continue;
-
-      json = json_node_get_object (node);
-
-      appid = json_object_get_string_member (json, "appId");
-      if (!appid || g_strcmp0 (appid, priv->appid) != 0)
-        continue;
-
-      is_diff = json_object_get_boolean_member (json, "isDiff");
-      if (is_diff)
-        continue;
-
-      if (eam_utils_compare_bundle_json_version (json, *bundle_json) > 0)
-        *bundle_json = json;
-  }
-    g_list_free (el);
-}
-
-
 /**
  * expected json format:
  *
@@ -471,10 +415,11 @@ load_bundle_info (EamInstall *self, JsonNode *root)
 {
   JsonObject *bundle_json = NULL;
 
-  parse_json (self, root, &bundle_json);
-
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
+  eam_utils_parse_json (root,
+                        &bundle_json,
+                        priv->appid);
   if (bundle_json)
     priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
 
