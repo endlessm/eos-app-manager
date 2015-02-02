@@ -8,7 +8,6 @@
 #include "eam-log.h"
 #include "eam-error.h"
 #include "eam-install.h"
-#include "eam-rest.h"
 #include "eam-spawner.h"
 #include "eam-wc.h"
 #include "eam-config.h"
@@ -551,40 +550,6 @@ bail:
   g_object_unref (task);
 }
 
-static void
-request_json_updates (EamInstall *self, GTask *task)
-{
-  /* is it enough? */
-  if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
-    g_task_return_new_error (task, EAM_ERROR,
-      EAM_ERROR_NO_NETWORK, _("Networking is not available"));
-    goto bail;
-  }
-
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
-    priv->appid, NULL, NULL);
-  if (!uri) {
-    g_task_return_new_error (task, EAM_ERROR,
-      EAM_ERROR_PROTOCOL_ERROR, _("Not valid method or protocol version"));
-    goto bail;
-  }
-
-  EamWc *wc = eam_wc_new ();
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_wc_request_instream_with_headers_async (wc, uri, cancellable, request_json_updates_cb,
-    task, "Accept", "application/json", "personality",
-    eam_os_get_personality (), NULL);
-
-  g_free (uri);
-  g_object_unref (wc);
-
-  return;
-bail:
-  g_object_unref (task);
-}
-
 /**
  * 1. Download the update link
  * 1. Download the application and its sha256sum
@@ -609,13 +574,16 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_free (updates);
 
   EamInstall *self = EAM_INSTALL (trans);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
   GTask *task = g_task_new (self, cancellable, callback, data);
 
   if (error) {
     eam_log_error_message ("Can't load cached updates.json: %s", error->message);
     g_clear_error (&error);
 
-    request_json_updates (self, task);
+    eam_utils_request_json_updates (task, request_json_updates_cb, priv->appid);
+
     goto bail;
   }
 
@@ -627,8 +595,6 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     g_object_unref (task);
     goto bail;
   }
-
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   if (priv->bundle_location == NULL) {
     eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,

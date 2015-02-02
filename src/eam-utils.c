@@ -2,10 +2,15 @@
 #include "config.h"
 
 #include <string.h>
+#include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
 
 #include "eam-utils.h"
+
 #include "eam-config.h"
+#include "eam-error.h"
+#include "eam-os.h"
+#include "eam-rest.h"
 #include "eam-spawner.h"
 #include "eam-version.h"
 #include "eam-wc.h"
@@ -187,6 +192,39 @@ eam_utils_compare_bundle_json_version (JsonObject *a, JsonObject *b)
   eam_pkg_version_free (b_pkg_version);
 
   return result;
+}
+
+void
+eam_utils_request_json_updates (GTask *task, GAsyncReadyCallback callback,
+  const char *appid)
+{
+  /* is it enough? */
+  if (!g_network_monitor_get_network_available (g_network_monitor_get_default ())) {
+    g_task_return_new_error (task, EAM_ERROR,
+      EAM_ERROR_NO_NETWORK, _("Networking is not available"));
+    goto bail;
+  }
+
+  gchar *uri = eam_rest_build_uri (EAM_REST_API_V1_GET_APP_UPDATE_LINK,
+                                   appid, NULL, NULL);
+  if (!uri) {
+    g_task_return_new_error (task, EAM_ERROR,
+      EAM_ERROR_PROTOCOL_ERROR, _("Not valid method or protocol version"));
+    goto bail;
+  }
+
+  EamWc *wc = eam_wc_new ();
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  eam_wc_request_instream_with_headers_async (wc, uri, cancellable, callback,
+    task, "Accept", "application/json", "personality",
+    eam_os_get_personality (), NULL);
+
+  g_free (uri);
+  g_object_unref (wc);
+
+  return;
+bail:
+  g_object_unref (task);
 }
 
 gchar *

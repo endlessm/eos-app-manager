@@ -42,6 +42,10 @@ char *   eam_utils_build_tarball_filename    (const char *bundle_location,
                                               const char *appid,
                                               const char *extension);
 
+void     eam_utils_request_json_updates      (GTask *task,
+                                              GAsyncReadyCallback callback,
+                                              const char *appid);
+
 int      eam_utils_compare_bundle_json_version (JsonObject *a,
                                                 JsonObject *b);
 
