@@ -394,6 +394,15 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
   GTask *task = data;
   GError *error = NULL;
 
+  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+
+  const gchar *hash;
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
+    hash = priv->xdelta_bundle->hash;
+  else
+    hash = priv->bundle->hash;
+
   eam_wc_request_finish (EAM_WC (source), result, &error);
   if (error) {
     g_task_return_error (task, error);
@@ -403,16 +412,7 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
-  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
   gchar *tarball = build_tarball_filename (self);
-
-  const gchar *hash;
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    hash = priv->xdelta_bundle->hash;
-  else
-    hash = priv->bundle->hash;
 
   eam_utils_create_bundle_hash_file (hash, tarball, priv->bundle_location,
                                      priv->appid,
