@@ -274,22 +274,24 @@ eam_update_new (EamPkgdb *pkgdb,
                          NULL);
 }
 
+static const char *
+get_extension (EamUpdate *self)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
+    return UPDATE_BUNDLE_EXT;
+
+  return INSTALL_BUNDLE_EXT;
+}
+
 static gchar *
 build_tarball_filename (EamUpdate *self)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  const gchar *extension = NULL;
-
-  switch (priv->action) {
-  case EAM_ACTION_XDELTA_UPDATE:
-    extension = UPDATE_BUNDLE_EXT;
-  default:
-    extension = INSTALL_BUNDLE_EXT;
-  }
-
   return eam_utils_build_tarball_filename (priv->bundle_location, priv->appid,
-                                           extension);
+                                           get_extension (self));
 }
 
 static const gchar *
@@ -654,6 +656,7 @@ load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
 
   EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (!load_bundle_info (self, json_parser_get_root (parser))) {
     g_task_return_new_error (task, EAM_ERROR,
@@ -662,21 +665,10 @@ load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  const gchar *extension = NULL;
-
-  switch (priv->action) {
-  case EAM_ACTION_XDELTA_UPDATE:
-    extension = UPDATE_BUNDLE_EXT;
-  default:
-    extension = INSTALL_BUNDLE_EXT;
-  }
-
   eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
                              priv->bundle_location,
                              priv->appid,
-                             extension);
+                             get_extension (self));
   return;
 
 bail:
@@ -800,19 +792,10 @@ eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (priv->bundle_location == NULL) {
-    const gchar *extension = NULL;
-
-    switch (priv->action) {
-    case EAM_ACTION_XDELTA_UPDATE:
-      extension = UPDATE_BUNDLE_EXT;
-    default:
-      extension = INSTALL_BUNDLE_EXT;
-    }
-
     eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
                                NULL, /* bundle_location */
                                priv->appid,
-                               extension);
+                               get_extension (self));
   }
   else {
     run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
