@@ -332,6 +332,9 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
   GTask *task = data;
   GError *error = NULL;
 
+  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
   eam_wc_request_finish (EAM_WC (source), result, &error);
   if (error) {
     g_task_return_error (task, error);
@@ -340,9 +343,6 @@ dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
 
   if (g_task_return_error_if_cancelled (task))
     goto bail;
-
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   gchar *tarball = build_tarball_filename (self);
 

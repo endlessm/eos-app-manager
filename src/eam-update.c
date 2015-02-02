@@ -485,42 +485,38 @@ load_bundle_info (EamUpdate *self, JsonNode *root)
   JsonObject *bundle_json = NULL;
 
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+  gboolean ignore_deltas = (priv->action == EAM_ACTION_UPDATE);
 
   eam_utils_parse_json_with_updates (root,
                                      &bundle_json,
                                      &xdelta_json,
                                      priv->appid,
                                      priv->from_version,
-                                     priv->action == EAM_ACTION_UPDATE); /* ignore deltas */
+                                     ignore_deltas);
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
-    if (xdelta_json && bundle_json) {
-      /* If they have different versions, discard the oldest one.
-         The AppManager always updates to the newest version available. */
-      gint result = eam_utils_compare_bundle_json_version (bundle_json, xdelta_json);
-      if (result < 0)
-        bundle_json = NULL;
-      else if (result > 0)
-        xdelta_json = NULL;
-    }
-
-    /* If there is no xdelta, do a full update */
-    if (!xdelta_json)
-      priv->action = EAM_ACTION_UPDATE;
+  /* If there is no xdelta, do a full update */
+  if (!xdelta_json) {
+    priv->action = EAM_ACTION_UPDATE;
+    ignore_deltas = TRUE;
   }
 
-  switch (priv->action) {
-  case EAM_ACTION_XDELTA_UPDATE:
+  if (!ignore_deltas && xdelta_json && bundle_json) {
+    /* If they have different versions, discard the oldest one.
+       The AppManager always updates to the newest version available. */
+    gint delta_more_recent = eam_utils_compare_bundle_json_version (bundle_json,
+                                                                    xdelta_json);
+    if (delta_more_recent < 0)
+      bundle_json = NULL;
+    else if (delta_more_recent > 0)
+      xdelta_json = NULL;
+  }
+
+  if (!ignore_deltas)
     priv->xdelta_bundle = eam_bundle_new_from_json_object (xdelta_json, NULL);
-    if (bundle_json)
-      /* Used as fallback if the xdelta update fails */
-      priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
-    break;
-  case EAM_ACTION_UPDATE:
-    if (bundle_json)
-      priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
-    break;
-  }
+
+  /* Used also as a fallback for xdeltas */
+  if (bundle_json)
+    priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
 
   return (priv->bundle || priv->xdelta_bundle);
 }
