@@ -45,6 +45,8 @@ char *   eam_utils_build_tarball_filename    (const char *bundle_location,
 int      eam_utils_compare_bundle_json_version (JsonObject *a,
                                                 JsonObject *b);
 
+gchar *  eam_utils_get_json_updates_filename (void);
+
 G_END_DECLS
 
 #endif

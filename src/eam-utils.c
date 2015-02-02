@@ -188,3 +188,9 @@ eam_utils_compare_bundle_json_version (JsonObject *a, JsonObject *b)
 
   return result;
 }
+
+gchar *
+eam_utils_get_json_updates_filename (void)
+{
+  return g_build_filename (eam_config_dldir (), "updates.json", NULL);
+}

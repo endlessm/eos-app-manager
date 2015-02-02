@@ -710,12 +710,6 @@ bail:
   g_object_unref (task);
 }
 
-static gchar *
-build_json_updates_filename (void)
-{
- return g_build_filename (eam_config_dldir (), "updates.json", NULL);
-}
-
 /**
  * 1. Download the update link
  * 1. Download the application and its sha256sum
@@ -731,9 +725,10 @@ eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
-  JsonParser *parser = json_parser_new ();
-  gchar *updates = build_json_updates_filename ();
   GError *error = NULL;
+
+  JsonParser *parser = json_parser_new ();
+  gchar *updates = eam_utils_get_json_updates_filename ();
 
   json_parser_load_from_file (parser, updates, &error);
   g_free (updates);
@@ -786,9 +781,10 @@ eam_update_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 static gboolean
 ensure_bundle_loaded (EamUpdate *update)
 {
-  JsonParser *parser = json_parser_new ();
-  gchar *updates = build_json_updates_filename ();
   GError *error = NULL;
+
+  JsonParser *parser = json_parser_new ();
+  gchar *updates = eam_utils_get_json_updates_filename ();
 
   json_parser_load_from_file (parser, updates, &error);
   g_free (updates);
