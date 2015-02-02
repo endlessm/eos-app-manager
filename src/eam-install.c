@@ -397,37 +397,6 @@ bail:
   g_object_unref (task);
 }
 
-/* Returns: 0 if both versions are equal, <0 if a is smaller than b,
- * >0 if a is greater than b. */
-static gint
-compare_version_from_json (JsonObject *a, JsonObject *b)
-{
-  if (!a)
-    return -(a != b);
-
-  if (!b)
-    return a != b;
-
-  const gchar *a_version = json_object_get_string_member (a, "codeVersion");
-  const gchar *b_version = json_object_get_string_member (b, "codeVersion");
-
-  if (!a_version)
-    return -(a_version != b_version);
-
-  if (!b_version)
-    return a_version != b_version;
-
-  EamPkgVersion *a_pkg_version = eam_pkg_version_new_from_string (a_version);
-  EamPkgVersion *b_pkg_version = eam_pkg_version_new_from_string (b_version);
-
-  gint result = eam_pkg_version_compare (a_pkg_version, b_pkg_version);
-
-  eam_pkg_version_free (a_pkg_version);
-  eam_pkg_version_free (b_pkg_version);
-
-  return result;
-}
-
 static void
 parse_json (EamInstall *self, JsonNode *root,
   JsonObject **bundle_json)
@@ -477,7 +446,7 @@ parse_json (EamInstall *self, JsonNode *root,
       if (is_diff)
         continue;
 
-      if (compare_version_from_json (json, *bundle_json) > 0)
+      if (eam_utils_compare_bundle_json_version (json, *bundle_json) > 0)
         *bundle_json = json;
   }
     g_list_free (el);

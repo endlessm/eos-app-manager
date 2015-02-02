@@ -2,10 +2,12 @@
 #include "config.h"
 
 #include <string.h>
+#include <json-glib/json-glib.h>
 
 #include "eam-utils.h"
 #include "eam-config.h"
 #include "eam-spawner.h"
+#include "eam-version.h"
 #include "eam-wc.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"
@@ -154,4 +156,35 @@ eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
   g_free (dir);
   g_strfreev (params);
   g_object_unref (spawner);
+}
+
+/* Returns: 0 if both versions are equal, <0 if a is smaller than b,
+ * >0 if a is greater than b. */
+int
+eam_utils_compare_bundle_json_version (JsonObject *a, JsonObject *b)
+{
+  if (!a)
+    return -(a != b);
+
+  if (!b)
+    return a != b;
+
+  const gchar *a_version = json_object_get_string_member (a, "codeVersion");
+  const gchar *b_version = json_object_get_string_member (b, "codeVersion");
+
+  if (!a_version)
+    return -(a_version != b_version);
+
+  if (!b_version)
+    return a_version != b_version;
+
+  EamPkgVersion *a_pkg_version = eam_pkg_version_new_from_string (a_version);
+  EamPkgVersion *b_pkg_version = eam_pkg_version_new_from_string (b_version);
+
+  gint result = eam_pkg_version_compare (a_pkg_version, b_pkg_version);
+
+  eam_pkg_version_free (a_pkg_version);
+  eam_pkg_version_free (b_pkg_version);
+
+  return result;
 }

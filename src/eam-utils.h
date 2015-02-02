@@ -5,6 +5,7 @@
 
 #include <glib.h>
 #include <gio/gio.h>
+#include <json-glib/json-glib.h>
 
 G_BEGIN_DECLS
 
@@ -40,6 +41,9 @@ void     eam_utils_create_bundle_hash_file   (const char *hash,
 char *   eam_utils_build_tarball_filename    (const char *bundle_location,
                                               const char *appid,
                                               const char *extension);
+
+int      eam_utils_compare_bundle_json_version (JsonObject *a,
+                                                JsonObject *b);
 
 G_END_DECLS
 
