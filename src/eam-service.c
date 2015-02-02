@@ -1522,11 +1522,11 @@ handle_transaction_method_call (GDBusConnection *connection,
     g_variant_get (params, "(s)", &bundle_path);
 
     if (bundle_path != NULL && *bundle_path != '\0') {
-      EamInstall *install = EAM_INSTALL (remote->transaction);
-
       eam_log_info_message ("Setting bundle path to '%s' for transaction '%s'",
         bundle_path,
         remote->obj_path);
+
+      EamInstall *install = EAM_INSTALL (remote->transaction);
 
       eam_install_set_bundle_location (install, bundle_path);
 
@@ -1571,57 +1571,36 @@ handle_transaction_get_property (GDBusConnection *connection,
   if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
     return NULL;
 
-  if (g_strcmp0 (name, "BundleHash") == 0) {
-    EamInstall *install = EAM_INSTALL (remote->transaction);
-
-    const char *hash = eam_install_get_bundle_hash (install);
-    if (hash != NULL && *hash != '\0') {
-      return g_variant_new ("s", hash);
-    }
-
+  if (remote->transaction == NULL)
     goto error_out;
-  }
 
-  if (g_strcmp0 (name, "BundleURI") == 0) {
-    EamInstall *install = EAM_INSTALL (remote->transaction);
+  EamInstall *install = EAM_INSTALL (remote->transaction);
 
-    const char *uri = eam_install_get_download_url (install);
-    if (uri != NULL && *uri != '\0') {
-      return g_variant_new ("s", uri);
+  const char     *(*text_property_getter)(EamInstall *) = NULL;
+  const gboolean  (*bool_property_getter)(EamInstall *) = NULL;
+
+  if (g_strcmp0 (name, "BundleHash") == 0)
+    text_property_getter = &eam_install_get_bundle_hash;
+  else if (g_strcmp0 (name, "BundleURI") == 0)
+    text_property_getter = &eam_install_get_download_url;
+  else if (g_strcmp0 (name, "SignatureURI") == 0)
+    text_property_getter = &eam_install_get_signature_url;
+  else if (g_strcmp0 (name, "ApplicationId") == 0)
+    text_property_getter = &eam_install_get_app_id;
+  else if (g_strcmp0 (name, "IsDelta") == 0)
+    bool_property_getter = &eam_install_is_delta_update;
+
+  /* Handler for text values */
+  if (text_property_getter != NULL) {
+    const char *property_text_value = text_property_getter (install);
+    if (property_text_value != NULL && *property_text_value != '\0') {
+      return g_variant_new ("s", property_text_value);
     }
-
-    goto error_out;
   }
 
-  if (g_strcmp0 (name, "SignatureURI") == 0) {
-    EamInstall *install = EAM_INSTALL (remote->transaction);
-
-    const char *uri = eam_install_get_signature_url (install);
-    if (uri != NULL && *uri != '\0') {
-      return g_variant_new ("s", uri);
-    }
-
-    goto error_out;
-  }
-
-  if (g_strcmp0 (name, "ApplicationId") == 0) {
-    EamInstall *install = EAM_INSTALL (remote->transaction);
-
-    const char *appid = eam_install_get_app_id (install);
-    if (appid != NULL && *appid != '\0') {
-      return g_variant_new ("s", appid);
-    }
-
-    goto error_out;
-  }
-
-  if (g_strcmp0 (name, "IsDelta") == 0) {
-    EamInstall *install = EAM_INSTALL (remote->transaction);
-
-    const gboolean is_delta = eam_install_is_delta_update (install);
-
-    return g_variant_new ("b", is_delta);
-  }
+  /* Handler for boolean values */
+  if (bool_property_getter != NULL)
+    return g_variant_new ("b", bool_property_getter (install));
 
 error_out:
   /* return an error */
