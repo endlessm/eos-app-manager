@@ -96,6 +96,24 @@ eam_utils_download_bundle_signature (GTask *task, GAsyncReadyCallback callback,
 }
 
 void
+eam_utils_download_bundle (GTask *task, GAsyncReadyCallback callback,
+  const char *download_url, const char *bundle_location, const char *appid,
+  const char *extension)
+{
+  gchar *filename = NULL;
+
+  filename = eam_utils_build_tarball_filename (bundle_location, appid, extension);
+
+  EamWc *wc = eam_wc_new ();
+  GCancellable *cancellable = g_task_get_cancellable (task);
+  eam_wc_request_async (wc, download_url, filename, cancellable,
+                        callback, task);
+
+  g_object_unref (wc);
+  g_free (filename);
+}
+
+void
 eam_utils_create_bundle_hash_file (const char *hash, const char *tarball,
   const char *bundle_location, const char *appid, GError **error)
 {

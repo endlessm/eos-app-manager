@@ -24,6 +24,13 @@ void     eam_utils_download_bundle_signature (GTask *task,
                                               const char *bundle_location,
                                               const char *appid);
 
+void     eam_utils_download_bundle           (GTask *task,
+                                              GAsyncReadyCallback callback,
+                                              const char *download_url,
+                                              const char *bundle_location,
+                                              const char *appid,
+                                              const char *extension);
+
 void     eam_utils_create_bundle_hash_file   (const char *hash,
                                               const char *tarball,
                                               const char *bundle_location,

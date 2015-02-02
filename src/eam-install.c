@@ -397,22 +397,6 @@ bail:
   g_object_unref (task);
 }
 
-static void
-download_bundle (EamInstall *self, GTask *task)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  gchar *filename = build_tarball_filename (self);
-
-  EamWc *wc = eam_wc_new ();
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_wc_request_async (wc, priv->bundle->download_url, filename, cancellable,
-                        dl_bundle_cb, task);
-
-  g_object_unref (wc);
-  g_free (filename);
-}
-
 /* Returns: 0 if both versions are equal, <0 if a is smaller than b,
  * >0 if a is greater than b. */
 static gint
@@ -554,7 +538,12 @@ load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  download_bundle (self, task);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
+                             priv->bundle_location,
+                             priv->appid,
+                             INSTALL_BUNDLE_EXT);
   return;
 
 bail:
@@ -678,7 +667,10 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   if (priv->bundle_location == NULL) {
-    download_bundle (self, task);
+    eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
+                               NULL, /* bundle_location */
+                               priv->appid,
+                               INSTALL_BUNDLE_EXT);
   }
   else {
     run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);

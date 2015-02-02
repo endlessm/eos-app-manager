@@ -463,26 +463,6 @@ bail:
   g_object_unref (task);
 }
 
-static void
-download_bundle (EamUpdate *self, GTask *task)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  gchar *filename = build_tarball_filename (self);
-  const gchar *download_url;
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    download_url = priv->xdelta_bundle->download_url;
-  else
-    download_url = priv->bundle->download_url;
-
-  EamWc *wc = eam_wc_new ();
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  eam_wc_request_async (wc, download_url, filename, cancellable, dl_bundle_cb, task);
-
-  g_object_unref (wc);
-  g_free (filename);
-}
-
 static gboolean
 xdelta_is_candidate (EamUpdate *self, JsonObject *json)
 {
@@ -682,7 +662,21 @@ load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
     goto bail;
   }
 
-  download_bundle (self, task);
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+
+  const gchar *extension = NULL;
+
+  switch (priv->action) {
+  case EAM_ACTION_XDELTA_UPDATE:
+    extension = UPDATE_BUNDLE_EXT;
+  default:
+    extension = INSTALL_BUNDLE_EXT;
+  }
+
+  eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
+                             priv->bundle_location,
+                             priv->appid,
+                             extension);
   return;
 
 bail:
@@ -806,7 +800,19 @@ eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (priv->bundle_location == NULL) {
-    download_bundle (self, task);
+    const gchar *extension = NULL;
+
+    switch (priv->action) {
+    case EAM_ACTION_XDELTA_UPDATE:
+      extension = UPDATE_BUNDLE_EXT;
+    default:
+      extension = INSTALL_BUNDLE_EXT;
+    }
+
+    eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
+                               NULL, /* bundle_location */
+                               priv->appid,
+                               extension);
   }
   else {
     run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
