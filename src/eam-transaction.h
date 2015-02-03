@@ -40,16 +40,16 @@ struct _EamTransactionInterface
 {
   GTypeInterface g_iface;
 
-  void             (* run_async)             (EamTransaction *trans,
+  void           (* run_async)               (EamTransaction *trans,
                                               GCancellable *cancellable,
                                               GAsyncReadyCallback callback,
                                               gpointer data);
 
-  gboolean         (* finish)                (EamTransaction *trans,
+  gboolean       (* finish)                  (EamTransaction *trans,
                                               GAsyncResult *res,
                                               GError **error);
 
-  GVariant *       (* get_property_value)    (EamTransaction *trans,
+  GVariant *     (* get_property_value)      (EamTransaction *trans,
                                               const char *name,
                                               GError **error);
 };

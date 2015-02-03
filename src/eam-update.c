@@ -56,9 +56,11 @@ struct _EamUpdatePrivate
 static void initable_iface_init (GInitableIface *iface);
 static void transaction_iface_init (EamTransactionInterface *iface);
 static void eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
-   GAsyncReadyCallback callback, gpointer data);
+  GAsyncReadyCallback callback, gpointer data);
+static GVariant * eam_get_property_value (EamTransaction *trans,
+  const char *name, GError **error);
 static gboolean eam_update_finish (EamTransaction *trans, GAsyncResult *res,
-   GError **error);
+  GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
@@ -78,6 +80,7 @@ transaction_iface_init (EamTransactionInterface *iface)
 {
   iface->run_async = eam_update_run_async;
   iface->finish = eam_update_finish;
+  iface->get_property_value = eam_get_property_value;
 }
 
 static EamBundle *
@@ -608,6 +611,46 @@ request_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
 
 bail:
   g_object_unref (task);
+}
+
+static GVariant *
+eam_get_property_value (EamTransaction *trans, const char *name, GError **error)
+{
+  g_return_val_if_fail (EAM_IS_UPDATE (trans), NULL);
+
+  EamUpdate *update = EAM_UPDATE (trans);
+
+  eam_log_info_message ("Retrieving Update property '%s'", name);
+
+  if (g_strcmp0 (name, "IsDelta") == 0)
+    return g_variant_new ("b", eam_update_is_delta_update (update));
+
+  const char * (*text_property_getter)(EamUpdate *) = NULL;
+
+  if (g_strcmp0 (name, "BundleHash") == 0)
+    text_property_getter = &eam_update_get_bundle_hash;
+  else if (g_strcmp0 (name, "BundleURI") == 0)
+    text_property_getter = &eam_update_get_download_url;
+  else if (g_strcmp0 (name, "SignatureURI") == 0)
+    text_property_getter = &eam_update_get_signature_url;
+  else if (g_strcmp0 (name, "ApplicationId") == 0)
+    text_property_getter = &eam_update_get_app_id;
+
+  /* Handler for text values */
+  if (text_property_getter != NULL) {
+    const char *property_text_value = text_property_getter (update);
+    if (property_text_value != NULL && *property_text_value != '\0') {
+      return g_variant_new ("s", property_text_value);
+    }
+  }
+
+  /* Set an error if we got to here without returning a value */
+  g_set_error (error, EAM_ERROR,
+               EAM_ERROR_UNIMPLEMENTED,
+               _("Property '%s' is not implemented"),
+               name);
+
+  return NULL;
 }
 
 /**

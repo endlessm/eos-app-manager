@@ -46,6 +46,8 @@ static void initable_iface_init (GInitableIface *iface);
 static void transaction_iface_init (EamTransactionInterface *iface);
 static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
    GAsyncReadyCallback callback, gpointer data);
+static GVariant * eam_get_property_value (EamTransaction *trans,
+  const char *name, GError **error);
 static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
    GError **error);
 
@@ -66,6 +68,7 @@ transaction_iface_init (EamTransactionInterface *iface)
 {
   iface->run_async = eam_install_run_async;
   iface->finish = eam_install_finish;
+  iface->get_property_value = eam_get_property_value;
 }
 
 static EamBundle *
@@ -493,6 +496,46 @@ request_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
 
 bail:
   g_object_unref (task);
+}
+
+static GVariant *
+eam_get_property_value (EamTransaction *trans, const char *name, GError **error)
+{
+  g_return_val_if_fail (EAM_IS_INSTALL (trans), NULL);
+
+  EamInstall *install = EAM_INSTALL (trans);
+
+  eam_log_info_message ("Retrieving Install property '%s'", name);
+
+  if (g_strcmp0 (name, "IsDelta") == 0)
+    return g_variant_new ("b", eam_install_is_delta_update (install));
+
+  const char * (*text_property_getter)(EamInstall *) = NULL;
+
+  if (g_strcmp0 (name, "BundleHash") == 0)
+    text_property_getter = &eam_install_get_bundle_hash;
+  else if (g_strcmp0 (name, "BundleURI") == 0)
+    text_property_getter = &eam_install_get_download_url;
+  else if (g_strcmp0 (name, "SignatureURI") == 0)
+    text_property_getter = &eam_install_get_signature_url;
+  else if (g_strcmp0 (name, "ApplicationId") == 0)
+    text_property_getter = &eam_install_get_app_id;
+
+  /* Handler for text values */
+  if (text_property_getter != NULL) {
+    const char *property_text_value = text_property_getter (install);
+    if (property_text_value != NULL && *property_text_value != '\0') {
+      return g_variant_new ("s", property_text_value);
+    }
+  }
+
+  /* Set an error if we got to here without returning a value */
+  g_set_error (error, EAM_ERROR,
+               EAM_ERROR_UNIMPLEMENTED,
+               _("Property '%s' is not implemented"),
+               name);
+
+  return NULL;
 }
 
 /**
