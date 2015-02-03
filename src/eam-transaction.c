@@ -49,3 +49,24 @@ eam_transaction_finish (EamTransaction *trans, GAsyncResult *res, GError **error
   EamTransactionInterface *iface = EAM_TRANSACTION_GET_IFACE (trans);
   return (* iface->finish) (trans, res, error);
 }
+
+/**
+ * eam_transaction_get_property_value:
+ * @trans: a #GType supporting #EamTransaction.
+ * @name: Attribute name to retrieve
+ * @error: a #GError location to store the error occurring, or %NULL to
+ * ignore.
+ *
+ * Gets the property value from a transaction object
+ *
+ * Returns: Value of property or error set if there are problems
+ **/
+GVariant *
+eam_transaction_get_property_value (EamTransaction *trans, const char *name,
+  GError **error)
+{
+  g_assert_true(EAM_IS_TRANSACTION (trans));
+
+  EamTransactionInterface *iface = EAM_TRANSACTION_GET_IFACE (trans);
+  return (* iface->get_property_value) (trans, name, error);
+}

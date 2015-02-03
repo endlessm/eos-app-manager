@@ -40,26 +40,34 @@ struct _EamTransactionInterface
 {
   GTypeInterface g_iface;
 
-  void         (* run_async) (EamTransaction *trans,
-                              GCancellable *cancellable,
-                              GAsyncReadyCallback callback,
-                              gpointer data);
+  void             (* run_async)             (EamTransaction *trans,
+                                              GCancellable *cancellable,
+                                              GAsyncReadyCallback callback,
+                                              gpointer data);
 
-  gboolean     (* finish)    (EamTransaction *trans,
-                              GAsyncResult *res,
-                              GError **error);
+  gboolean         (* finish)                (EamTransaction *trans,
+                                              GAsyncResult *res,
+                                              GError **error);
+
+  GVariant *       (* get_property_value)    (EamTransaction *trans,
+                                              const char *name,
+                                              GError **error);
 };
 
-GType           eam_transaction_get_type (void) G_GNUC_CONST;
+GType            eam_transaction_get_type (void) G_GNUC_CONST;
 
-void            eam_transaction_run_async                          (EamTransaction *trans,
-                                                                    GCancellable *cancellable,
-                                                                    GAsyncReadyCallback callback,
-                                                                    gpointer data);
+void             eam_transaction_run_async                          (EamTransaction *trans,
+                                                                     GCancellable *cancellable,
+                                                                     GAsyncReadyCallback callback,
+                                                                     gpointer data);
 
-gboolean        eam_transaction_finish                             (EamTransaction *trans,
-                                                                    GAsyncResult *res,
-                                                                    GError **error);
+gboolean         eam_transaction_finish                             (EamTransaction *trans,
+                                                                     GAsyncResult *res,
+                                                                     GError **error);
+
+GVariant *       eam_transaction_get_property_value                 (EamTransaction *trans,
+                                                                     const char *name,
+                                                                     GError **error);
 
 G_END_DECLS
 
