@@ -42,6 +42,7 @@ typedef struct _EamUpdatePrivate        EamUpdatePrivate;
 struct _EamUpdatePrivate
 {
   gchar *appid;
+  gboolean allow_deltas;
   gchar *from_version;
   EamAction action;
   EamBundle *bundle;
@@ -67,6 +68,7 @@ G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
 enum
 {
   PROP_APPID = 1,
+  PROP_ALLOW_DELTAS,
   PROP_PKGDB,
   PROP_UPDATES,
 };
@@ -144,6 +146,9 @@ eam_update_set_property (GObject *obj, guint prop_id, const GValue *value,
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
     break;
+  case PROP_ALLOW_DELTAS:
+    priv->allow_deltas = g_value_get_boolean (value);
+    break;
   case PROP_PKGDB:
     priv->pkgdb = g_value_dup_object (value);
     break;
@@ -165,6 +170,9 @@ eam_update_get_property (GObject *obj, guint prop_id, GValue *value,
   switch (prop_id) {
   case PROP_APPID:
     g_value_set_string (value, priv->appid);
+    break;
+  case PROP_ALLOW_DELTAS:
+    g_value_set_boolean (value, priv->allow_deltas);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -188,6 +196,15 @@ eam_update_class_init (EamUpdateClass *klass)
    */
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  /**
+   * EamUpdate:allow_deltas:
+   *
+   * Whether we want to allow delta updates or not
+   */
+  g_object_class_install_property (object_class, PROP_ALLOW_DELTAS,
+    g_param_spec_boolean ("allow-deltas", "Allow Deltas", "Allow Deltas", TRUE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   /**
@@ -224,7 +241,10 @@ eam_update_initable_init (GInitable *initable,
 
     EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
     priv->from_version = eam_pkg_version_as_string (pkg_version);
-    priv->action = eam_config_deltaupdates () ? EAM_ACTION_XDELTA_UPDATE : EAM_ACTION_UPDATE;
+
+    priv->action = EAM_ACTION_UPDATE;
+    if (eam_config_deltaupdates () && priv->allow_deltas)
+      priv->action = EAM_ACTION_XDELTA_UPDATE;
   }
   else {
     g_set_error (error, EAM_ERROR,
@@ -269,6 +289,7 @@ eam_update_new (EamPkgdb *pkgdb,
                          NULL, error,
                          "pkgdb", pkgdb,
                          "appid", appid,
+                         "allow-deltas", allow_deltas,
                          "updates", updates,
                          NULL);
 }
