@@ -225,6 +225,9 @@ eam_pkg_new_from_filename (const gchar *filename, GError **error)
 
   g_key_file_unref (keyfile);
 
+  if (pkg == NULL)
+    return NULL;
+
   /* check if the metadata is on a read-only storage, and toggle the
    * secondary-storage flag regardless of what's in the metadata
    */
