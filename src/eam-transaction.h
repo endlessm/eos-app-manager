@@ -10,16 +10,16 @@ G_BEGIN_DECLS
 #define EAM_TYPE_TRANSACTION (eam_transaction_get_type ())
 
 #define EAM_TRANSACTION(o) \
-	(G_TYPE_CHECK_INSTANCE_CAST ((o), EAM_TYPE_TRANSACTION, EamTransaction))
+        (G_TYPE_CHECK_INSTANCE_CAST ((o), EAM_TYPE_TRANSACTION, EamTransaction))
 
 #define EAM_IS_TRANSACTION(o) \
-	(G_TYPE_CHECK_INSTANCE_TYPE ((o), EAM_TYPE_TRANSACTION))
+        (G_TYPE_CHECK_INSTANCE_TYPE ((o), EAM_TYPE_TRANSACTION))
 
 #define EAM_TRANSACTION_GET_IFACE(o) \
-	(G_TYPE_INSTANCE_GET_INTERFACE ((o), EAM_TYPE_TRANSACTION, EamTransactionInterface))
+        (G_TYPE_INSTANCE_GET_INTERFACE ((o), EAM_TYPE_TRANSACTION, EamTransactionInterface))
 
 #define EAM_TYPE_IS_TRANSACTIONABLE(type) \
-	(g_type_is_a ((type), EAM_TYPE_TRANSACTION))
+        (g_type_is_a ((type), EAM_TYPE_TRANSACTION))
 
 
 /**
@@ -40,26 +40,34 @@ struct _EamTransactionInterface
 {
   GTypeInterface g_iface;
 
-  void         (* run_async) (EamTransaction *trans,
-			      GCancellable *cancellable,
-			      GAsyncReadyCallback callback,
-			      gpointer data);
+  void           (* run_async)               (EamTransaction *trans,
+                                              GCancellable *cancellable,
+                                              GAsyncReadyCallback callback,
+                                              gpointer data);
 
-  gboolean     (* finish) (EamTransaction *trans,
-			   GAsyncResult *res,
-			   GError **error);
+  gboolean       (* finish)                  (EamTransaction *trans,
+                                              GAsyncResult *res,
+                                              GError **error);
+
+  GVariant *     (* get_property_value)      (EamTransaction *trans,
+                                              const char *name,
+                                              GError **error);
 };
 
-GType           eam_transaction_get_type (void) G_GNUC_CONST;
+GType            eam_transaction_get_type (void) G_GNUC_CONST;
 
-void            eam_transaction_run_async                          (EamTransaction *trans,
-								    GCancellable *cancellable,
-								    GAsyncReadyCallback callback,
-								    gpointer data);
+void             eam_transaction_run_async                          (EamTransaction *trans,
+                                                                     GCancellable *cancellable,
+                                                                     GAsyncReadyCallback callback,
+                                                                     gpointer data);
 
-gboolean        eam_transaction_finish                             (EamTransaction *trans,
-								    GAsyncResult *res,
-								    GError **error);
+gboolean         eam_transaction_finish                             (EamTransaction *trans,
+                                                                     GAsyncResult *res,
+                                                                     GError **error);
+
+GVariant *       eam_transaction_get_property_value                 (EamTransaction *trans,
+                                                                     const char *name,
+                                                                     GError **error);
 
 G_END_DECLS
 
