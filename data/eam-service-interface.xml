@@ -144,8 +144,8 @@
     -->
     <method name="ListInstalled" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="installed" type="a(sss)" direction="out" />
-      <arg name="removable" type="a(sss)" direction="out" />
+      <arg name="installed" type="a(sssx)" direction="out" />
+      <arg name="removable" type="a(sssx)" direction="out" />
     </method>
 
     <!--

@@ -1238,20 +1238,21 @@ run_service_list_installed (EamService *service, const gpointer params,
 
   eam_service_reset_timer (service);
 
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sss)a(sss))"));
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sssx)a(sssx))"));
 
   /* installed */
-  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sssx)"));
 
   while (eam_pkgdb_iter_next (priv->db, &pkg)) {
     if (!pkg)
       continue;
 
     char *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (&builder, "(sss)",
+    g_variant_builder_add (&builder, "(sssx)",
                            eam_pkg_get_id (pkg),
                            eam_pkg_get_name (pkg),
-                           version);
+                           version,
+                           eam_pkg_get_installed_size(pkg));
 
     g_free (version);
   }
@@ -1261,7 +1262,7 @@ run_service_list_installed (EamService *service, const gpointer params,
   eam_pkgdb_iter_reset (priv->db);
 
   /* removable */
-  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sss)"));
+  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sssx)"));
 
   while (eam_pkgdb_iter_next (priv->db, &pkg)) {
     if (!pkg)
@@ -1271,10 +1272,11 @@ run_service_list_installed (EamService *service, const gpointer params,
       continue;
 
     char *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (&builder, "(sss)",
+    g_variant_builder_add (&builder, "(sssx)",
                            eam_pkg_get_id (pkg),
                            eam_pkg_get_name (pkg),
-                           version);
+                           version,
+                           eam_pkg_get_installed_size(pkg));
 
     g_free (version);
   }

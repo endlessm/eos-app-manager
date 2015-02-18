@@ -119,10 +119,10 @@ Returns the installable applications and the updatable applications, as
 two arrays of (id, name, version, installed size) tuples.
 
 
-ListInstalled () -> (a(sss))
+ListInstalled () -> (a(sssx))
 ---------------------------------------------
 
-Returns the installed applications as an array of (id, name, version)
+Returns the installed applications as an array of (id, name, version, installed_size)
 tuples.
 
 
