@@ -342,6 +342,12 @@ eam_pkg_get_locale (const EamPkg *pkg)
   return "All";
 }
 
+const gint64
+eam_pkg_get_installed_size (const EamPkg *pkg)
+{
+  return pkg->installed_size;
+}
+
 gboolean
 eam_pkg_is_on_secondary_storage (const EamPkg *pkg)
 {

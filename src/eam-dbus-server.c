@@ -243,7 +243,7 @@ eam_dbus_server_new (EamPkgdb *db)
  * eam_dbus_server_run:
  * @server: a #EamDbusServer.
  *
- * Acquire the DBus name "com.endlesssm.AppManager" and launch de
+ * Acquire the DBus name "com.endlessm.AppManager" and launch de
  * AppManager service.
  *
  * Returns: %TRUE if the server is launched. Otherwise %FALSE;
