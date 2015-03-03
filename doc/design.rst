@@ -112,17 +112,17 @@ Updates the locally stored list of application with data from the Endless
 server
 
 
-ListAvailable () -> (a(sss)a(sss))
+ListAvailable () -> (a(sssx)a(sssx))
 ---------------------------------------------
 
 Returns the installable applications and the updatable applications, as
-two arrays of (id, name, version) tuples.
+two arrays of (id, name, version, installed size) tuples.
 
 
-ListInstalled () -> (a(sss))
+ListInstalled () -> (a(sssx))
 ---------------------------------------------
 
-Returns the installed applications as an array of (id, name, version)
+Returns the installed applications as an array of (id, name, version, installed_size)
 tuples.
 
 

@@ -29,8 +29,8 @@
       of strings is the new value returned by ListAvailable()
     -->
     <signal name="AvailableApplicationsChanged">
-      <arg name="available" type="a(sss)" direction="out" />
-      <arg name="updatable" type="a(sss)" direction="out" />
+      <arg name="available" type="a(sssx)" direction="out" />
+      <arg name="updatable" type="a(sssx)" direction="out" />
     </signal>
 
     <!--
@@ -130,8 +130,8 @@
     <method name="ListAvailable" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg name="filters" type="a{sv}" direction="in" />
-      <arg name="installable" type="a(sss)" direction="out" />
-      <arg name="updatable" type="a(sss)" direction="out" />
+      <arg name="installable" type="a(sssx)" direction="out" />
+      <arg name="updatable" type="a(sssx)" direction="out" />
     </method>
 
     <!--
@@ -144,8 +144,8 @@
     -->
     <method name="ListInstalled" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="installed" type="a(sss)" direction="out" />
-      <arg name="removable" type="a(sss)" direction="out" />
+      <arg name="installed" type="a(sssx)" direction="out" />
+      <arg name="removable" type="a(sssx)" direction="out" />
     </method>
 
     <!--

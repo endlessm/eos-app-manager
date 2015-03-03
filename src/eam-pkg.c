@@ -26,14 +26,15 @@ struct _EamPkg
   gchar *name;
   EamPkgVersion *version;
   gchar *locale;
+  gint64 installed_size;
   gboolean secondary_storage;
 };
 
 G_DEFINE_BOXED_TYPE (EamPkg, eam_pkg, eam_pkg_copy, eam_pkg_free)
 
-static const gchar *KEYS[] = { "app_id", "app_name", "version", "locale", "secondary_storage" };
-static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion", "Locale", "secondaryStorage" };
-enum { APP_ID, APP_NAME, CODE_VERSION, LOCALE, SECONDARY_STORAGE };
+static const gchar *KEYS[] = { "app_id", "app_name", "version", "locale", "installed_size", "secondary_storage" };
+static const gchar *JSON_KEYS[] = { "appId", "appName", "codeVersion", "Locale", "installedSize", "secondaryStorage" };
+enum { APP_ID, APP_NAME, CODE_VERSION, LOCALE, INSTALLED_SIZE, SECONDARY_STORAGE };
 
 void
 eam_pkg_free (EamPkg *pkg)
@@ -66,6 +67,7 @@ create_pkg (gchar *id,
             gchar *name,
             const gchar *ver,
             gchar *locale,
+            gint64 installed_size,
             gboolean secondary_storage)
 {
   EamPkgVersion *version = eam_pkg_version_new_from_string (ver);
@@ -78,6 +80,7 @@ create_pkg (gchar *id,
   pkg->version = version;
   pkg->locale = locale;
   pkg->secondary_storage = secondary_storage;
+  pkg->installed_size = installed_size;
 
   return pkg;
 }
@@ -88,6 +91,7 @@ static EamPkg *
 eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
 {
   gchar *ver, *id, *name, *locale;
+  gint64 installed_size;
   gboolean secondary_storage;
 
   ver = id = name = locale = NULL;
@@ -110,10 +114,13 @@ eam_pkg_load_from_keyfile (GKeyFile *keyfile, GError **error)
   /* "locale" is not required */
   locale = g_key_file_get_string (keyfile, GROUP, KEYS[LOCALE], NULL);
 
+  /* "installed_size" is not required */
+  installed_size = g_key_file_get_int64 (keyfile, GROUP, KEYS[INSTALLED_SIZE], NULL);
+
   /* "secondary_storage" is not required */
   secondary_storage = g_key_file_get_boolean (keyfile, GROUP, KEYS[SECONDARY_STORAGE], NULL);
 
-  EamPkg *pkg = create_pkg (id, name, ver, locale, secondary_storage);
+  EamPkg *pkg = create_pkg (id, name, ver, locale, installed_size, secondary_storage);
 
   g_free (ver); /* we don't need it anymore */
 
@@ -251,6 +258,8 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
 
   const gchar *ver, *key;
   gchar *id, *name, *loc;
+  gint64 installed_size = 0;
+
   JsonNode *node;
   gboolean secondary;
 
@@ -281,13 +290,19 @@ eam_pkg_new_from_json_object (JsonObject *json, GError **error)
   if (node)
     loc = json_node_dup_string (node);
 
+  /* "installedSize" is not required */
+  key = JSON_KEYS[INSTALLED_SIZE];
+  node = json_object_get_member (json, key);
+  if (node)
+    installed_size = json_node_get_int (node);
+
   /* "secondaryStorage" is not required */
   key = JSON_KEYS[SECONDARY_STORAGE];
   node = json_object_get_member (json, key);
   if (node)
     secondary = json_node_get_boolean (node);
 
-  return create_pkg (id, name, ver, loc, secondary);
+  return create_pkg (id, name, ver, loc, installed_size, secondary);
 
 bail:
   g_free (id);
@@ -325,6 +340,12 @@ eam_pkg_get_locale (const EamPkg *pkg)
     return pkg->locale;
 
   return "All";
+}
+
+const gint64
+eam_pkg_get_installed_size (const EamPkg *pkg)
+{
+  return pkg->installed_size;
 }
 
 gboolean
