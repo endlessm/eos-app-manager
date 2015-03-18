@@ -16,6 +16,7 @@
 #define EKN_DATA_SUBDIR "share/ekn/data"
 #define EKN_MANIFEST_SUBDIR "share/ekn/manifest"
 #define G_SCHEMAS_SUBDIR "share/glib-2.0/schemas"
+#define XDG_AUTOSTART_SUBDIR "xdg/autostart"
 
 #define ROOT_DIR "/var"
 
@@ -35,6 +36,7 @@ applications_directory_create (void)
   gchar *ekn_data_dir = g_build_filename (ROOT_DIR, appdir, EKN_DATA_SUBDIR, NULL);
   gchar *ekn_manifest_dir = g_build_filename (ROOT_DIR, appdir, EKN_MANIFEST_SUBDIR, NULL);
   gchar *g_schemas_dir = g_build_filename (ROOT_DIR, appdir, G_SCHEMAS_SUBDIR, NULL);
+  gchar *xdg_autostart_dir = g_build_filename (ROOT_DIR, appdir, XDG_AUTOSTART_SUBDIR, NULL);
   const gint mode = 0755;
 
   if (g_mkdir_with_parents (bin_dir, mode) != 0) {
@@ -72,6 +74,11 @@ applications_directory_create (void)
     retval = FALSE;
     goto bail;
   }
+  if (g_mkdir_with_parents (xdg_autostart_dir, mode) != 0) {
+    eam_log_error_message ("Unable to create '%s'", xdg_autostart_dir);
+    retval = FALSE;
+    goto bail;
+  }
 
 bail:
   g_free (bin_dir);
@@ -81,6 +88,7 @@ bail:
   g_free (ekn_data_dir);
   g_free (ekn_manifest_dir);
   g_free (g_schemas_dir);
+  g_free (xdg_autostart_dir);
 
   return retval;
 }
@@ -279,6 +287,7 @@ eam_fs_sanity_check (void)
   gchar *ekn_data_dir = g_build_filename (appdir, EKN_DATA_SUBDIR, NULL);
   gchar *ekn_manifest_dir = g_build_filename (appdir, EKN_MANIFEST_SUBDIR, NULL);
   gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
+  gchar *xdg_autostart_dir = g_build_filename (appdir, XDG_AUTOSTART_SUBDIR, NULL);
 
   if (!g_file_test (appdir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", appdir);
@@ -310,6 +319,10 @@ eam_fs_sanity_check (void)
   }
   if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", g_schemas_dir);
+    retval = FALSE;
+  }
+  if (!g_file_test (xdg_autostart_dir, G_FILE_TEST_IS_DIR)) {
+    eam_log_error_message ("Missing directory: '%s' does not exist", xdg_autostart_dir);
     retval = FALSE;
   }
 
@@ -353,6 +366,7 @@ eam_fs_sanity_check (void)
   g_free (ekn_data_dir);
   g_free (ekn_manifest_dir);
   g_free (g_schemas_dir);
+  g_free (xdg_autostart_dir);
 
   g_object_unref (children);
   g_object_unref (file);
