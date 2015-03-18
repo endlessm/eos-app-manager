@@ -56,6 +56,8 @@ APP_SHELL_SEARCH_SUBDIR="share/gnome-shell/search-providers"
 APP_KDE_HELP_SUBDIR="share/doc/kde"
 # Application KDE4 modules directory.
 APP_KDE4_SUBDIR="share/kde4"
+# Application autostart .desktop file directory
+APP_XDG_AUTOSTART_SUBDIR="xdg/autostart"
 
 # Directories where the OS looks for the applications metadata.
 # These directories typically contain symbolic links to the
@@ -83,7 +85,8 @@ OS_SHELL_SEARCH_DIR="${EAM_PREFIX}/share/gnome-shell/search-providers"
 OS_KDE_HELP_DIR="${EAM_PREFIX}/share/doc/kde"
 # KDE4 modules direcotory.
 OS_KDE4_DIR="${EAM_PREFIX}/share/kde4"
-
+# Autostart .desktop file directory
+OS_XDG_AUTOSTART_DIR="${EAM_PREFIX}/xdg/autostart"
 
 # Prints the value of the configuration variables
 print_config ()
@@ -105,6 +108,7 @@ print_config ()
     echo "APP_SHELL_SEARCH_SUBDIR=$APP_SHELL_SEARCH_SUBDIR"
     echo "APP_KDE_HELP_SUBDIR=$APP_KDE_HELP_SUBDIR"
     echo "APP_KDE4_SUBDIR=$APP_KDE4_SUBDIR"
+    echo "APP_XDG_AUTOSTART_SUBDIR=$APP_XDG_AUTOSTART_SUBDIR"
     echo "OS_BIN_DIR=$OS_BIN_DIR"
     echo "OS_DESKTOP_FILES_DIR=$OS_DESKTOP_FILES_DIR"
     echo "OS_DESKTOP_ICONS_DIR=$OS_DESKTOP_ICONS_DIR"
@@ -116,4 +120,5 @@ print_config ()
     echo "OS_SHELL_SEARCH_DIR=$OS_SHELL_SEARCH_DIR"
     echo "OS_KDE_HELP_DIR=$OS_KDE_HELP_DIR"
     echo "OS_KDE4_DIR=$OS_KDE4_DIR"
+    echo "OS_XDG_AUTOSTART_DIR=$OS_XDG_AUTOSTART_DIR"
 }

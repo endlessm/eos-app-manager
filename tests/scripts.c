@@ -36,6 +36,8 @@ setup_filesystem (void)
   g_mkdir (EAM_PREFIX "/share/glib-2.0", mode);
   g_mkdir (EAM_PREFIX "/share/glib-2.0/schemas", mode);
   g_mkdir (EAM_PREFIX "/share/icons", mode);
+  g_mkdir (EAM_PREFIX "/xdg", mode);
+  g_mkdir (EAM_PREFIX "/xdg/autostart", mode);
 }
 
 static void

@@ -310,6 +310,7 @@ create_symbolic_links ()
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DESKTOP_ICONS_SUBDIR}" "${OS_DESKTOP_ICONS_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_DBUS_SERVICES_SUBDIR}" "${OS_DBUS_SERVICES_DIR}"
     symbolic_links "${EAM_PREFIX}/${appid}/${APP_HELP_SUBDIR}" "${OS_HELP_DIR}"
+    symbolic_links "${EAM_PREFIX}/${appid}/${APP_XDG_AUTOSTART_SUBDIR}" "${OS_XDG_AUTOSTART_DIR}"
 
     ekn_data_symbolic_link "${appid}"
 
@@ -365,6 +366,7 @@ delete_symbolic_links ()
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_SHELL_SEARCH_SUBDIR}" "${OS_SHELL_SEARCH_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_KDE_HELP_SUBDIR}" "${OS_KDE_HELP_DIR}"
     symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_KDE4_SUBDIR}" "${OS_KDE4_DIR}"
+    symbolic_links_delete "${EAM_PREFIX}/${appid}/${APP_XDG_AUTOSTART_SUBDIR}" "${OS_XDG_AUTOSTART_DIR}"
 }
 
 

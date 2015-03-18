@@ -45,6 +45,10 @@ following directories:
   * `/endless/share/dbus-1/services/{service_files}`
      * Contains dbus service files for Endless applications. Again, symlinks
 
+*  `/endless/xdg/autostart/{all}.desktop`
+     * Contains desktop files for the Endless applications that will be run
+       automatically when an user logs in.
+
 
 We set the environment variable `$XDG_DATA_DIRS`. It is an array, specifying
 an ordering of places in which to look for desktop files and icons. We include
