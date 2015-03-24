@@ -11,7 +11,6 @@
 #include "eam-error.h"
 #include "eam-service.h"
 #include "eam-updates.h"
-#include "eam-refresh.h"
 #include "eam-install.h"
 #include "eam-update.h"
 #include "eam-uninstall.h"
@@ -68,7 +67,6 @@ typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
   EAM_SERVICE_METHOD_UPDATE,
   EAM_SERVICE_METHOD_UNINSTALL,
-  EAM_SERVICE_METHOD_REFRESH,
   EAM_SERVICE_METHOD_LIST_AVAILABLE,
   EAM_SERVICE_METHOD_LIST_INSTALLED,
   EAM_SERVICE_METHOD_USER_CAPS,
@@ -111,8 +109,6 @@ static void eam_service_install (EamService *service, GDBusMethodInvocation *inv
 static void eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params);
-static void eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
@@ -161,14 +157,6 @@ static EamServiceAuth auth_action[] = {
     .run = eam_service_uninstall,
     .action_id = "com.endlessm.app-installer.uninstall-application",
     .message = N_("Authentication is required to uninstall software"),
-  },
-
-  [EAM_SERVICE_METHOD_REFRESH] = {
-    .method = EAM_SERVICE_METHOD_REFRESH,
-    .dbus_name = "Refresh",
-    .run = eam_service_refresh,
-    .action_id = NULL,
-    .message = "",
   },
 
   [EAM_SERVICE_METHOD_LIST_AVAILABLE] = {
@@ -710,43 +698,6 @@ run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation 
 }
 
 static void
-refresh_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
-  g_assert (invocation);
-
-  EamService *service = EAM_SERVICE (data);
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_assert (source == G_OBJECT (priv->trans));
-
-  GError *error = NULL;
-  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
-  if (error) {
-    g_dbus_method_invocation_take_error (invocation, error);
-    goto out;
-  }
-
-  g_object_set_data (source, "invocation", NULL);
-  GVariant *value = g_variant_new ("(b)", ret);
-  g_dbus_method_invocation_return_value (invocation, value);
-
-out:
-  eam_service_perf_mark ("refresh end");
-  eam_service_clear_transaction (service, priv->trans);
-}
-
-static void
-eam_service_refresh (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  eam_service_perf_mark ("refresh begin");
-  priv->trans = eam_refresh_new (priv->db, get_eam_updates (service));
-  run_eam_transaction_with_load_pkgdb (service, invocation, refresh_cb);
-}
-
-static void
 reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   EamService *service = EAM_SERVICE (data);
@@ -1078,7 +1029,6 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
 
   gboolean can_install = FALSE;
   gboolean can_uninstall = FALSE;
-  gboolean can_refresh = FALSE;
 
   /* XXX: we want to have a separate configuration to decide the capabilities
    * for each user, but for the time being we can use the 'wheel' group to
@@ -1087,7 +1037,6 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
   if (user_is_in_admin_group (user, EAM_ADMIN_GROUP_NAME)) {
     can_install = TRUE;
     can_uninstall = TRUE;
-    can_refresh = TRUE;
     goto out;
   }
 
@@ -1104,7 +1053,6 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
     EAM_SERVICE_METHOD_INSTALL);
   can_uninstall = eam_service_check_auth_by_method (service, subject,
     EAM_SERVICE_METHOD_UNINSTALL);
-  can_refresh = TRUE;
 
 out:
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a{sv})"));
@@ -1112,7 +1060,6 @@ out:
 
   g_variant_builder_add (&builder, "{sv}", "CanInstall", g_variant_new_boolean (can_install));
   g_variant_builder_add (&builder, "{sv}", "CanUninstall", g_variant_new_boolean (can_uninstall));
-  g_variant_builder_add (&builder, "{sv}", "CanRefresh", g_variant_new_boolean (can_refresh));
 
   g_variant_builder_close (&builder);
   GVariant *res = g_variant_builder_end (&builder);

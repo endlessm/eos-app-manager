@@ -33,18 +33,6 @@
     </method>
 
     <!--
-      Refresh:
-
-      Refreshes the package database.
-    -->
-    <method name="Refresh" >
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="success" type="b" direction="out">
-        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
-      </arg>
-    </method>
-
-    <!--
       Install:
 
       Installs a package.

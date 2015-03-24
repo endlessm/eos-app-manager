@@ -18,7 +18,6 @@ source_c = \
 	eam-os.c \
 	eam-rest.c \
 	eam-updates.c \
-	eam-refresh.c \
 	eam-spawner.c \
 	eam-transaction.c \
 	eam-install.c \
@@ -44,7 +43,6 @@ source_h = \
 	eam-os.h \
 	eam-rest.h \
 	eam-updates.h \
-	eam-refresh.h \
 	eam-spawner.h \
 	eam-transaction.h \
 	eam-install.h \
