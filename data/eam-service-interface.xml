@@ -87,13 +87,5 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
-
-    <!--
-      Cancel:
-
-      Suggest to the daemon to cancel the current transaction.
-    -->
-    <method name="Cancel" />
-
   </interface>
 </node>

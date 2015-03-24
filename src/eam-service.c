@@ -58,8 +58,7 @@ typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
   EAM_SERVICE_METHOD_UPDATE,
   EAM_SERVICE_METHOD_UNINSTALL,
-  EAM_SERVICE_METHOD_USER_CAPS,
-  EAM_SERVICE_METHOD_CANCEL,
+  EAM_SERVICE_METHOD_USER_CAPS
 } EamServiceMethod;
 
 typedef void (*EamServiceRun) (EamService *service, GDBusMethodInvocation *invocation,
@@ -99,8 +98,6 @@ static void eam_service_update (EamService *service, GDBusMethodInvocation *invo
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params);
-static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 
 static void run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
@@ -147,14 +144,6 @@ static EamServiceAuth auth_action[] = {
     .run = eam_service_get_user_caps,
     .action_id = NULL,
     .message = "",
-  },
-
-  [EAM_SERVICE_METHOD_CANCEL] = {
-    .method = EAM_SERVICE_METHOD_CANCEL,
-    .dbus_name = "Cancel",
-    .run = eam_service_cancel,
-    .action_id = "com.endlessm.app-installer.cancel-request",
-    .message = N_("Authentication is required to cancel the application manager ongoing task"),
   },
 };
 
@@ -969,28 +958,6 @@ out:
 }
 
 static void
-eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (!priv->trans || priv->authorizing) /* are we not running a transaction
-                                            or are we authorizing the user? */
-    goto bail;
-
-  GError *error = NULL;
-  if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
-    g_dbus_method_invocation_take_error (invocation, error);
-    return;
-  }
-
-  g_cancellable_cancel (priv->cancellable);
-
-bail:
-  g_dbus_method_invocation_return_value (invocation, NULL);
-}
-
-static void
 check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   PolkitAuthorizationResult *result;
@@ -1082,7 +1049,7 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
 
   eam_service_reset_timer (service);
 
-  if (eam_service_is_busy (service) && method != EAM_SERVICE_METHOD_CANCEL) {
+  if (eam_service_is_busy (service)) {
     EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
     g_queue_push_tail (priv->invocation_queue, info);
 
