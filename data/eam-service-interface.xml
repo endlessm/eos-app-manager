@@ -89,13 +89,6 @@
     </method>
 
     <!--
-      Quit:
-
-      Suggest to the daemon to quit.
-    -->
-    <method name="Quit" />
-
-    <!--
       Cancel:
 
       Suggest to the daemon to cancel the current transaction.

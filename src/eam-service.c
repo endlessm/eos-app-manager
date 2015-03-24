@@ -54,21 +54,12 @@ enum
   PROP_DB = 1,
 };
 
-enum
-{
-  QUIT_REQUESTED,
-  SIGNAL_MAX
-};
-
-static guint signals[SIGNAL_MAX];
-
 typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
   EAM_SERVICE_METHOD_UPDATE,
   EAM_SERVICE_METHOD_UNINSTALL,
   EAM_SERVICE_METHOD_USER_CAPS,
   EAM_SERVICE_METHOD_CANCEL,
-  EAM_SERVICE_METHOD_QUIT,
 } EamServiceMethod;
 
 typedef void (*EamServiceRun) (EamService *service, GDBusMethodInvocation *invocation,
@@ -108,8 +99,6 @@ static void eam_service_update (EamService *service, GDBusMethodInvocation *invo
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params);
-static void eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_cancel (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
@@ -166,14 +155,6 @@ static EamServiceAuth auth_action[] = {
     .run = eam_service_cancel,
     .action_id = "com.endlessm.app-installer.cancel-request",
     .message = N_("Authentication is required to cancel the application manager ongoing task"),
-  },
-
-  [EAM_SERVICE_METHOD_QUIT] = {
-    .method = EAM_SERVICE_METHOD_QUIT,
-    .dbus_name = "Quit",
-    .run = eam_service_quit,
-    .action_id = NULL,
-    .message = "",
   },
 };
 
@@ -325,10 +306,6 @@ eam_service_class_init (EamServiceClass *class)
   g_object_class_install_property (object_class, PROP_DB,
     g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  signals[QUIT_REQUESTED] = g_signal_new ("quit-requested",
-    G_TYPE_FROM_CLASS(class), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
-    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
 
 static void
@@ -989,14 +966,6 @@ out:
   g_dbus_method_invocation_return_value (invocation, res);
 
   eam_service_check_queue (service);
-}
-
-static void
-eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params)
-{
-  g_signal_emit (service, signals[QUIT_REQUESTED], 0);
-  g_dbus_method_invocation_return_value (invocation, NULL);
 }
 
 static void
