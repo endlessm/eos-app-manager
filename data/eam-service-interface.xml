@@ -89,20 +89,6 @@
     </method>
 
     <!--
-      ListInstalled:
-
-      Returns two arrays of (id, name, version) tuples:
-
-        * a list of installed applications
-        * a list of installed applications that can be removed
-    -->
-    <method name="ListInstalled" >
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="installed" type="a(sssx)" direction="out" />
-      <arg name="removable" type="a(sssx)" direction="out" />
-    </method>
-
-    <!--
       Quit:
 
       Suggest to the daemon to quit.

@@ -66,7 +66,6 @@ typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
   EAM_SERVICE_METHOD_UPDATE,
   EAM_SERVICE_METHOD_UNINSTALL,
-  EAM_SERVICE_METHOD_LIST_INSTALLED,
   EAM_SERVICE_METHOD_USER_CAPS,
   EAM_SERVICE_METHOD_CANCEL,
   EAM_SERVICE_METHOD_QUIT,
@@ -108,8 +107,6 @@ static void eam_service_update (EamService *service, GDBusMethodInvocation *invo
   GVariant *params);
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
-static void eam_service_list_installed (EamService *service,
-  GDBusMethodInvocation *invocation, GVariant *params);
 static void eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_quit (EamService *service, GDBusMethodInvocation *invocation,
@@ -153,14 +150,6 @@ static EamServiceAuth auth_action[] = {
     .run = eam_service_uninstall,
     .action_id = "com.endlessm.app-installer.uninstall-application",
     .message = N_("Authentication is required to uninstall software"),
-  },
-
-  [EAM_SERVICE_METHOD_LIST_INSTALLED] = {
-    .method = EAM_SERVICE_METHOD_LIST_INSTALLED,
-    .dbus_name = "ListInstalled",
-    .run = eam_service_list_installed,
-    .action_id = NULL,
-    .message = ""
   },
 
   [EAM_SERVICE_METHOD_USER_CAPS] = {
@@ -1000,78 +989,6 @@ out:
   g_dbus_method_invocation_return_value (invocation, res);
 
   eam_service_check_queue (service);
-}
-
-static void
-run_service_list_installed (EamService *service, const gpointer params,
-  GDBusMethodInvocation *invocation)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  GVariantBuilder builder;
-  EamPkg *pkg = NULL;
-
-  eam_service_reset_timer (service);
-
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sssx)a(sssx))"));
-
-  /* installed */
-  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sssx)"));
-
-  while (eam_pkgdb_iter_next (priv->db, &pkg)) {
-    if (!pkg)
-      continue;
-
-    char *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (&builder, "(sssx)",
-                           eam_pkg_get_id (pkg),
-                           eam_pkg_get_name (pkg),
-                           version,
-                           eam_pkg_get_installed_size(pkg));
-
-    g_free (version);
-  }
-
-  g_variant_builder_close (&builder);
-
-  eam_pkgdb_iter_reset (priv->db);
-
-  /* removable */
-  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sssx)"));
-
-  while (eam_pkgdb_iter_next (priv->db, &pkg)) {
-    if (!pkg)
-      continue;
-
-    if (eam_pkg_is_on_secondary_storage (pkg))
-      continue;
-
-    char *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (&builder, "(sssx)",
-                           eam_pkg_get_id (pkg),
-                           eam_pkg_get_name (pkg),
-                           version,
-                           eam_pkg_get_installed_size(pkg));
-
-    g_free (version);
-  }
-
-  g_variant_builder_close (&builder);
-
-  eam_pkgdb_iter_reset (priv->db);
-
-  g_dbus_method_invocation_return_value (invocation, g_variant_builder_end (&builder));
-
-  eam_service_perf_mark ("list-installed end");
-  eam_service_check_queue (service);
-}
-
-static void
-eam_service_list_installed (EamService *service,
-  GDBusMethodInvocation *invocation, GVariant *params)
-{
-  eam_service_perf_mark ("list-installed begin");
-  run_eam_service_with_load_pkgdb (service, NULL, run_service_list_installed,
-    invocation);
 }
 
 static void
