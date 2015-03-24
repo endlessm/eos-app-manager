@@ -13,15 +13,6 @@
   <interface name="com.endlessm.AppManager">
 
     <!--
-      AvailableUpdates as read-only:
-
-      Specifies the list of updates currently available by app_id
-    -->
-    <property name="AvailableUpdates" type="as" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true" />
-    </property>
-
-    <!--
       AvailableApplicationsChanged (as available_applications):
 
       A signal to which other processes can subscribe, indicating that the

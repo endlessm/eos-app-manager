@@ -453,19 +453,6 @@ build_avail_pkg_list_variant (EamService *service)
   return g_variant_builder_end (&builder);
 }
 
-static GVariant *
-build_available_updates_variant (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->available_updates)
-    return g_variant_new_strv ((const gchar * const *) priv->available_updates, -1);
-
-  GVariantBuilder empty;
-  g_variant_builder_init (&empty, G_VARIANT_TYPE ("as"));
-  return g_variant_new ("as", &empty);
-}
-
 /*
  * let's build a new available_updates string array and compare it
  * with the current one.
@@ -522,28 +509,6 @@ updates_filtered_cb (EamService *service, gpointer data)
 do_signal:
   g_clear_pointer (&priv->available_updates, g_strfreev);
   priv->available_updates = available_updates;
-
-  {
-    GVariantBuilder changed, invalidated;
-
-    g_variant_builder_init (&invalidated, G_VARIANT_TYPE ("as"));
-    g_variant_builder_init (&changed, G_VARIANT_TYPE_ARRAY);
-    g_variant_builder_add (&changed, "{sv}", "AvailableUpdates",
-      build_available_updates_variant (service));
-
-    GVariant *params = g_variant_new ("(sa{sv}as)", "com.endlessm.AppManager",
-      &changed, &invalidated);
-
-    GError *error = NULL;
-    g_dbus_connection_emit_signal (priv->connection, NULL,
-      "/com/endlessm/AppManager", "org.freedesktop.DBus.Properties",
-      "PropertiesChanged", params, &error);
-
-    if (error) {
-      eam_log_error_message ("Couldn't emit DBus signal \"PropertiesChanged\": %s", error->message);
-      g_clear_error (&error);
-    }
-  }
 }
 
 static void
@@ -1719,31 +1684,9 @@ handle_method_call (GDBusConnection *connection, const char *sender,
   }
 }
 
-static GVariant *
-handle_get_property (GDBusConnection *connection, const gchar *sender,
-  const gchar *path, const gchar *interface, const gchar *name, GError **error,
-  gpointer data)
-{
-  EamService *service = EAM_SERVICE (data);
-
-  eam_service_reset_timer (service);
-
-  if (g_strcmp0 (interface, "com.endlessm.AppManager"))
-    return NULL;
-
-  if (!g_strcmp0 (name, "AvailableUpdates"))
-    return build_available_updates_variant (service);
-
-  /* return an error */
-  g_set_error (error, EAM_ERROR, EAM_ERROR_UNIMPLEMENTED,
-    "Property '%s' is not implemented", name);
-
-  return NULL;
-}
-
 static const GDBusInterfaceVTable service_vtable = {
   handle_method_call,
-  handle_get_property,
+  NULL,
   NULL,
 };
 
