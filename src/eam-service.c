@@ -511,29 +511,6 @@ do_signal:
   priv->available_updates = available_updates;
 }
 
-static void
-avails_changed_cb (EamService *service, gpointer data)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (!priv->connection)
-    return;
-
-  eam_log_info_message ("Emitting AvailableApplicationsChanged");
-
-  GError *error = NULL;
-  g_dbus_connection_emit_signal (priv->connection, NULL,
-    "/com/endlessm/AppManager", "com.endlessm.AppManager",
-    "AvailableApplicationsChanged", build_avail_pkg_list_variant (service),
-    &error);
-
-  if (error) {
-    eam_log_error_message ("Couldn't emit DBus signal \"AvailableApplicationsChanged\": %s",
-      error->message);
-    g_clear_error (&error);
-  }
-}
-
 static EamUpdates *
 get_eam_updates (EamService *service)
 {
@@ -545,11 +522,6 @@ get_eam_updates (EamService *service)
     /* let's read what we have, without refreshing the database and
      * ignoring parsing errors. */
     eam_updates_parse (priv->updates, NULL);
-
-    /* we connect after parse because we want to go silence at
-     * first. */
-    priv->updates_id = g_signal_connect_swapped (priv->updates,
-      "available-apps-changed", G_CALLBACK (avails_changed_cb), service);
 
     priv->filtered_id = g_signal_connect_swapped (priv->updates,
       "updates-filtered", G_CALLBACK (updates_filtered_cb), service);
@@ -795,10 +767,6 @@ reload_pkgdb_after_transaction_cb (GObject *source, GAsyncResult *res, gpointer 
 
   GVariant *value = g_variant_new ("(b)", TRUE);
   g_dbus_method_invocation_return_value (invocation, value);
-
-  /* Let's notify the available apps list has changed, as an installed app is
-     not available anymore, and uninstalled app becomes available */
-  avails_changed_cb (service, NULL);
 
 out:
   eam_service_clear_transaction (service, priv->trans);
