@@ -14,7 +14,6 @@
 #include "eam-install.h"
 #include "eam-update.h"
 #include "eam-uninstall.h"
-#include "eam-list-avail.h"
 #include "eam-dbus-utils.h"
 #include "eam-version.h"
 #include "eam-log.h"
@@ -67,7 +66,6 @@ typedef enum {
   EAM_SERVICE_METHOD_INSTALL,
   EAM_SERVICE_METHOD_UPDATE,
   EAM_SERVICE_METHOD_UNINSTALL,
-  EAM_SERVICE_METHOD_LIST_AVAILABLE,
   EAM_SERVICE_METHOD_LIST_INSTALLED,
   EAM_SERVICE_METHOD_USER_CAPS,
   EAM_SERVICE_METHOD_CANCEL,
@@ -109,8 +107,6 @@ static void eam_service_install (EamService *service, GDBusMethodInvocation *inv
 static void eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params);
-static void eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params);
 static void eam_service_list_installed (EamService *service,
   GDBusMethodInvocation *invocation, GVariant *params);
@@ -157,14 +153,6 @@ static EamServiceAuth auth_action[] = {
     .run = eam_service_uninstall,
     .action_id = "com.endlessm.app-installer.uninstall-application",
     .message = N_("Authentication is required to uninstall software"),
-  },
-
-  [EAM_SERVICE_METHOD_LIST_AVAILABLE] = {
-    .method = EAM_SERVICE_METHOD_LIST_AVAILABLE,
-    .dbus_name = "ListAvailable",
-    .run = eam_service_list_avail,
-    .action_id = NULL,
-    .message = "",
   },
 
   [EAM_SERVICE_METHOD_LIST_INSTALLED] = {
@@ -406,41 +394,6 @@ eam_service_remove_active_transaction (EamService *service,
                 remote);
 }
 
-static void
-append_pkg_list_to_variant_builder (GVariantBuilder *builder, const GList *list)
-{
-  const GList *l;
-  for (l = list; l; l = l->next) {
-    const EamPkg *pkg = l->data;
-    gchar *version = eam_pkg_version_as_string (eam_pkg_get_version (pkg));
-    g_variant_builder_add (builder, "(sssx)",
-                           eam_pkg_get_id (pkg),
-                           eam_pkg_get_name (pkg),
-                           version,
-                           eam_pkg_get_installed_size (pkg));
-    g_free (version);
-  }
-}
-
-static GVariant *
-build_avail_pkg_list_variant (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  GVariantBuilder builder;
-
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("(a(sssx)a(sssx))"));
-
-  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sssx)"));
-  append_pkg_list_to_variant_builder (&builder, eam_updates_get_installables (priv->updates));
-  g_variant_builder_close (&builder);
-
-  g_variant_builder_open (&builder, G_VARIANT_TYPE ("a(sssx)"));
-  append_pkg_list_to_variant_builder (&builder, eam_updates_get_upgradables (priv->updates));
-  g_variant_builder_close (&builder);
-
-  return g_variant_builder_end (&builder);
-}
-
 /*
  * let's build a new available_updates string array and compare it
  * with the current one.
@@ -676,25 +629,6 @@ run_eam_service_with_load_pkgdb (EamService *service, const gpointer params,
 
   if (run_service)
     run_service (service, params, invocation);
-}
-
-static void
-run_eam_transaction_with_load_pkgdb (EamService *service, GDBusMethodInvocation *invocation,
-  GAsyncReadyCallback callback)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->reloaddb) {
-    struct _load_pkgdb_clos *clos = g_slice_new0 (struct _load_pkgdb_clos);
-    clos->service = service;
-    clos->invocation = invocation;
-    clos->callback = callback;
-
-    eam_pkgdb_load_async (priv->db, priv->cancellable, load_pkgdb_cb, clos);
-    return;
-  }
-
-  run_eam_transaction (service, invocation, callback);
 }
 
 static void
@@ -1066,46 +1000,6 @@ out:
   g_dbus_method_invocation_return_value (invocation, res);
 
   eam_service_check_queue (service);
-}
-
-static void
-list_avail_cb (GObject *source, GAsyncResult *res, gpointer data)
-{
-  GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
-  g_assert (invocation);
-  g_object_set_data (source, "invocation", NULL);
-
-  EamService *service = EAM_SERVICE (data);
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_assert (source == G_OBJECT (priv->trans));
-
-  eam_transaction_finish (priv->trans, res, NULL);
-
-  g_dbus_method_invocation_return_value (invocation, build_avail_pkg_list_variant (service));
-
-  eam_service_perf_mark ("list-available end");
-
-  eam_service_clear_transaction (service, priv->trans);
-}
-
-static void
-eam_service_list_avail (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params)
-{
-  eam_log_info_message("List available apps service invoked");
-
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  GVariant *opts = g_variant_get_child_value (params, 0);
-
-  const char *language = NULL;
-
-  g_variant_lookup (opts, "Locale", "&s", &language);
-
-  eam_service_perf_mark ("list-available begin");
-
-  priv->trans = eam_list_avail_new (priv->reloaddb, priv->db, get_eam_updates (service), language);
-  run_eam_transaction_with_load_pkgdb (service, invocation, list_avail_cb);
 }
 
 static void

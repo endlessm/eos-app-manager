@@ -89,19 +89,6 @@
     </method>
 
     <!--
-      ListAvailable:
-
-      Returns a list of all applications available for installation
-      and for updates.
-    -->
-    <method name="ListAvailable" >
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="filters" type="a{sv}" direction="in" />
-      <arg name="installable" type="a(sssx)" direction="out" />
-      <arg name="updatable" type="a(sssx)" direction="out" />
-    </method>
-
-    <!--
       ListInstalled:
 
       Returns two arrays of (id, name, version) tuples:
