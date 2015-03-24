@@ -34,7 +34,6 @@ struct _EamServicePrivate {
 
   GHashTable *active_transactions;
 
-  gchar **available_updates;
   gboolean reloaddb;
 
   GTimer *timer;
@@ -238,7 +237,6 @@ eam_service_dispose (GObject *obj)
 
   g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
   g_clear_pointer (&priv->timer, g_timer_destroy);
-  g_clear_pointer (&priv->available_updates, g_strfreev);
   g_clear_object (&priv->db);
 
   if (priv->updates && priv->updates_id) {
@@ -349,64 +347,6 @@ eam_service_remove_active_transaction (EamService *service,
                 remote);
 }
 
-/*
- * let's build a new available_updates string array and compare it
- * with the current one.
- *
- * If they are different, raise the PropertyChanged signal.
- *
- * Replace the string array afterwards.
- */
-static void
-updates_filtered_cb (EamService *service, gpointer data)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (!priv->connection)
-    return;
-
-  const GList *upgradables = eam_updates_get_upgradables (priv->updates);
-  guint nlen = g_list_length ((GList *) upgradables); /* new length */
-  guint olen = priv->available_updates ? g_strv_length (priv->available_updates)
-    : 0; /* old length */
-
-  if (nlen == 0 && olen == 0)
-    return; /* odd case */
-
-  gchar **available_updates = g_new0 (gchar *, nlen + 1);
-
-  guint i = 0;
-  const GList *l;
-  for (l = upgradables; l; l = l->next) {
-    const EamPkg *pkg = l->data;
-    available_updates[i++] = g_strdup (eam_pkg_get_id (pkg));
-  }
-
-  if (nlen != olen)
-    goto do_signal;
-
-  /* don't you love O^2? */
-  guint j, found = 0;
-  for (i = 0; i < nlen; i++) {
-    for (j = 0; j < olen; j++) {
-      if (g_strcmp0 (available_updates[i], priv->available_updates[j]) == 0) {
-        found++;
-        break;
-      }
-    }
-  }
-
-  if (found != nlen)
-    goto do_signal;
-
-  g_clear_pointer (&available_updates, g_strfreev);
-  return;
-
-do_signal:
-  g_clear_pointer (&priv->available_updates, g_strfreev);
-  priv->available_updates = available_updates;
-}
-
 static EamUpdates *
 get_eam_updates (EamService *service)
 {
@@ -418,9 +358,6 @@ get_eam_updates (EamService *service)
     /* let's read what we have, without refreshing the database and
      * ignoring parsing errors. */
     eam_updates_parse (priv->updates, NULL);
-
-    priv->filtered_id = g_signal_connect_swapped (priv->updates,
-      "updates-filtered", G_CALLBACK (updates_filtered_cb), service);
   }
 
   return priv->updates;
