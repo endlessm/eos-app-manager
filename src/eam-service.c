@@ -495,8 +495,6 @@ load_pkgdb_cb (GObject *source, GAsyncResult *res, gpointer data)
     run_eam_transaction (clos->service, clos->invocation, clos->callback);
 
 out:
-  eam_service_free_params_clos((struct _eam_service_params_clos *) clos->params);
-
   g_slice_free (struct _load_pkgdb_clos, clos);
 }
 
