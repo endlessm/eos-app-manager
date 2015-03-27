@@ -29,11 +29,7 @@ dist_test_data = \
 	$(NULL)
 
 test_programs = \
-	pkg \
-	version \
 	cfg \
-	rest \
-	updates \
 	spawner \
 	scripts \
 	$(NULL)
