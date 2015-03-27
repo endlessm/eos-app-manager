@@ -37,9 +37,6 @@ struct _EamInstallPrivate
   gchar *from_version;
   EamBundle *bundle;
   char *bundle_location;
-
-  EamPkgdb *pkgdb;
-  EamUpdates *updates;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -57,8 +54,6 @@ G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
 enum
 {
   PROP_APPID = 1,
-  PROP_PKGDB,
-  PROP_UPDATES,
 };
 
 static void
@@ -118,9 +113,6 @@ eam_install_finalize (GObject *obj)
   g_clear_pointer (&priv->bundle_location, g_free);
   g_clear_pointer (&priv->bundle, eam_bundle_free);
 
-  g_clear_object (&priv->updates);
-  g_clear_object (&priv->pkgdb);
-
   G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
 }
 
@@ -133,12 +125,6 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
   switch (prop_id) {
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
-    break;
-  case PROP_PKGDB:
-    priv->pkgdb = g_value_dup_object (value);
-    break;
-  case PROP_UPDATES:
-    priv->updates = g_value_dup_object (value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -179,24 +165,6 @@ eam_install_class_init (EamInstallClass *klass)
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamInstall:pkgdb:
-   *
-   * The package database.
-   */
-  g_object_class_install_property (object_class, PROP_PKGDB,
-   g_param_spec_object ("pkgdb", "Package DB", "Package DB", EAM_TYPE_PKGDB,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
-
-  /**
-   * EamInstall:updates:
-   *
-   * The updates manager.
-   */
-  g_object_class_install_property (object_class, PROP_UPDATES,
-   g_param_spec_object ("updates", "Updates manager", "Updates manager", EAM_TYPE_UPDATES,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
 }
 
 static void
@@ -206,23 +174,15 @@ eam_install_init (EamInstall *self)
 
 /**
  * eam_install_new:
- * @pkgdb: an #EamPkgdb
  * @appid: the application ID to install.
- * @updates: an #EamUpdates
- * @error: location to store a #GError
  *
  * Returns: a new instance of #EamInstall with #EamTransaction interface.
  */
 EamTransaction *
-eam_install_new (EamPkgdb *pkgdb,
-                 const gchar *appid,
-                 EamUpdates *updates,
-                 GError **error)
+eam_install_new (const gchar *appid)
 {
   return g_object_new (EAM_TYPE_INSTALL,
-		       "pkgdb", pkgdb,
 		       "appid", appid,
-		       "updates", updates,
 		       NULL);
 }
 
@@ -548,14 +508,6 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   }
 
   if (priv->bundle_location == NULL) {
-    if (!eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
-      g_set_error (error, EAM_ERROR,
-		   EAM_ERROR_PKG_UNKNOWN,
-		   _("Application '%s' is unknown"),
-		   priv->appid);
-      goto bail;
-    }
-
     if (!load_bundle_info (self, json_parser_get_root (parser))) {
       g_task_return_new_error (task, EAM_ERROR,
 			       EAM_ERROR_INVALID_FILE,

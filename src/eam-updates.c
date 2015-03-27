@@ -26,7 +26,6 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamUpdates, eam_updates, G_TYPE_OBJECT)
 
 enum {
   AVAILABLE_APPS_CHANGED,
-  UPDATES_FILTERED,
   SIGNAL_MAX
 };
 
@@ -36,14 +35,6 @@ static void
 eam_updates_reset_lists (EamUpdates *self)
 {
   EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-
-  /* this list points to structures that belong to priv->avails, hence
-   * we don't delete its content */
-  g_clear_pointer (&priv->installs, g_list_free);
-
-  /* this list points to structures that belong to EamPkgdb, hence we
-   * don't delete its content */
-  g_clear_pointer (&priv->updates, g_list_free);
 
   g_clear_object (&priv->avails);
 }
@@ -67,10 +58,6 @@ eam_updates_class_init (EamUpdatesClass *klass)
   object_class->finalize = eam_updates_finalize;
 
   signals[AVAILABLE_APPS_CHANGED] = g_signal_new ("available-apps-changed",
-    G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
-    g_cclosure_marshal_generic, G_TYPE_NONE, 0);
-
-  signals[UPDATES_FILTERED] = g_signal_new ("updates-filtered",
     G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
     g_cclosure_marshal_generic, G_TYPE_NONE, 0);
 }
@@ -342,164 +329,4 @@ bail:
   g_object_unref (parser);
 
   return ret;
-}
-
-/**
- * eam_updates_filter:
- * @self: a #EamUpdates instance
- * @db: a #EamPkgdb instance
- * @language: (optional): the language used to filter
- *
- * This method will compare the available list of packages with the
- * installed package database. Two list will be generated: the
- * installable package list and the upgradable package list.
- *
- * @TODO: filter the obsolete package (installed but not available)
- **/
-void
-eam_updates_filter (EamUpdates *self, EamPkgdb *db, const char *language)
-{
-  g_return_if_fail (EAM_IS_UPDATES (self));
-
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-
-  g_clear_pointer (&priv->installs, g_list_free);
-  g_clear_pointer (&priv->updates, g_list_free);
-
-  EamPkg *apkg;
-  while (eam_pkgdb_iter_next (priv->avails, &apkg)) {
-    const EamPkg *fpkg;
-
-    if (!apkg)
-      continue;
-
-    if (language != NULL && *language != '\0') {
-      const char *lang_pkg = eam_pkg_get_locale (apkg);
-
-      if (g_ascii_strcasecmp (lang_pkg, "all") == 0) {
-        goto version_check;
-      }
-
-      if (g_ascii_strcasecmp (lang_pkg, language) == 0) {
-        goto version_check;
-      }
-
-      continue;
-    }
-
-  version_check:
-    fpkg = eam_pkgdb_get (db, eam_pkg_get_id (apkg));
-    if (!fpkg) {
-      priv->installs = g_list_prepend (priv->installs, apkg);
-    } else {
-      gboolean newer, secondary_storage;
-
-      newer = eam_pkg_version_relate (eam_pkg_get_version (apkg),
-                                      EAM_RELATION_GT,
-                                      eam_pkg_get_version (fpkg));
-
-      /* we need to check the package in the existing database */
-      secondary_storage = eam_pkg_is_on_secondary_storage (fpkg);
-
-      if (newer && !secondary_storage)
-        priv->updates = g_list_prepend (priv->updates, (gpointer) apkg);
-    }
-  }
-
-  g_signal_emit (self, signals[UPDATES_FILTERED], 0);
-}
-
-/**
- * eam_updates_get_installables:
- * @self: a #EamUpdates instance.
- *
- * Don't modify this list!
- *
- * Returns: (transfer none) (element-type EamPkg): return a #GList
- * with the installable packages.
- **/
-const GList *
-eam_updates_get_installables (EamUpdates *self)
-{
-  g_return_val_if_fail (EAM_IS_UPDATES (self), NULL);
-
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  return priv->installs;
-}
-
-/**
- * eam_updates_get_upgradables:
- * @self: a #EamUpdates instance.
- *
- * Don't modify this list!
- *
- * Returns: (transfer none) (element-type EamPkg): returns a #GList
- * with the upgradable packages.
- **/
-const GList *
-eam_updates_get_upgradables (EamUpdates *self)
-{
-  g_return_val_if_fail (EAM_IS_UPDATES (self), NULL);
-
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  return priv->updates;
-}
-
-/**
- * eam_updates_pkg_is_upgradable:
- * @self: an #EamUpdates instance
- * @appid: the application ID to update
- *
- * Checks if an update exists for the specified app ID.
- *
- * Returns: %TRUE if a new version of the application exists, %FALSE
- * otherwise
- **/
-gboolean
-eam_updates_pkg_is_upgradable (EamUpdates *self, const gchar *appid)
-{
-  g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
-  g_return_val_if_fail (appid, FALSE);
-
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  gboolean retval = FALSE;
-
-  for (GList *l = priv->updates; l; l = l->next) {
-    EamPkg *pkg = l->data;
-
-    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0 &&
-        !eam_pkg_is_on_secondary_storage (pkg)) {
-      retval = TRUE;
-      break;
-    }
-  }
-
-  return retval;
-}
-
-/**
- * eam_updates_pkg_is_installable:
- * @self: an #EamUpdates instance
- * @appid: the application ID to search
- *
- * Searches in the installable application list the specified app ID.
- *
- * Returns: The #EamPkg found, or %NULL if not found
- **/
-const EamPkg *
-eam_updates_pkg_is_installable (EamUpdates *self, const gchar *appid)
-{
-  g_return_val_if_fail (EAM_IS_UPDATES (self), FALSE);
-  g_return_val_if_fail (appid, FALSE);
-
-  EamUpdatesPrivate *priv = eam_updates_get_instance_private (self);
-  GList *l;
-
-  for (l = priv->installs; l; l = l->next) {
-    EamPkg *pkg = l->data;
-    if (g_strcmp0 (eam_pkg_get_id (pkg), appid) == 0)
-      return pkg;
-  }
-
-  return NULL;
 }

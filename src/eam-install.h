@@ -3,9 +3,7 @@
 #ifndef EAM_INSTALL_H
 #define EAM_INSTALL_H
 
-#include "eam-pkgdb.h"
 #include "eam-transaction.h"
-#include "eam-updates.h"
 
 G_BEGIN_DECLS
 
@@ -41,10 +39,7 @@ struct _EamInstallClass
 
 GType           eam_install_get_type            (void) G_GNUC_CONST;
 
-EamTransaction *   eam_install_new                (EamPkgdb    *pkgdb,
-                                                   const gchar *appid,
-                                                   EamUpdates  *updates,
-                                                   GError     **error);
+EamTransaction *   eam_install_new                (const gchar *appid);
 
 const char *       eam_install_get_download_url    (EamInstall  *install);
 const char *       eam_install_get_signature_url   (EamInstall  *install);

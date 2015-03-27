@@ -48,12 +48,8 @@ struct _EamUpdatePrivate
   EamBundle *bundle;
   EamBundle *xdelta_bundle;
   char *bundle_location;
-
-  EamPkgdb *pkgdb;
-  EamUpdates *updates;
 };
 
-static void initable_iface_init (GInitableIface *iface);
 static void transaction_iface_init (EamTransactionInterface *iface);
 static void eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
   GAsyncReadyCallback callback, gpointer data);
@@ -63,7 +59,6 @@ static gboolean eam_update_finish (EamTransaction *trans, GAsyncResult *res,
   GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
   G_ADD_PRIVATE (EamUpdate));
 
@@ -71,8 +66,6 @@ enum
 {
   PROP_APPID = 1,
   PROP_ALLOW_DELTAS,
-  PROP_PKGDB,
-  PROP_UPDATES,
 };
 
 static void
@@ -133,9 +126,6 @@ eam_update_finalize (GObject *obj)
   g_clear_pointer (&priv->bundle, eam_bundle_free);
   g_clear_pointer (&priv->xdelta_bundle, eam_bundle_free);
 
-  g_clear_object (&priv->updates);
-  g_clear_object (&priv->pkgdb);
-
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
 
@@ -151,12 +141,10 @@ eam_update_set_property (GObject *obj, guint prop_id, const GValue *value,
     break;
   case PROP_ALLOW_DELTAS:
     priv->allow_deltas = g_value_get_boolean (value);
-    break;
-  case PROP_PKGDB:
-    priv->pkgdb = g_value_dup_object (value);
-    break;
-  case PROP_UPDATES:
-    priv->updates = g_value_dup_object (value);
+    priv->action = EAM_ACTION_UPDATE;
+    if (eam_config_deltaupdates () && priv->allow_deltas)
+      priv->action = EAM_ACTION_XDELTA_UPDATE;
+
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -209,61 +197,6 @@ eam_update_class_init (EamUpdateClass *klass)
   g_object_class_install_property (object_class, PROP_ALLOW_DELTAS,
     g_param_spec_boolean ("allow-deltas", "Allow Deltas", "Allow Deltas", TRUE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamUpdate:pkgdb:
-   *
-   * The package database.
-   */
-  g_object_class_install_property (object_class, PROP_PKGDB,
-   g_param_spec_object ("pkgdb", "Package DB", "Package DB", EAM_TYPE_PKGDB,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
-
-  /**
-   * EamUpdate:updates:
-   *
-   * The updates manager.
-   */
-  g_object_class_install_property (object_class, PROP_UPDATES,
-   g_param_spec_object ("updates", "Updates manager", "Updates manager", EAM_TYPE_UPDATES,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
-}
-
-static gboolean
-eam_update_initable_init (GInitable *initable,
-                          GCancellable *cancellable,
-                          GError **error)
-{
-  EamUpdate *update = EAM_UPDATE (initable);
-  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
-
-  if (eam_updates_pkg_is_upgradable (priv->updates, priv->appid)) {
-    /* update from the current version to the last version */
-    const EamPkg *pkg = eam_pkgdb_get (priv->pkgdb, priv->appid);
-    g_assert (pkg);
-
-    EamPkgVersion *pkg_version = eam_pkg_get_version (pkg);
-    priv->from_version = eam_pkg_version_as_string (pkg_version);
-
-    priv->action = EAM_ACTION_UPDATE;
-    if (eam_config_deltaupdates () && priv->allow_deltas)
-      priv->action = EAM_ACTION_XDELTA_UPDATE;
-  }
-  else {
-    g_set_error (error, EAM_ERROR,
-                 EAM_ERROR_PKG_UNKNOWN,
-                 _("Application '%s' is unknown"),
-                 priv->appid);
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
-static void
-initable_iface_init (GInitableIface *iface)
-{
-  iface->init = eam_update_initable_init;
 }
 
 static void
@@ -273,28 +206,20 @@ eam_update_init (EamUpdate *self)
 
 /**
  * eam_update_new:
- * @pkgdb: an #EamPkgdb
  * @appid: the application ID to update.
  * @allow_deltas: whether to allow incremental updates
- * @updates: an #EamUpdates
  * @error: location to store a #GError
  *
  * Returns: a new instance of #EamUpdate with #EamTransaction interface.
  */
 EamTransaction *
-eam_update_new (EamPkgdb *pkgdb,
-                const gchar *appid,
-                const gboolean allow_deltas,
-                EamUpdates *updates,
-                GError **error)
+eam_update_new (const gchar *appid,
+                const gboolean allow_deltas)
 {
-  return g_initable_new (EAM_TYPE_UPDATE,
-                         NULL, error,
-                         "pkgdb", pkgdb,
-                         "appid", appid,
-                         "allow-deltas", allow_deltas,
-                         "updates", updates,
-                         NULL);
+  return g_object_new (EAM_TYPE_UPDATE,
+		       "appid", appid,
+		       "allow-deltas", allow_deltas,
+		       NULL);
 }
 
 static const char *

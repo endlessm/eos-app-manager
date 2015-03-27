@@ -69,16 +69,6 @@ void            eam_updates_filter                      (EamUpdates *self,
                                                          EamPkgdb *db,
                                                          const char *language);
 
-const GList    *eam_updates_get_installables            (EamUpdates *self);
-
-const GList    *eam_updates_get_upgradables             (EamUpdates *self);
-
-gboolean        eam_updates_pkg_is_upgradable           (EamUpdates *self,
-                                                         const gchar *appid);
-
-const EamPkg   *eam_updates_pkg_is_installable          (EamUpdates *self,
-                                                         const gchar *appid);
-
 G_END_DECLS
 
 #endif /* EAM_UPDATES_H */

@@ -3,7 +3,6 @@
 #ifndef EAM_UPDATE_H
 #define EAM_UPDATE_H
 
-#include "eam-pkgdb.h"
 #include "eam-transaction.h"
 #include "eam-updates.h"
 
@@ -41,11 +40,9 @@ struct _EamUpdateClass
 
 GType           eam_update_get_type            (void) G_GNUC_CONST;
 
-EamTransaction *   eam_update_new                 (EamPkgdb    *pkgdb,
-                                                   const gchar *appid,
+EamTransaction *   eam_update_new                 (const gchar *appid,
                                                    const gboolean allow_deltas,
-                                                   EamUpdates  *updates,
-                                                   GError     **error);
+                                                   EamUpdates  *updates);
 
 const char *       eam_update_get_download_url    (EamUpdate  *update);
 const char *       eam_update_get_signature_url   (EamUpdate  *update);
