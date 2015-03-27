@@ -3,6 +3,7 @@
 #include "config.h"
 
 #include "eam-transaction.h"
+#include "eam-error.h"
 
 G_DEFINE_INTERFACE (EamTransaction, eam_transaction, G_TYPE_OBJECT)
 
@@ -65,8 +66,13 @@ GVariant *
 eam_transaction_get_property_value (EamTransaction *trans, const char *name,
   GError **error)
 {
-  g_assert_true(EAM_IS_TRANSACTION (trans));
-
   EamTransactionInterface *iface = EAM_TRANSACTION_GET_IFACE (trans);
-  return (* iface->get_property_value) (trans, name, error);
+  if (iface->get_property_value != NULL)
+    return iface->get_property_value (trans, name, error);
+
+  g_set_error (error, EAM_ERROR, EAM_ERROR_UNIMPLEMENTED,
+               "Transaction of type '%s' does not implement the property '%s'",
+               G_OBJECT_TYPE_NAME (trans), name);
+
+  return NULL;
 }
