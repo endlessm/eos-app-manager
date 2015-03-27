@@ -3,7 +3,6 @@
 #include "config.h"
 
 #include <glib/gi18n.h>
-#include <json-glib/json-glib.h>
 
 #include "eam-log.h"
 #include "eam-error.h"
@@ -17,17 +16,7 @@
 
 #define INSTALL_SCRIPTDIR "install/run"
 #define INSTALL_ROLLBACKDIR "install/rollback"
-
 #define INSTALL_BUNDLE_EXT ".bundle"
-
-typedef struct _EamBundle        EamBundle;
-
-struct _EamBundle
-{
-  gchar *download_url;
-  gchar *signature_url;
-  gchar *hash;
-};
 
 typedef struct _EamInstallPrivate        EamInstallPrivate;
 
@@ -35,32 +24,22 @@ struct _EamInstallPrivate
 {
   gchar *appid;
   gchar *from_version;
-  EamBundle *bundle;
   char *bundle_location;
-
-  EamPkgdb *pkgdb;
-  EamUpdates *updates;
 };
 
-static void initable_iface_init (GInitableIface *iface);
 static void transaction_iface_init (EamTransactionInterface *iface);
 static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
    GAsyncReadyCallback callback, gpointer data);
-static GVariant * eam_get_property_value (EamTransaction *trans,
-  const char *name, GError **error);
 static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
    GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
   G_ADD_PRIVATE (EamInstall));
 
 enum
 {
-  PROP_APPID = 1,
-  PROP_PKGDB,
-  PROP_UPDATES,
+  PROP_APPID = 1
 };
 
 static void
@@ -68,46 +47,6 @@ transaction_iface_init (EamTransactionInterface *iface)
 {
   iface->run_async = eam_install_run_async;
   iface->finish = eam_install_finish;
-  iface->get_property_value = eam_get_property_value;
-}
-
-static EamBundle *
-eam_bundle_new_from_json_object (JsonObject *json, GError **error)
-{
-  g_return_val_if_fail (json, NULL);
-
-  const gchar *downl = json_object_get_string_member (json, "downloadLink");
-  const gchar *sign = json_object_get_string_member (json, "signatureLink");
-  const gchar *hash = json_object_get_string_member (json, "shaHash");
-
-  if (!downl || !hash) {
-    g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-       _("Not valid application link"));
-    return NULL;
-  }
-
-  if (!sign) {
-    g_set_error (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-       _("Not valid signature link"));
-    return NULL;
-  }
-
-  EamBundle *bundle = g_slice_new0 (EamBundle);
-  bundle->download_url = g_strdup (downl);
-  bundle->signature_url = g_strdup (sign);
-  bundle->hash = g_strdup (hash);
-
-  return bundle;
-}
-
-static void
-eam_bundle_free (EamBundle *bundle)
-{
-  g_free (bundle->download_url);
-  g_free (bundle->signature_url);
-  g_free (bundle->hash);
-
-  g_slice_free (EamBundle, bundle);
 }
 
 static void
@@ -118,10 +57,6 @@ eam_install_finalize (GObject *obj)
 
   g_clear_pointer (&priv->appid, g_free);
   g_clear_pointer (&priv->bundle_location, g_free);
-  g_clear_pointer (&priv->bundle, eam_bundle_free);
-
-  g_clear_object (&priv->updates);
-  g_clear_object (&priv->pkgdb);
 
   G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
 }
@@ -135,12 +70,6 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
   switch (prop_id) {
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
-    break;
-  case PROP_PKGDB:
-    priv->pkgdb = g_value_dup_object (value);
-    break;
-  case PROP_UPDATES:
-    priv->updates = g_value_dup_object (value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
@@ -181,49 +110,6 @@ eam_install_class_init (EamInstallClass *klass)
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamInstall:pkgdb:
-   *
-   * The package database.
-   */
-  g_object_class_install_property (object_class, PROP_PKGDB,
-   g_param_spec_object ("pkgdb", "Package DB", "Package DB", EAM_TYPE_PKGDB,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
-
-  /**
-   * EamInstall:updates:
-   *
-   * The updates manager.
-   */
-  g_object_class_install_property (object_class, PROP_UPDATES,
-   g_param_spec_object ("updates", "Updates manager", "Updates manager", EAM_TYPE_UPDATES,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
-}
-
-static gboolean
-eam_install_initable_init (GInitable *initable,
-                           GCancellable *cancellable,
-                           GError **error)
-{
-  EamInstall *install = EAM_INSTALL (initable);
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-
-  if (!eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
-    g_set_error (error, EAM_ERROR,
-                 EAM_ERROR_PKG_UNKNOWN,
-                 _("Application '%s' is unknown"),
-                 priv->appid);
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
-static void
-initable_iface_init (GInitableIface *iface)
-{
-  iface->init = eam_install_initable_init;
 }
 
 static void
@@ -233,25 +119,14 @@ eam_install_init (EamInstall *self)
 
 /**
  * eam_install_new:
- * @pkgdb: an #EamPkgdb
  * @appid: the application ID to install.
- * @updates: an #EamUpdates
- * @error: location to store a #GError
  *
  * Returns: a new instance of #EamInstall with #EamTransaction interface.
  */
 EamTransaction *
-eam_install_new (EamPkgdb *pkgdb,
-                 const gchar *appid,
-                 EamUpdates *updates,
-                 GError **error)
+eam_install_new (const gchar *appid)
 {
-  return g_initable_new (EAM_TYPE_INSTALL,
-                         NULL, error,
-                         "pkgdb", pkgdb,
-                         "appid", appid,
-                         "updates", updates,
-                         NULL);
+  return g_object_new (EAM_TYPE_INSTALL, "appid", appid, NULL);
 }
 
 static gchar *
@@ -329,215 +204,6 @@ bail:
   g_object_unref (task);
 }
 
-static void
-dl_sign_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  eam_wc_request_finish (EAM_WC (source), result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
-
-  gchar *tarball = build_tarball_filename (self);
-
-  eam_utils_create_bundle_hash_file (priv->bundle->hash, tarball,
-                                     priv->bundle_location,
-                                     priv->appid,
-                                     &error);
-
-  g_free (tarball);
-
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
-
-  return;
-
-bail:
-  g_object_unref (task);
-}
-
-static void
-dl_bundle_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-
-  eam_wc_request_finish (EAM_WC (source), result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
-
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  eam_utils_download_bundle_signature (task, dl_sign_cb,
-                                       priv->bundle->signature_url,
-                                       priv->bundle_location,
-                                       priv->appid);
-
-  return;
-
-bail:
-  g_object_unref (task);
-}
-
-/**
- * expected json format:
- *
- * {
- *   "appId": "com.application.id2",
- *   "appName": "App Name 2",
- *   "codeVersion": "2.22",
- *   "minOsVersion": "1eos1",
- *   "downloadLink": "http://twourl.com/220to222",
- *   "shaHash": "bbccddee-2.20",
- *   "isDiff": true,
- *   "fromVersion": "2.20"
- * }
- **/
-static gboolean
-load_bundle_info (EamInstall *self, JsonNode *root)
-{
-  JsonObject *bundle_json = NULL;
-
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  eam_utils_parse_json (root,
-                        &bundle_json,
-                        priv->appid);
-  if (bundle_json)
-    priv->bundle = eam_bundle_new_from_json_object (bundle_json, NULL);
-
-  return priv->bundle != NULL;
-}
-
-static void
-load_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-  JsonParser *parser = JSON_PARSER (source);
-
-  json_parser_load_from_stream_finish (parser, result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
-
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-
-  if (!load_bundle_info (self, json_parser_get_root (parser))) {
-    g_task_return_new_error (task, EAM_ERROR,
-       EAM_ERROR_INVALID_FILE,
-       _("Not valid stream with update/install link"));
-    goto bail;
-  }
-
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
-                             priv->bundle_location,
-                             priv->appid,
-                             INSTALL_BUNDLE_EXT);
-  return;
-
-bail:
-  g_object_unref (task);
-}
-
-static void
-request_json_updates_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-
-  GInputStream *strm = eam_wc_request_instream_finish (EAM_WC (source),
-     result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
-  }
-
-  if (g_task_return_error_if_cancelled (task)) {
-    g_object_unref (strm);
-    goto bail;
-  }
-
-  g_assert (strm);
-
-  GCancellable *cancellable = g_task_get_cancellable (task);
-  JsonParser *parser = json_parser_new ();
-  json_parser_load_from_stream_async (parser, strm, cancellable, load_json_updates_cb, task);
-  g_object_unref (parser);
-  g_object_unref (strm);
-
-  return;
-
-bail:
-  g_object_unref (task);
-}
-
-static GVariant *
-eam_get_property_value (EamTransaction *trans, const char *name, GError **error)
-{
-  g_return_val_if_fail (EAM_IS_INSTALL (trans), NULL);
-
-  EamInstall *install = EAM_INSTALL (trans);
-
-  eam_log_info_message ("Retrieving Install property '%s'", name);
-
-  if (g_strcmp0 (name, "IsDelta") == 0)
-    return g_variant_new ("b", eam_install_is_delta_update (install));
-
-  const char * (*text_property_getter)(EamInstall *) = NULL;
-
-  if (g_strcmp0 (name, "BundleHash") == 0)
-    text_property_getter = &eam_install_get_bundle_hash;
-  else if (g_strcmp0 (name, "BundleURI") == 0)
-    text_property_getter = &eam_install_get_download_url;
-  else if (g_strcmp0 (name, "SignatureURI") == 0)
-    text_property_getter = &eam_install_get_signature_url;
-  else if (g_strcmp0 (name, "ApplicationId") == 0)
-    text_property_getter = &eam_install_get_app_id;
-
-  /* Handler for text values */
-  if (text_property_getter != NULL) {
-    const char *property_text_value = text_property_getter (install);
-    if (property_text_value != NULL && *property_text_value != '\0') {
-      return g_variant_new ("s", property_text_value);
-    }
-  }
-
-  /* Set an error if we got to here without returning a value */
-  g_set_error (error, EAM_ERROR,
-               EAM_ERROR_UNIMPLEMENTED,
-               _("Property '%s' is not implemented"),
-               name);
-
-  return NULL;
-}
-
 /**
  * 1. Download the update link
  * 1. Download the application and its sha256sum
@@ -553,49 +219,19 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback);
 
-  GError *error = NULL;
-
-  JsonParser *parser = json_parser_new ();
-  gchar *updates = eam_utils_get_json_updates_filename ();
-
-  json_parser_load_from_file (parser, updates, &error);
-  g_free (updates);
-
   EamInstall *self = EAM_INSTALL (trans);
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  if (error) {
-    eam_log_error_message ("Can't load cached updates.json: %s", error->message);
-    g_clear_error (&error);
-
-    eam_utils_request_json_updates (task, request_json_updates_cb, priv->appid);
-
-    goto bail;
-  }
-
-  if (!load_bundle_info (self, json_parser_get_root (parser))) {
-    g_task_return_new_error (task, EAM_ERROR,
-       EAM_ERROR_INVALID_FILE,
-       _("Not valid stream with update/install link"));
-
-    g_object_unref (task);
-    goto bail;
-  }
-
   if (priv->bundle_location == NULL) {
-    eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
-                               NULL, /* bundle_location */
-                               priv->appid,
-                               INSTALL_BUNDLE_EXT);
-  }
-  else {
-    run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "No bundle location set");
+    g_object_unref (task);
+    return;
   }
 
-bail:
-  g_object_unref (parser);
+  run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
 }
 
 static gboolean
@@ -605,66 +241,6 @@ eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
   g_return_val_if_fail (g_task_is_valid (res, trans), FALSE);
 
   return g_task_propagate_boolean (G_TASK (res), error);
-}
-
-static gboolean
-ensure_bundle_loaded (EamInstall *install)
-{
-  GError *error = NULL;
-
-  JsonParser *parser = json_parser_new ();
-  gchar *updates = eam_utils_get_json_updates_filename ();
-
-  json_parser_load_from_file (parser, updates, &error);
-  g_free (updates);
-
-  if (error) {
-    eam_log_error_message ("Can't load cached updates.json: %s", error->message);
-    g_clear_error (&error);
-    g_object_unref (parser);
-    return FALSE;
-  }
-
-  if (!load_bundle_info (install, json_parser_get_root (parser))) {
-    g_object_unref (parser);
-    return FALSE;
-  }
-
-  g_object_unref (parser);
-  return TRUE;
-}
-
-const char *
-eam_install_get_bundle_hash (EamInstall *install)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-
-  if (!ensure_bundle_loaded (install))
-    return NULL;
-
-  return priv->bundle->hash;
-}
-
-const char *
-eam_install_get_signature_url (EamInstall *install)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-
-  if (!ensure_bundle_loaded (install))
-    return NULL;
-
-  return priv->bundle->signature_url;
-}
-
-const char *
-eam_install_get_download_url (EamInstall *install)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-
-  if (!ensure_bundle_loaded (install))
-    return NULL;
-
-  return priv->bundle->download_url;
 }
 
 void
@@ -683,11 +259,4 @@ eam_install_get_app_id (EamInstall *install)
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
 
   return priv->appid;
-}
-
-const gboolean
-eam_install_is_delta_update (EamInstall *install)
-{
-  /* New install is always treated as a non-delta one */
-  return FALSE;
 }

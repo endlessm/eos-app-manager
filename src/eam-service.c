@@ -551,7 +551,7 @@ out:
 
 static EamRemoteTransaction *
 start_dbus_transaction (EamService *service, GDBusMethodInvocation *invocation,
-  GError *error)
+  GError **error)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
@@ -562,7 +562,7 @@ start_dbus_transaction (EamService *service, GDBusMethodInvocation *invocation,
                                                              &internal_error);
 
   if (internal_error != NULL) {
-    g_set_error (&error, EAM_ERROR,
+    g_set_error (error, EAM_ERROR,
                  EAM_ERROR_UNIMPLEMENTED,
                  _("Internal transaction error: %s"),
                  internal_error->message);
@@ -578,55 +578,34 @@ start_dbus_transaction (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static void
-run_service_install (EamService *service, const gpointer params,
-  GDBusMethodInvocation *invocation)
+eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
+  GVariant *params)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  EamRemoteTransaction *remote_transaction = NULL;
-  GError *error = NULL;
-
-  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
-
   eam_service_reset_timer (service);
 
-  priv->trans = eam_install_new (priv->db, clos->appid, priv->updates, &error);
+  const char *appid = NULL;
+  g_variant_get (params, "(&s)", &appid);
 
-  /* Free the params before handling the error */
-  eam_service_free_params_clos (clos);
+  eam_log_info_message ("Install() method called (appid: %s)", appid);
 
-  if (error != NULL)
-    goto out;
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  remote_transaction = start_dbus_transaction (service, invocation, error);
+  priv->trans = eam_install_new (appid);
 
- out:
-  if (error == NULL && remote_transaction != NULL) {
-    g_dbus_method_invocation_return_value (invocation,
-                                           g_variant_new ("(o)",
-                                                          remote_transaction->obj_path));
+  GError *error = NULL;
+  EamRemoteTransaction *remote_transaction = NULL;
+  remote_transaction = start_dbus_transaction (service, invocation, &error);
+
+  if (remote_transaction != NULL) {
+    GVariant *res = g_variant_new ("(o)", remote_transaction->obj_path);
+    g_dbus_method_invocation_return_value (invocation, res);
   }
   else {
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
-
-    eam_service_check_queue (service);
   }
-}
 
-static void
-eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
-  GVariant *params)
-{
-  gchar *appid = NULL;
-  g_variant_get (params, "(s)", &appid);
-
-  gpointer svc_params = eam_service_populate_param_clos(appid, FALSE);
-
-  g_free(appid);
-
-  run_eam_service_with_load_pkgdb (service, svc_params,
-                                   run_service_install,
-                                   invocation);
+  eam_service_check_queue (service);
 }
 
 // TODO: combine commonalities with run_service_install
@@ -657,10 +636,10 @@ run_service_update (EamService *service, const gpointer params,
   if (error != NULL)
     goto out;
 
-  remote_transaction = start_dbus_transaction (service, invocation, error);
+  remote_transaction = start_dbus_transaction (service, invocation, &error);
 
  out:
-  if (error == NULL && remote_transaction != NULL) {
+  if (remote_transaction != NULL) {
     g_dbus_method_invocation_return_value (invocation,
                                            g_variant_new ("(o)",
                                                           remote_transaction->obj_path));
@@ -1024,7 +1003,7 @@ eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 }
 
 static void
-transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
+transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   EamRemoteTransaction *remote = data;
   EamService *service = remote->service;
@@ -1039,26 +1018,7 @@ transaction_install_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   eam_log_info_message ("Transaction '%s' result: %s", remote->obj_path, ret ? "success" : "failure");
 
-  /* if we installed, uninstalled or updated something we reload the
-   * database
-   */
-  if (ret) {
-    /* ensure that we bind the method invocation to the internal
-     * transaction instance
-     */
-    g_object_set_data (G_OBJECT (priv->trans), "invocation", remote->invocation);
-
-    eam_service_remove_active_transaction (service, remote);
-
-    eam_log_info_message ("Reloading the package database");
-    eam_service_set_reloaddb (service, TRUE);
-    eam_pkgdb_load_async (priv->db, priv->cancellable,
-                          reload_pkgdb_after_transaction_cb,
-                          service);
-    return;
-  }
-
-  GVariant *value = g_variant_new ("(b)", FALSE);
+  GVariant *value = g_variant_new ("(b)", ret);
   g_dbus_method_invocation_return_value (remote->invocation, value);
 
 out:
@@ -1112,7 +1072,7 @@ handle_transaction_method_call (GDBusConnection *connection,
     remote->invocation = invocation;
 
     eam_transaction_run_async (remote->transaction, remote->cancellable,
-                               transaction_install_cb,
+                               transaction_complete_cb,
                                remote);
     return;
   }
@@ -1207,6 +1167,8 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
     transaction = load_introspection ("eam-transaction-interface.xml", &internal_error);
 
     if (internal_error != NULL) {
+      eam_log_error_message ("Unable to load 'eam-transaction-interface.xml': %s",
+                             internal_error->message);
       g_propagate_error (error, internal_error);
       return FALSE;
     }
@@ -1223,6 +1185,9 @@ eam_remote_transaction_register_dbus (EamRemoteTransaction *remote,
                                        &internal_error);
 
   if (internal_error != NULL) {
+    eam_log_error_message ("Unable to register object '%s': %s",
+                           remote->obj_path,
+                           internal_error->message);
     g_propagate_error (error, internal_error);
     return FALSE;
   }
