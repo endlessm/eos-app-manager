@@ -603,50 +603,6 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   else {
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
-  }
-
-  eam_service_check_queue (service);
-}
-
-// TODO: combine commonalities with run_service_install
-static void
-run_service_update (EamService *service, const gpointer params,
-  GDBusMethodInvocation *invocation)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  EamRemoteTransaction *remote_transaction = NULL;
-  GError *error = NULL;
-
-  struct _eam_service_params_clos *clos = (struct _eam_service_params_clos *) params;
-
-  eam_log_info_message ("Update service callback (%s, %s)", clos->appid,
-                        clos->allow_deltas ? "true" : "false");
-
-  eam_service_reset_timer (service);
-
-  priv->trans = eam_update_new (priv->db,
-                                clos->appid,
-                                clos->allow_deltas,
-                                priv->updates,
-                                &error);
-
-  /* Free the params before handling the error */
-  eam_service_free_params_clos (clos);
-
-  if (error != NULL)
-    goto out;
-
-  remote_transaction = start_dbus_transaction (service, invocation, &error);
-
- out:
-  if (remote_transaction != NULL) {
-    g_dbus_method_invocation_return_value (invocation,
-                                           g_variant_new ("(o)",
-                                                          remote_transaction->obj_path));
-  }
-  else {
-    g_dbus_method_invocation_return_gerror (invocation, error);
-    g_error_free (error);
 
     eam_service_check_queue (service);
   }
@@ -656,22 +612,34 @@ static void
 eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
-  gchar *appid = NULL;
+  eam_service_reset_timer (service);
+
+  const char *appid = NULL;
   gboolean allow_deltas = FALSE;
 
-  g_variant_get (params, "(sb)", &appid, &allow_deltas);
+  g_variant_get (params, "(&sb)", &appid, &allow_deltas);
 
   eam_log_info_message ("Update service called (appid: %s, deltas: %s)", appid,
                         allow_deltas ? "True" : "False");
 
-  gpointer svc_params = eam_service_populate_param_clos(appid,
-                                                        allow_deltas);
+  EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  g_free(appid);
+  priv->trans = eam_update_new (appid, allow_deltas);
 
-  run_eam_service_with_load_pkgdb (service, svc_params,
-                                   run_service_update,
-                                   invocation);
+  GError *error = NULL;
+  EamRemoteTransaction *remote_transaction = NULL;
+  remote_transaction = start_dbus_transaction (service, invocation, &error);
+
+  if (remote_transaction != NULL) {
+    GVariant *res = g_variant_new ("(o)", remote_transaction->obj_path);
+    g_dbus_method_invocation_return_value (invocation, res);
+  }
+  else {
+    g_dbus_method_invocation_return_gerror (invocation, error);
+    g_error_free (error);
+
+    eam_service_check_queue (service);
+  }
 }
 
 static void
