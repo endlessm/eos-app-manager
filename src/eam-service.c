@@ -1058,41 +1058,9 @@ handle_transaction_method_call (GDBusConnection *connection,
   }
 }
 
-static GVariant *
-handle_transaction_get_property (GDBusConnection *connection,
-                                 const gchar *sender,
-                                 const gchar *path,
-                                 const gchar *interface,
-                                 const gchar *name,
-                                 GError **error,
-                                 gpointer data)
-{
-  GVariant *retval = NULL;
-  EamRemoteTransaction *remote = data;
-
-  eam_service_reset_timer (remote->service);
-
-  if (g_strcmp0 (interface, "com.endlessm.AppManager.Transaction") != 0)
-    return NULL;
-
-  if (remote->transaction == NULL) {
-    eam_log_error_message ("Transaction is null. Bailing.");
-
-    return NULL;
-  }
-
-  retval = eam_transaction_get_property_value (remote->transaction,
-                                               name,
-                                               error);
-  if (error != NULL)
-    eam_log_error_message ("Transaction property '%s' is unknown.", name);
-
-  return retval;
-}
-
 static const GDBusInterfaceVTable transaction_vtable = {
   handle_transaction_method_call,
-  handle_transaction_get_property,
+  NULL,
   NULL,
 };
 
