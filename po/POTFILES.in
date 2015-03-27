@@ -2,13 +2,9 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
 src/eam-install.c
-src/eam-pkg.c
-src/eam-pkgdb.c
 src/eam-service.c
 src/eam-spawner.c
 src/eam-uninstall.c
-src/eam-updates.c
 src/eam-update.c
 src/eam-utils.c
-src/eam-wc-file.c
 src/main.c
