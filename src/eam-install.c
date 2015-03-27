@@ -575,16 +575,16 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     goto bail;
   }
 
-  if (!load_bundle_info (self, json_parser_get_root (parser))) {
-    g_task_return_new_error (task, EAM_ERROR,
-       EAM_ERROR_INVALID_FILE,
-       _("Not valid stream with update/install link"));
-
-    g_object_unref (task);
-    goto bail;
-  }
-
   if (priv->bundle_location == NULL) {
+    if (!load_bundle_info (self, json_parser_get_root (parser))) {
+      g_task_return_new_error (task, EAM_ERROR,
+			       EAM_ERROR_INVALID_FILE,
+			       _("Not valid stream with update/install link"));
+
+      g_object_unref (task);
+      goto bail;
+    }
+
     eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
                                NULL, /* bundle_location */
                                priv->appid,
