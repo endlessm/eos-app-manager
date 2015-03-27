@@ -96,7 +96,6 @@ static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
                                                          const char *sender,
                                                          EamTransaction *transaction,
                                                          GError **error);
-static void eam_remote_transaction_cancel (EamRemoteTransaction *remote);
 static void eam_remote_transaction_free (EamRemoteTransaction *remote);
 
 static EamServiceAuth auth_action[] = {
@@ -732,6 +731,7 @@ static void
 eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 {
   eam_log_info_message ("Transaction '%s' was cancelled.", remote->obj_path);
+  g_cancellable_cancel (remote->cancellable);
   eam_service_remove_active_transaction (remote->service, remote);
 }
 
