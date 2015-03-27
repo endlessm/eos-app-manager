@@ -337,6 +337,7 @@ typedef void (*EamRunService) (EamService *service, const gpointer params,
 
 static EamRemoteTransaction *
 start_dbus_transaction (EamService *service,
+			EamTransaction *trans,
                         GDBusMethodInvocation *invocation,
                         GError **error)
 {
@@ -345,7 +346,7 @@ start_dbus_transaction (EamService *service,
 
   GError *internal_error = NULL;
   EamRemoteTransaction *remote = eam_remote_transaction_new (service, sender,
-                                                             priv->trans,
+							     trans,
                                                              &internal_error);
 
   if (internal_error != NULL) {
@@ -375,13 +376,11 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
 
   eam_log_info_message ("Install() method called (appid: %s)", appid);
 
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  priv->trans = eam_install_new (appid);
-
+  EamTransaction *trans = eam_install_new (appid);
   GError *error = NULL;
-  EamRemoteTransaction *remote_transaction = NULL;
-  remote_transaction = start_dbus_transaction (service, invocation, &error);
+  EamRemoteTransaction *remote_transaction =
+    start_dbus_transaction (service, trans, invocation, &error);
+  g_object_unref (trans);
 
   if (remote_transaction != NULL) {
     GVariant *res = g_variant_new ("(o)", remote_transaction->obj_path);
@@ -390,9 +389,9 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
   else {
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
-
-    eam_service_check_queue (service);
   }
+
+  eam_service_check_queue (service);
 }
 
 static void
@@ -409,13 +408,11 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   eam_log_info_message ("Update service called (appid: %s, deltas: %s)", appid,
                         allow_deltas ? "True" : "False");
 
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  priv->trans = eam_update_new (appid, allow_deltas);
-
+  EamTransaction *trans = eam_update_new (appid, allow_deltas);
   GError *error = NULL;
-  EamRemoteTransaction *remote_transaction = NULL;
-  remote_transaction = start_dbus_transaction (service, invocation, &error);
+  EamRemoteTransaction *remote_transaction =
+    start_dbus_transaction (service, trans, invocation, &error);
+  g_object_unref (trans);
 
   if (remote_transaction != NULL) {
     GVariant *res = g_variant_new ("(o)", remote_transaction->obj_path);
@@ -424,9 +421,9 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   else {
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
-
-    eam_service_check_queue (service);
   }
+
+  eam_service_check_queue (service);
 }
 
 static void
@@ -740,7 +737,6 @@ transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
   EamRemoteTransaction *remote = data;
   EamService *service = remote->service;
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   GError *error = NULL;
   gboolean ret = eam_transaction_finish (remote->transaction, res, &error);
@@ -756,7 +752,6 @@ transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
 
 out:
   eam_service_remove_active_transaction (service, remote);
-  eam_service_clear_transaction (service, priv->trans);
 }
 
 static void
@@ -811,9 +806,6 @@ handle_transaction_method_call (GDBusConnection *connection,
   }
 
   if (g_strcmp0 (method, "CancelTransaction") == 0) {
-    /* clear the transaction from the queue */
-    eam_service_clear_transaction (remote->service, remote->transaction);
-
     /* cancel the remote transaction */
     eam_remote_transaction_cancel (remote);
 
@@ -851,7 +843,6 @@ eam_remote_transaction_sender_vanished (GDBusConnection *connection,
   if (g_strcmp0 (remote->sender, sender) == 0) {
     eam_log_info_message ("Remote peer '%s' vanished for transaction '%s'", remote->sender, remote->obj_path);
     eam_service_reset_timer (remote->service);
-    eam_service_clear_transaction (remote->service, remote->transaction);
     eam_remote_transaction_cancel (remote);
   }
 }
