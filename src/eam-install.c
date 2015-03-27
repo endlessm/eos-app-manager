@@ -42,7 +42,6 @@ struct _EamInstallPrivate
   EamUpdates *updates;
 };
 
-static void initable_iface_init (GInitableIface *iface);
 static void transaction_iface_init (EamTransactionInterface *iface);
 static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
    GAsyncReadyCallback callback, gpointer data);
@@ -52,7 +51,6 @@ static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
    GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
   G_ADD_PRIVATE (EamInstall));
 
@@ -201,31 +199,6 @@ eam_install_class_init (EamInstallClass *klass)
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_PRIVATE));
 }
 
-static gboolean
-eam_install_initable_init (GInitable *initable,
-                           GCancellable *cancellable,
-                           GError **error)
-{
-  EamInstall *install = EAM_INSTALL (initable);
-  EamInstallPrivate *priv = eam_install_get_instance_private (install);
-
-  if (!eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
-    g_set_error (error, EAM_ERROR,
-                 EAM_ERROR_PKG_UNKNOWN,
-                 _("Application '%s' is unknown"),
-                 priv->appid);
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
-static void
-initable_iface_init (GInitableIface *iface)
-{
-  iface->init = eam_install_initable_init;
-}
-
 static void
 eam_install_init (EamInstall *self)
 {
@@ -246,12 +219,11 @@ eam_install_new (EamPkgdb *pkgdb,
                  EamUpdates *updates,
                  GError **error)
 {
-  return g_initable_new (EAM_TYPE_INSTALL,
-                         NULL, error,
-                         "pkgdb", pkgdb,
-                         "appid", appid,
-                         "updates", updates,
-                         NULL);
+  return g_object_new (EAM_TYPE_INSTALL,
+		       "pkgdb", pkgdb,
+		       "appid", appid,
+		       "updates", updates,
+		       NULL);
 }
 
 static gchar *
@@ -575,16 +547,24 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     goto bail;
   }
 
-  if (!load_bundle_info (self, json_parser_get_root (parser))) {
-    g_task_return_new_error (task, EAM_ERROR,
-       EAM_ERROR_INVALID_FILE,
-       _("Not valid stream with update/install link"));
-
-    g_object_unref (task);
-    goto bail;
-  }
-
   if (priv->bundle_location == NULL) {
+    if (!eam_updates_pkg_is_installable (priv->updates, priv->appid)) {
+      g_set_error (error, EAM_ERROR,
+		   EAM_ERROR_PKG_UNKNOWN,
+		   _("Application '%s' is unknown"),
+		   priv->appid);
+      goto bail;
+    }
+
+    if (!load_bundle_info (self, json_parser_get_root (parser))) {
+      g_task_return_new_error (task, EAM_ERROR,
+			       EAM_ERROR_INVALID_FILE,
+			       _("Not valid stream with update/install link"));
+
+      g_object_unref (task);
+      goto bail;
+    }
+
     eam_utils_download_bundle (task, dl_bundle_cb, priv->bundle->download_url,
                                NULL, /* bundle_location */
                                priv->appid,
