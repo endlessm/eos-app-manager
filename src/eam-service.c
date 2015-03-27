@@ -14,7 +14,6 @@
 #include "eam-update.h"
 #include "eam-uninstall.h"
 #include "eam-dbus-utils.h"
-#include "eam-version.h"
 #include "eam-log.h"
 #include "eam-resources.h"
 
@@ -257,14 +256,13 @@ eam_service_init (EamService *service)
 
 /**
  * eam_service_new:
- * @db: a #EamPkgdb instance.
  *
  * Returns: Creates a new #EamService instance.
  **/
 EamService *
-eam_service_new (EamPkgdb *db)
+eam_service_new (void)
 {
-  return g_object_new (EAM_TYPE_SERVICE, "db", db, NULL);
+  return g_object_new (EAM_TYPE_SERVICE, NULL);
 }
 
 static void

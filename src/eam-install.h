@@ -3,9 +3,7 @@
 #ifndef EAM_INSTALL_H
 #define EAM_INSTALL_H
 
-#include "eam-pkgdb.h"
 #include "eam-transaction.h"
-#include "eam-updates.h"
 
 G_BEGIN_DECLS
 

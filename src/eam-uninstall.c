@@ -14,7 +14,6 @@ typedef struct _EamUninstallPrivate	EamUninstallPrivate;
 struct _EamUninstallPrivate
 {
   gchar *appid;
-  EamPkgdb *pkgdb;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -25,8 +24,7 @@ G_DEFINE_TYPE_WITH_CODE (EamUninstall, eam_uninstall, G_TYPE_OBJECT,
 
 enum
 {
-  PROP_APPID = 1,
-  PROP_PKGDB
+  PROP_APPID = 1
 };
 
 
@@ -121,7 +119,6 @@ eam_uninstall_finalize (GObject *obj)
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (EAM_UNINSTALL (obj));
 
   g_clear_pointer (&priv->appid, g_free);
-  g_clear_object (&priv->pkgdb);
 
   G_OBJECT_CLASS (eam_uninstall_parent_class)->finalize (obj);
 }

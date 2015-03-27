@@ -3,7 +3,6 @@
 #ifndef EAM_UNINSTALL_H
 #define EAM_UNINSTALL_H
 
-#include "eam-pkgdb.h"
 #include "eam-transaction.h"
 
 G_BEGIN_DECLS

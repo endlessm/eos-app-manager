@@ -8,10 +8,8 @@
 #include "eam-error.h"
 #include "eam-install.h"
 #include "eam-spawner.h"
-#include "eam-wc.h"
 #include "eam-config.h"
 #include "eam-os.h"
-#include "eam-version.h"
 #include "eam-utils.h"
 
 #define INSTALL_SCRIPTDIR "install/run"
