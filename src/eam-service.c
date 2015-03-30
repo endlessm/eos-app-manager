@@ -23,7 +23,6 @@ struct _EamServicePrivate {
   GDBusConnection *connection;
   guint registration_id;
 
-  EamTransaction *trans;
   GQueue *invocation_queue;
 
   GHashTable *active_transactions;
@@ -310,26 +309,12 @@ eam_service_check_queue (EamService *service)
   if (info == NULL)
     return;
 
+  /* do not need the old cancellable any more */
+  g_clear_object (&priv->cancellable);
+  priv->cancellable = g_cancellable_new ();
+
   run_method_with_authorization (service, info->invocation, info->method, info->params);
   eam_invocation_info_free (info);
-}
-
-static void
-eam_service_clear_transaction (EamService *service,
-                               EamTransaction *transaction)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  /* if the transaction is the one currently running, then we remove it */
-  if (priv->trans == transaction) {
-    g_clear_object (&priv->trans);
-
-    /* do not need the cancellable any more */
-    g_clear_object (&priv->cancellable);
-    priv->cancellable = g_cancellable_new ();
-  }
-
-  eam_service_check_queue (service);
 }
 
 typedef void (*EamRunService) (EamService *service, const gpointer params,
@@ -341,7 +326,6 @@ start_dbus_transaction (EamService *service,
                         GDBusMethodInvocation *invocation,
                         GError **error)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
   const char *sender = g_dbus_method_invocation_get_sender (invocation);
 
   GError *internal_error = NULL;
@@ -428,26 +412,25 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
 static void
 uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
+  EamService *service = EAM_SERVICE (data);
+  EamTransaction *trans = EAM_TRANSACTION (source);
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
 
-  EamService *service = EAM_SERVICE (data);
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_assert (source == G_OBJECT (priv->trans));
+  g_object_set_data (source, "invocation", NULL);
 
   GError *error = NULL;
-  gboolean ret = eam_transaction_finish (priv->trans, res, &error);
+  gboolean ret = eam_transaction_finish (trans, res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (invocation, error);
     goto out;
   }
 
-  g_object_set_data (source, "invocation", NULL);
   GVariant *value = g_variant_new ("(b)", ret);
   g_dbus_method_invocation_return_value (invocation, value);
 
-out:
-  eam_service_clear_transaction (service, priv->trans);
+ out:
+  eam_service_check_queue (service);
 }
 
 static void
@@ -458,11 +441,11 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   g_variant_get (params, "(&s)", &appid);
 
   EamServicePrivate *priv = eam_service_get_instance_private (service);
+  EamTransaction *trans = eam_uninstall_new (appid);
+  g_object_set_data (G_OBJECT (trans), "invocation", invocation);
 
-  priv->trans = eam_uninstall_new (appid);
-  g_object_set_data (G_OBJECT (priv->trans), "invocation", invocation);
-
-  eam_transaction_run_async (priv->trans, priv->cancellable, uninstall_cb, service);
+  eam_transaction_run_async (trans, priv->cancellable, uninstall_cb, service);
+  g_object_unref (trans);
 }
 
 static gboolean
@@ -682,7 +665,7 @@ eam_service_is_busy (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  return (priv->trans || priv->authorizing);
+  return (priv->authorizing);
 }
 
 static void
