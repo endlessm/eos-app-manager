@@ -354,7 +354,6 @@ start_dbus_transaction (EamService *service,
                  EAM_ERROR_UNIMPLEMENTED,
                  _("Internal transaction error: %s"),
                  internal_error->message);
-    g_clear_object (&priv->trans);
     g_clear_error (&internal_error);
 
     return NULL;
