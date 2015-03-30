@@ -225,6 +225,21 @@ run_scripts (EamUpdate *self, const gchar *scriptdir,
                                 task);
 }
 
+static const gchar *
+get_rollback_scriptdir (EamUpdate *self)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+
+  switch (priv->action) {
+  case EAM_ACTION_UPDATE:
+    return UPDATE_ROLLBACKDIR;
+  case EAM_ACTION_XDELTA_UPDATE:
+    return XDELTA_UPDATE_ROLLBACKDIR;
+  default:
+    g_assert_not_reached ();
+  }
+}
+
 static void
 rollback (GTask *task, GError *error)
 {
@@ -241,9 +256,10 @@ rollback (GTask *task, GError *error)
     break;
   }
 
-  /* Rollback action if possible */
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE) {
-    eam_log_error_message ("Can't rollback xdelta update - bundle not present.");
+  /* We cannot rollback an xdelta update */
+  if (priv->action != EAM_ACTION_XDELTA_UPDATE) {
+    eam_log_info_message ("Trying to roll back");
+    run_scripts (self, get_rollback_scriptdir (self), NULL, NULL, NULL);
   }
 
   /* Clean up */
