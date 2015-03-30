@@ -70,8 +70,6 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
   GTask *task = g_task_new (self, cancellable, callback, data);
 
   char *dir = g_build_filename (eam_config_scriptdir (), "uninstall", NULL);
-  g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
 
   GHashTable *env = g_hash_table_new (g_str_hash, g_str_equal);
   g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
