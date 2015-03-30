@@ -40,16 +40,9 @@ struct _EamInstallClass
 GType eam_install_get_type (void) G_GNUC_CONST;
 
 EamTransaction *   eam_install_new                 (const gchar *appid);
-
-const char *       eam_install_get_download_url    (EamInstall  *install);
-const char *       eam_install_get_signature_url   (EamInstall  *install);
-const char *       eam_install_get_bundle_hash     (EamInstall  *install);
-
 void               eam_install_set_bundle_location (EamInstall  *install,
                                                     const char  *path);
-
 const char *       eam_install_get_app_id          (EamInstall  *install);
-const gboolean     eam_install_is_delta_update     (EamInstall  *install);
 
 G_END_DECLS
 

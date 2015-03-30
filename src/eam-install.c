@@ -26,14 +26,17 @@ struct _EamInstallPrivate
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
-static void eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
-   GAsyncReadyCallback callback, gpointer data);
-static gboolean eam_install_finish (EamTransaction *trans, GAsyncResult *res,
-   GError **error);
+static void eam_install_run_async  (EamTransaction *trans,
+                                    GCancellable *cancellable,
+                                    GAsyncReadyCallback callback,
+                                    gpointer data);
+static gboolean eam_install_finish (EamTransaction *trans,
+                                    GAsyncResult *res,
+                                    GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamInstall, eam_install, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
-  G_ADD_PRIVATE (EamInstall));
+  G_ADD_PRIVATE (EamInstall))
 
 enum
 {
@@ -60,8 +63,10 @@ eam_install_finalize (GObject *obj)
 }
 
 static void
-eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
-  GParamSpec *pspec)
+eam_install_set_property (GObject *obj,
+                          guint prop_id,
+                          const GValue *value,
+                          GParamSpec *pspec)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (EAM_INSTALL (obj));
 
@@ -76,8 +81,10 @@ eam_install_set_property (GObject *obj, guint prop_id, const GValue *value,
 }
 
 static void
-eam_install_get_property (GObject *obj, guint prop_id, GValue *value,
-  GParamSpec *pspec)
+eam_install_get_property (GObject *obj,
+                          guint prop_id,
+                          GValue *value,
+                          GParamSpec *pspec)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (EAM_INSTALL (obj));
 
