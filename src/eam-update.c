@@ -31,7 +31,6 @@ struct _EamUpdatePrivate
 {
   gchar *appid;
   gboolean allow_deltas;
-  gchar *from_version;
   char *bundle_location;
   EamAction action;
 };
