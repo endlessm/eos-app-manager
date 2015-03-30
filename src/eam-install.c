@@ -9,7 +9,6 @@
 #include "eam-install.h"
 #include "eam-spawner.h"
 #include "eam-config.h"
-#include "eam-os.h"
 #include "eam-utils.h"
 
 #define INSTALL_SCRIPTDIR "install/run"

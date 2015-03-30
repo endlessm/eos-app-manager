@@ -8,7 +8,6 @@
 
 #include "eam-config.h"
 #include "eam-error.h"
-#include "eam-os.h"
 #include "eam-spawner.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"

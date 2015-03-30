@@ -10,7 +10,6 @@
 #include "eam-update.h"
 #include "eam-spawner.h"
 #include "eam-config.h"
-#include "eam-os.h"
 #include "eam-utils.c"
 
 #define UPDATE_SCRIPTDIR "update/full"
