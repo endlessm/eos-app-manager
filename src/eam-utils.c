@@ -102,19 +102,20 @@ eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
   char *dir = g_build_filename (eam_config_scriptdir (), scriptdir, NULL);
 
   /* scripts parameters */
-  GStrv params = g_new0 (gchar *, 3);
+  GStrv params = g_new (gchar *, 3);
   params[0] = g_strdup (appid);
   params[1] = g_strdup (filename);
+  params[2] = NULL;
 
   /* prefix environment */
-  g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
-  g_setenv ("EAM_GPGKEYRING", eam_config_gpgkeyring (), FALSE);
-  /* if (priv->bundle_location != NULL) */
+  GHashTable *env = g_hash_table_new (g_str_hash, g_str_equal);
+  g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
+  g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
+  g_hash_table_insert (env, (gpointer) "EAM_GPGKEYRING", (gpointer) eam_config_gpgkeyring ());
   if (external_download)
-    g_setenv ("EAM_EXTDOWNLOAD", "1", FALSE);
+    g_hash_table_insert (env, (gpointer) "EAM_EXTDOWNLOAD", (gpointer) "1");
 
-  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
+  EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
   eam_spawner_run_async (spawner, cancellable, callback, task);
 
   g_free (dir);

@@ -123,7 +123,7 @@ test_scripts_install (void)
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, loop);
   g_object_unref (spawner);
@@ -151,7 +151,7 @@ install_rollback_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL_ROLLBACK, NULL);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
   g_object_unref (spawner);
@@ -167,7 +167,7 @@ test_scripts_install_rollback (void)
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
   eam_spawner_run_async (spawner, NULL, install_rollback_cb, loop);
   g_object_unref (spawner);
 
@@ -194,7 +194,7 @@ install_uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_UNINSTALL, NULL);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
   g_object_unref (spawner);
@@ -210,7 +210,7 @@ test_scripts_install_uninstall (void)
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
   eam_spawner_run_async (spawner, NULL, install_uninstall_cb, loop);
   g_object_unref (spawner);
 
@@ -238,7 +238,7 @@ install_update_cb (GObject *source, GAsyncResult *res, gpointer data)
   setup_downloaded_files ();
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_FULL_UPDATE, NULL);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
   g_object_unref (spawner);
@@ -255,7 +255,7 @@ test_scripts_install_update (void)
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
   eam_spawner_run_async (spawner, NULL, install_update_cb, loop);
   g_object_unref (spawner);
 
@@ -281,7 +281,7 @@ update_cb (GObject *source, GAsyncResult *res, gpointer data)
   }
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_FULL_UPDATE_ROLLBACK, NULL);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
 
   eam_spawner_run_async (spawner, NULL, run_cb, data);
   g_object_unref (spawner);
@@ -305,7 +305,7 @@ install_update_rollback_cb (GObject *source, GAsyncResult *res, gpointer data)
   setup_downloaded_files ();
 
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_FULL_UPDATE, NULL);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
 
   eam_spawner_run_async (spawner, NULL, update_cb, data);
   g_object_unref (spawner);
@@ -322,7 +322,7 @@ test_scripts_install_update_rollback (void)
   const gchar *scriptdir = g_test_get_filename (G_TEST_DIST, SCRIPTDIR_INSTALL, NULL);
 
   GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-  EamSpawner *spawner = eam_spawner_new (scriptdir, script_args);
+  EamSpawner *spawner = eam_spawner_new (scriptdir, NULL, script_args);
   eam_spawner_run_async (spawner, NULL, install_update_rollback_cb, loop);
   g_object_unref (spawner);
 

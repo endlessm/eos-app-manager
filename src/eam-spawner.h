@@ -40,6 +40,7 @@ struct _EamSpawnerClass
 GType           eam_spawner_get_type                             (void) G_GNUC_CONST;
 
 EamSpawner     *eam_spawner_new                                  (const gchar *path,
+                                                                  GHashTable *env,
                                                                   const gchar * const *params);
 
 void            eam_spawner_run_async                            (EamSpawner *self,

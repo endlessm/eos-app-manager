@@ -7,8 +7,6 @@
 #include "eam-spawner.h"
 #include "eam-config.h"
 
-#include <glib/gi18n.h>
-
 typedef struct _EamUninstallPrivate	EamUninstallPrivate;
 
 struct _EamUninstallPrivate
@@ -20,7 +18,7 @@ static void transaction_iface_init (EamTransactionInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (EamUninstall, eam_uninstall, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
-  G_ADD_PRIVATE (EamUninstall));
+  G_ADD_PRIVATE (EamUninstall))
 
 enum
 {
@@ -75,13 +73,19 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
   g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
 
-  GStrv params = g_new0 (gchar *, 2);
-  params[0] = g_strdup (priv->appid);
+  GHashTable *env = g_hash_table_new (g_str_hash, g_str_equal);
+  g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
+  g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
 
-  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
+  GStrv params = g_new (gchar *, 2);
+  params[0] = g_strdup (priv->appid);
+  params[1] = NULL;
+
+  EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
   eam_spawner_run_async (spawner, cancellable, run_cb, task);
 
   g_free (dir);
+  g_hash_table_unref (env);
   g_strfreev (params);
   g_object_unref (spawner);
 }
