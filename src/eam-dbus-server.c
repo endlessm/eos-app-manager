@@ -21,17 +21,11 @@ struct _EamDbusServerPrivate {
   guint terminate;
   guint interrupt;
 
-  guint quit_id;
   guint timer_id;
   EamService *service;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (EamDbusServer, eam_dbus_server, G_TYPE_OBJECT)
-
-enum
-{
-  PROP_DB = 1,
-};
 
 static void
 eam_dbus_server_finalize (GObject *obj)
@@ -52,21 +46,12 @@ eam_dbus_server_finalize (GObject *obj)
   if (priv->interrupt > 0)
     g_source_remove (priv->interrupt);
 
-  if (priv->quit_id > 0)
-    g_signal_handler_disconnect (priv->service, priv->quit_id);
-
   if (priv->timer_id > 0)
     g_source_remove (priv->timer_id);
 
   g_clear_object (&priv->service);
 
   G_OBJECT_CLASS (eam_dbus_server_parent_class)->finalize (obj);
-}
-
-static void
-quit_request_cb (EamDbusServer *server, gpointer data)
-{
-  eam_dbus_server_quit (server);
 }
 
 static gboolean
@@ -84,46 +69,11 @@ timeout_cb (gpointer data)
 }
 
 static void
-eam_dbus_server_set_property (GObject *obj, guint prop_id, const GValue *value,
-  GParamSpec *pspec)
-{
-  EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (EAM_DBUS_SERVER (obj));
-
-  switch (prop_id) {
-  case PROP_DB:
-    priv->service = eam_service_new (g_value_get_object (value));
-    priv->quit_id = g_signal_connect_swapped (priv->service, "quit-requested",
-      G_CALLBACK (quit_request_cb), obj);
-    if (eam_config_timeout () > 0) {
-      /* check every minute if the service is idle, but terminate it only
-       * if the configured time has elapsed
-       */
-      priv->timer_id = g_timeout_add_seconds (60, timeout_cb, obj);
-      g_source_set_name_by_id (priv->timer_id, "[EAM] timeout poll");
-    }
-    break;
-  default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
-    break;
-  }
-}
-
-static void
 eam_dbus_server_class_init (EamDbusServerClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
   object_class->finalize = eam_dbus_server_finalize;
-  object_class->set_property = eam_dbus_server_set_property;
-
-  /**
-   * EamDbusServer:db:
-   *
-   * The #EamPkdb to handle by this server
-   */
-  g_object_class_install_property (object_class, PROP_DB,
-    g_param_spec_object ("db", "database", "", EAM_TYPE_PKGDB,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 #ifdef G_OS_UNIX
@@ -171,6 +121,15 @@ eam_dbus_server_init (EamDbusServer *server)
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
   priv->mainloop = g_main_loop_new (NULL, FALSE);
+  priv->service = eam_service_new ();
+
+  if (eam_config_timeout () > 0) {
+    /* check every minute if the service is idle, but terminate it only
+     * if the configured time has elapsed
+     */
+    priv->timer_id = g_timeout_add_seconds (60, timeout_cb, server);
+    g_source_set_name_by_id (priv->timer_id, "[EAM] timeout poll");
+  }
 
 #ifdef G_OS_UNIX
   priv->hangup = g_unix_signal_add (SIGHUP, signal_hangup, server);
@@ -229,14 +188,13 @@ on_name_lost (GDBusConnection *connection, const gchar *name, gpointer data)
 
 /**
  * eam_dbus_server_new:
- * @db: A #EamPkgdb instance.
  *
  * Returns: a #EamDbusServer.
  **/
 EamDbusServer *
-eam_dbus_server_new (EamPkgdb *db)
+eam_dbus_server_new (void)
 {
-  return g_object_new (EAM_TYPE_DBUS_SERVER, "db", db, NULL);
+  return g_object_new (EAM_TYPE_DBUS_SERVER, NULL);
 }
 
 /**

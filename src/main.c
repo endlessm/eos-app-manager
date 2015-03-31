@@ -6,14 +6,12 @@
 #include <glib/gi18n.h>
 
 #include "eam-config.h"
-#include "eam-pkgdb.h"
 #include "eam-dbus-server.h"
 #include "eam-fs-sanity.h"
 #include "eam-log.h"
 
 static const gchar *opt_cfgfile;
 static gboolean opt_dumpcfg;
-static gboolean opt_dump_pkgdb;
 
 static gboolean
 parse_options (int *argc, gchar ***argv)
@@ -22,7 +20,6 @@ parse_options (int *argc, gchar ***argv)
   GOptionEntry entries[] = {
     { "config", 'c', 0, G_OPTION_ARG_FILENAME, &opt_cfgfile, N_ ("Configuration file"), NULL },
     { "dump", 'd', 0, G_OPTION_ARG_NONE, &opt_dumpcfg, N_ ("Dump configuration"), NULL },
-    { "dump-pkgdb", 'l', 0, G_OPTION_ARG_NONE, &opt_dump_pkgdb, N_ ("Dump package database"), NULL },
     { NULL },
   };
 
@@ -69,25 +66,6 @@ bail:
   return ret;
 }
 
-static gboolean
-dump_pkgdb (EamPkgdb * db)
-{
-  GError *error = NULL;
-
-  g_return_val_if_fail (EAM_IS_PKGDB (db), FALSE);
-
-  eam_pkgdb_load (db, &error);
-  if (error) {
-    eam_log_error_message ("Cannot load the package database");
-    g_clear_error (&error);
-
-    return FALSE;
-  }
-
-  eam_pkgdb_dump (db);
-  return TRUE;
-}
-
 int
 main (int argc, gchar **argv)
 {
@@ -114,17 +92,7 @@ main (int argc, gchar **argv)
   if (!eam_fs_sanity_check ())
     return EXIT_FAILURE;
 
-  EamPkgdb *db = eam_pkgdb_new_with_appdir (eam_config_appdir ());
-
-  if (opt_dump_pkgdb) {
-    if (dump_pkgdb (db))
-      ret = EXIT_SUCCESS;
-
-    g_object_unref (db);
-    return ret;
-  }
-
-  EamDbusServer *server = eam_dbus_server_new (db);
+  EamDbusServer *server = eam_dbus_server_new ();
 
   if (eam_dbus_server_run (server))
     ret = EXIT_SUCCESS;

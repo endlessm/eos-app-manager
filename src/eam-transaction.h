@@ -48,10 +48,6 @@ struct _EamTransactionInterface
   gboolean       (* finish)                  (EamTransaction *trans,
                                               GAsyncResult *res,
                                               GError **error);
-
-  GVariant *     (* get_property_value)      (EamTransaction *trans,
-                                              const char *name,
-                                              GError **error);
 };
 
 GType            eam_transaction_get_type (void) G_GNUC_CONST;
@@ -63,10 +59,6 @@ void             eam_transaction_run_async                          (EamTransact
 
 gboolean         eam_transaction_finish                             (EamTransaction *trans,
                                                                      GAsyncResult *res,
-                                                                     GError **error);
-
-GVariant *       eam_transaction_get_property_value                 (EamTransaction *trans,
-                                                                     const char *name,
                                                                      GError **error);
 
 G_END_DECLS

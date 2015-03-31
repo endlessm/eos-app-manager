@@ -6,12 +6,6 @@
 <node>
   <interface name="com.endlessm.AppManager.Transaction">
 
-    <property name="BundleHash" type="s" access="read"/>
-    <property name="BundleURI" type="s" access="read"/>
-    <property name="SignatureURI" type="s" access="read"/>
-    <property name="ApplicationId" type="s" access="read"/>
-    <property name="IsDelta" type="b" access="read"/>
-
     <method name="CompleteTransaction">
       <arg type="s" name="path" direction="in"/>
       <arg type="b" name="success" direction="out"/>

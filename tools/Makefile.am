@@ -1,11 +1,3 @@
-AM_CPPFLAGS = -DG_LOG_DOMAIN=\"Eam\"
-
-noinst_PROGRAMS = wclient
-wclient_CFLAGS = $(DEPENDENCIES_CFLAGS) -I$(top_srcdir)/src
-wclient_LIBS = $(DEPENDENCIES_LIBS)
-wclient_LDADD = $(top_builddir)/src/libeam.la
-wclient_SOURCE = wclient.c
-
 do_subst = sed \
 	-e 's|@DATA_DIR[@]|$(datadir)|g' \
 	-e 's|@SYSCONF_DIR[@]|$(sysconfdir)|g'

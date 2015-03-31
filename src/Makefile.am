@@ -6,52 +6,32 @@ AM_CPPFLAGS = \
 	$(NULL)
 
 source_c = \
-	eam-pkg.c \
-	eam-pkgdb.c \
-	eam-version.c \
 	eam-dbus-server.c \
 	eam-dbus-utils.c \
 	eam-service.c \
 	eam-config.c \
-	eam-wc.c \
-	eam-wc-file.c \
-	eam-os.c \
-	eam-rest.c \
-	eam-updates.c \
-	eam-refresh.c \
 	eam-spawner.c \
 	eam-transaction.c \
 	eam-install.c \
 	eam-update.c \
 	eam-uninstall.c \
 	eam-fs-sanity.c \
-	eam-list-avail.c \
 	eam-log.c \
 	eam-error.c \
 	eam-utils.c \
 	$(NULL)
 
 source_h = \
-	eam-pkg.h \
-	eam-pkgdb.h \
-	eam-version.h \
 	eam-dbus-server.h \
 	eam-dbus-utils.h \
 	eam-service.h \
 	eam-config.h \
-	eam-wc.h \
-	eam-wc-file.h \
-	eam-os.h \
-	eam-rest.h \
-	eam-updates.h \
-	eam-refresh.h \
 	eam-spawner.h \
 	eam-transaction.h \
 	eam-install.h \
 	eam-update.h \
 	eam-uninstall.h \
 	eam-fs-sanity.h \
-	eam-list-avail.h \
 	eam-log.h \
 	eam-error.h \
 	eam-utils.h \

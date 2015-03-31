@@ -13,27 +13,6 @@
   <interface name="com.endlessm.AppManager">
 
     <!--
-      AvailableUpdates as read-only:
-
-      Specifies the list of updates currently available by app_id
-    -->
-    <property name="AvailableUpdates" type="as" access="read">
-      <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="true" />
-    </property>
-
-    <!--
-      AvailableApplicationsChanged (as available_applications):
-
-      A signal to which other processes can subscribe, indicating that the
-      list of available applications has been updated. The passed-in array
-      of strings is the new value returned by ListAvailable()
-    -->
-    <signal name="AvailableApplicationsChanged">
-      <arg name="available" type="a(sssx)" direction="out" />
-      <arg name="updatable" type="a(sssx)" direction="out" />
-    </signal>
-
-    <!--
       GetUserCapabilities:
 
       Retrieves a list of capabilities for the UID that called
@@ -49,18 +28,6 @@
     <method name="GetUserCapabilities">
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg name="capabilities" type="a{sv}" direction="out">
-        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
-      </arg>
-    </method>
-
-    <!--
-      Refresh:
-
-      Refreshes the package database.
-    -->
-    <method name="Refresh" >
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="success" type="b" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
@@ -120,47 +87,5 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
-
-    <!--
-      ListAvailable:
-
-      Returns a list of all applications available for installation
-      and for updates.
-    -->
-    <method name="ListAvailable" >
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="filters" type="a{sv}" direction="in" />
-      <arg name="installable" type="a(sssx)" direction="out" />
-      <arg name="updatable" type="a(sssx)" direction="out" />
-    </method>
-
-    <!--
-      ListInstalled:
-
-      Returns two arrays of (id, name, version) tuples:
-
-        * a list of installed applications
-        * a list of installed applications that can be removed
-    -->
-    <method name="ListInstalled" >
-      <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
-      <arg name="installed" type="a(sssx)" direction="out" />
-      <arg name="removable" type="a(sssx)" direction="out" />
-    </method>
-
-    <!--
-      Quit:
-
-      Suggest to the daemon to quit.
-    -->
-    <method name="Quit" />
-
-    <!--
-      Cancel:
-
-      Suggest to the daemon to cancel the current transaction.
-    -->
-    <method name="Cancel" />
-
   </interface>
 </node>

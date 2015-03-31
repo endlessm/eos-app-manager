@@ -7,26 +7,22 @@
 #include "eam-spawner.h"
 #include "eam-config.h"
 
-#include <glib/gi18n.h>
-
 typedef struct _EamUninstallPrivate	EamUninstallPrivate;
 
 struct _EamUninstallPrivate
 {
   gchar *appid;
-  EamPkgdb *pkgdb;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (EamUninstall, eam_uninstall, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
-  G_ADD_PRIVATE (EamUninstall));
+  G_ADD_PRIVATE (EamUninstall))
 
 enum
 {
-  PROP_APPID = 1,
-  PROP_PKGDB
+  PROP_APPID = 1
 };
 
 
@@ -73,25 +69,21 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  if (!eam_pkgdb_get (priv->pkgdb, priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR,
-			     EAM_ERROR_PKG_UNKNOWN, _("Application '%s' is not installed"),
-			     priv->appid);
-    g_object_unref (task);
-    return;
-  }
-
   char *dir = g_build_filename (eam_config_scriptdir (), "uninstall", NULL);
-  g_setenv ("EAM_PREFIX", eam_config_appdir (), FALSE);
-  g_setenv ("EAM_TMP", eam_config_dldir (), FALSE);
 
-  GStrv params = g_new0 (gchar *, 2);
+  GHashTable *env = g_hash_table_new (g_str_hash, g_str_equal);
+  g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
+  g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
+
+  GStrv params = g_new (gchar *, 2);
   params[0] = g_strdup (priv->appid);
+  params[1] = NULL;
 
-  EamSpawner *spawner = eam_spawner_new (dir, (const gchar * const *) params);
+  EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
   eam_spawner_run_async (spawner, cancellable, run_cb, task);
 
   g_free (dir);
+  g_hash_table_unref (env);
   g_strfreev (params);
   g_object_unref (spawner);
 }
@@ -129,7 +121,6 @@ eam_uninstall_finalize (GObject *obj)
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (EAM_UNINSTALL (obj));
 
   g_clear_pointer (&priv->appid, g_free);
-  g_clear_object (&priv->pkgdb);
 
   G_OBJECT_CLASS (eam_uninstall_parent_class)->finalize (obj);
 }
@@ -160,9 +151,6 @@ eam_uninstall_set_property (GObject *obj, guint prop_id, const GValue *value,
   case PROP_APPID:
     priv->appid = g_value_dup_string (value);
     break;
-  case PROP_PKGDB:
-    priv->pkgdb = g_value_dup_object (value);
-    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, prop_id, pspec);
     break;
@@ -186,15 +174,6 @@ eam_uninstall_class_init (EamUninstallClass *klass)
   g_object_class_install_property (object_class, PROP_APPID,
     g_param_spec_string ("appid", "App ID", "Application ID", NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  /**
-   * EamUninstall:pkgdb:
-   *
-   * The package DB.
-   */
-  g_object_class_install_property (object_class, PROP_PKGDB,
-    g_param_spec_object ("pkgdb", "Package DB", "Package DB", EAM_TYPE_PKGDB,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -209,11 +188,9 @@ eam_uninstall_init (EamUninstall *self)
  * Returns: a new instance of #EamUninstall with #EamTransaction interface.
  */
 EamTransaction *
-eam_uninstall_new (EamPkgdb *pkgdb,
-		   const gchar *appid)
+eam_uninstall_new (const gchar *appid)
 {
   return g_object_new (EAM_TYPE_UNINSTALL,
-		       "pkgdb", pkgdb,
 		       "appid", appid,
 		       NULL);
 }

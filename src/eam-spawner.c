@@ -14,12 +14,14 @@ struct _EamSpawnerPrivate
 {
   GFile *dir;
   GStrv params;
+  GHashTable *environment;
 };
 
 typedef struct _TaskData TaskData;
 
 struct _TaskData
 {
+  GSubprocessLauncher *launcher;
   GList *file_names;
 };
 
@@ -27,7 +29,8 @@ G_DEFINE_TYPE_WITH_PRIVATE (EamSpawner, eam_spawner, G_TYPE_OBJECT)
 
 enum {
   PROP_DIR = 1,
-  PROP_PARAMS = 2,
+  PROP_PARAMS,
+  PROP_ENV
 };
 
 static void
@@ -36,7 +39,11 @@ eam_spawner_finalize (GObject *obj)
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (EAM_SPAWNER (obj));
 
   g_object_unref (priv->dir);
+
   g_strfreev (priv->params);
+
+  if (priv->environment != NULL)
+    g_hash_table_unref (priv->environment);
 
   G_OBJECT_CLASS (eam_spawner_parent_class)->finalize (obj);
 }
@@ -48,14 +55,16 @@ eam_spawner_set_property (GObject *obj, guint propid, const GValue *value,
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (EAM_SPAWNER (obj));
 
   switch (propid) {
-  case PROP_DIR: {
+  case PROP_DIR:
     priv->dir = g_value_dup_object (value);
     break;
-  }
-  case PROP_PARAMS: {
+  case PROP_PARAMS:
     priv->params = g_strdupv (g_value_get_boxed (value));
     break;
-  }
+  case PROP_ENV:
+    if (g_value_get_boxed (value) != NULL)
+      priv->environment = g_hash_table_ref (g_value_get_boxed (value));
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, propid, pspec);
     break;
@@ -69,14 +78,15 @@ eam_spawner_get_property (GObject *obj, guint propid, GValue *value,
   EamSpawnerPrivate *priv = eam_spawner_get_instance_private (EAM_SPAWNER (obj));
 
   switch (propid) {
-  case PROP_DIR: {
+  case PROP_DIR:
     g_value_set_object (value, priv->dir);
     break;
-  }
-  case PROP_PARAMS: {
+  case PROP_PARAMS:
     g_value_set_boxed (value, priv->params);
     break;
-  }
+  case PROP_ENV:
+    g_value_set_boxed (value, priv->environment);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (obj, propid, pspec);
     break;
@@ -99,7 +109,7 @@ eam_spawner_class_init (EamSpawnerClass *klass)
    */
   g_object_class_install_property (object_class, PROP_DIR,
     g_param_spec_object ("dir", "Directory", "Directory GFile", G_TYPE_FILE,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |  G_PARAM_STATIC_STRINGS));
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
    /**
    * EamSpawner::params:
@@ -108,7 +118,11 @@ eam_spawner_class_init (EamSpawnerClass *klass)
    */
   g_object_class_install_property (object_class, PROP_PARAMS,
     g_param_spec_boxed ("params", _("Parameters"), _("List of parameters to be passed to the script"), G_TYPE_STRV,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |  G_PARAM_STATIC_STRINGS));
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_ENV,
+    g_param_spec_boxed ("env", "Environment", "Environment for the scripts", G_TYPE_HASH_TABLE,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -123,11 +137,17 @@ eam_spawner_init (EamSpawner *self)
  * Create a new instance of #EamSpawner with the default appdir.
  */
 EamSpawner *
-eam_spawner_new (const gchar *path, const gchar * const *params)
+eam_spawner_new (const gchar *path, GHashTable *env, const gchar * const *params)
 {
   GFile *dir = g_file_new_for_path (path);
-  EamSpawner *ret = g_object_new (EAM_TYPE_SPAWNER, "dir", dir, "params", params, NULL);
+
+  EamSpawner *ret = g_object_new (EAM_TYPE_SPAWNER,
+                                  "dir", dir,
+                                  "env", env,
+                                  "params", params,
+                                  NULL);
   g_object_unref (dir);
+
   return ret;
 }
 
@@ -275,9 +295,7 @@ subprocess_run_async (GTask *task)
     ++i;
   }
 
-  GSubprocess *process = g_subprocess_newv ((const gchar * const *) argv,
-    G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_PIPE,
-    &error);
+  GSubprocess *process = g_subprocess_launcher_spawnv (task_data->launcher, (const char **) argv, &error);
 
   if (error) {
     g_task_return_error (task, error);
@@ -309,19 +327,19 @@ enum_close_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_file_enumerator_close_finish (fenum, res, &error);
   if (error) {
     g_task_return_error (task, error);
-    goto bail;
+    g_object_unref (task);
+    return;
   }
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
+
+  if (g_task_return_error_if_cancelled (task)) {
+    g_object_unref (task);
+    return;
+  }
 
   TaskData *task_data = g_task_get_task_data (task);
   task_data->file_names = g_list_sort (task_data->file_names, (GCompareFunc) g_strcmp0);
 
   subprocess_run_async (task);
-  return;
-
-bail:
-  g_object_unref (task);
 }
 
 static void
@@ -385,6 +403,7 @@ task_data_free (gpointer data)
 {
   TaskData *task_data = data;
 
+  g_object_unref (task_data->launcher);
   g_list_free_full (task_data->file_names, g_free);
   g_slice_free (TaskData, task_data);
 }
@@ -406,8 +425,25 @@ got_enum (GObject *source, GAsyncResult *res, gpointer data)
   if (g_task_return_error_if_cancelled (task))
     goto bail;
 
+  EamSpawner *self = g_task_get_source_object (task);
+  EamSpawnerPrivate *priv = eam_spawner_get_instance_private (self);
+
   TaskData *task_data = g_slice_new0 (TaskData);
   g_task_set_task_data (task, task_data, task_data_free);
+
+  GSubprocessFlags flags = G_SUBPROCESS_FLAGS_STDOUT_PIPE
+                         | G_SUBPROCESS_FLAGS_STDERR_PIPE;
+
+  task_data->launcher = g_subprocess_launcher_new (flags);
+
+  if (priv->environment != NULL) {
+    GHashTableIter iter;
+    g_hash_table_iter_init (&iter, priv->environment);
+
+    gpointer var_name, var_value;
+    while (g_hash_table_iter_next (&iter, &var_name, &var_value))
+      g_subprocess_launcher_setenv (task_data->launcher, var_name, var_value, FALSE);
+  }
 
   GCancellable *cancellable = g_task_get_cancellable (task);
   g_file_enumerator_next_files_async (fenum, 1, G_PRIORITY_DEFAULT,

@@ -3,9 +3,7 @@
 #ifndef EAM_UPDATE_H
 #define EAM_UPDATE_H
 
-#include "eam-pkgdb.h"
 #include "eam-transaction.h"
-#include "eam-updates.h"
 
 G_BEGIN_DECLS
 
@@ -39,17 +37,10 @@ struct _EamUpdateClass
   GObjectClass parent_class;
 };
 
-GType           eam_update_get_type            (void) G_GNUC_CONST;
+GType eam_update_get_type (void) G_GNUC_CONST;
 
-EamTransaction *   eam_update_new                 (EamPkgdb    *pkgdb,
-                                                   const gchar *appid,
-                                                   const gboolean allow_deltas,
-                                                   EamUpdates  *updates,
-                                                   GError     **error);
-
-const char *       eam_update_get_download_url    (EamUpdate  *update);
-const char *       eam_update_get_signature_url   (EamUpdate  *update);
-const char *       eam_update_get_bundle_hash     (EamUpdate  *update);
+EamTransaction *   eam_update_new                 (const gchar *appid,
+                                                   const gboolean allow_deltas);
 
 void               eam_update_set_bundle_location (EamUpdate  *update,
                                                     const char  *path);
