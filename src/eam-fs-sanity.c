@@ -14,7 +14,6 @@
 #define DESKTOP_ICONS_SUBDIR "share/icons"
 #define DBUS_SERVICES_SUBDIR "share/dbus-1/services"
 #define EKN_DATA_SUBDIR "share/ekn/data"
-#define EKN_MANIFEST_SUBDIR "share/ekn/manifest"
 #define G_SCHEMAS_SUBDIR "share/glib-2.0/schemas"
 #define XDG_AUTOSTART_SUBDIR "xdg/autostart"
 
@@ -34,7 +33,6 @@ applications_directory_create (void)
   gchar *desktop_icons_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_ICONS_SUBDIR, NULL);
   gchar *dbus_services_dir = g_build_filename (ROOT_DIR, appdir, DBUS_SERVICES_SUBDIR, NULL);
   gchar *ekn_data_dir = g_build_filename (ROOT_DIR, appdir, EKN_DATA_SUBDIR, NULL);
-  gchar *ekn_manifest_dir = g_build_filename (ROOT_DIR, appdir, EKN_MANIFEST_SUBDIR, NULL);
   gchar *g_schemas_dir = g_build_filename (ROOT_DIR, appdir, G_SCHEMAS_SUBDIR, NULL);
   gchar *xdg_autostart_dir = g_build_filename (ROOT_DIR, appdir, XDG_AUTOSTART_SUBDIR, NULL);
   const gint mode = 0755;
@@ -64,11 +62,6 @@ applications_directory_create (void)
     retval = FALSE;
     goto bail;
   }
-  if (g_mkdir_with_parents (ekn_manifest_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", ekn_manifest_dir);
-    retval = FALSE;
-    goto bail;
-  }
   if (g_mkdir_with_parents (g_schemas_dir, mode) != 0) {
     eam_log_error_message ("Unable to create '%s'", g_schemas_dir);
     retval = FALSE;
@@ -86,7 +79,6 @@ bail:
   g_free (desktop_icons_dir);
   g_free (dbus_services_dir);
   g_free (ekn_data_dir);
-  g_free (ekn_manifest_dir);
   g_free (g_schemas_dir);
   g_free (xdg_autostart_dir);
 
@@ -285,7 +277,6 @@ eam_fs_sanity_check (void)
   gchar *desktop_icons_dir = g_build_filename (appdir, DESKTOP_ICONS_SUBDIR, NULL);
   gchar *dbus_services_dir = g_build_filename (appdir, DBUS_SERVICES_SUBDIR, NULL);
   gchar *ekn_data_dir = g_build_filename (appdir, EKN_DATA_SUBDIR, NULL);
-  gchar *ekn_manifest_dir = g_build_filename (appdir, EKN_MANIFEST_SUBDIR, NULL);
   gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
   gchar *xdg_autostart_dir = g_build_filename (appdir, XDG_AUTOSTART_SUBDIR, NULL);
 
@@ -311,10 +302,6 @@ eam_fs_sanity_check (void)
   }
   if (!g_file_test (ekn_data_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", ekn_data_dir);
-    retval = FALSE;
-  }
-  if (!g_file_test (ekn_manifest_dir, G_FILE_TEST_IS_DIR)) {
-    eam_log_error_message ("Missing directory: '%s' does not exist", ekn_manifest_dir);
     retval = FALSE;
   }
   if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
@@ -364,7 +351,6 @@ eam_fs_sanity_check (void)
   g_free (desktop_icons_dir);
   g_free (dbus_services_dir);
   g_free (ekn_data_dir);
-  g_free (ekn_manifest_dir);
   g_free (g_schemas_dir);
   g_free (xdg_autostart_dir);
 

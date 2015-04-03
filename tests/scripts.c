@@ -32,7 +32,6 @@ setup_filesystem (void)
   g_mkdir (EAM_PREFIX "/share/dbus-1/services", mode);
   g_mkdir (EAM_PREFIX "/share/ekn", mode);
   g_mkdir (EAM_PREFIX "/share/ekn/data", mode);
-  g_mkdir (EAM_PREFIX "/share/ekn/manifest", mode);
   g_mkdir (EAM_PREFIX "/share/glib-2.0", mode);
   g_mkdir (EAM_PREFIX "/share/glib-2.0/schemas", mode);
   g_mkdir (EAM_PREFIX "/share/icons", mode);
