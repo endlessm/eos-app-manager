@@ -48,8 +48,6 @@ APP_DBUS_SERVICES_SUBDIR="share/dbus-1/services"
 APP_HELP_SUBDIR="share/help"
 # Application knowledge app data.
 APP_EKN_DATA_SUBDIR="share/ekn/data"
-# Application knowledge app manifest.
-APP_EKN_MANIFEST_SUBDIR="share/ekn/manifest"
 # Application shell search provider directory.
 APP_SHELL_SEARCH_SUBDIR="share/gnome-shell/search-providers"
 # Application KDE help subdirectory.
@@ -77,8 +75,6 @@ OS_DBUS_SERVICES_DIR="${EAM_PREFIX}/share/dbus-1/services"
 OS_HELP_DIR="${EAM_PREFIX}/share/help"
 # Knowledge app data.
 OS_EKN_DATA_DIR="${EAM_PREFIX}/share/ekn/data"
-# Knowledge app manifest.
-OS_EKN_MANIFEST_DIR="${EAM_PREFIX}/share/ekn/manifest"
 # Shell search provider directory.
 OS_SHELL_SEARCH_DIR="${EAM_PREFIX}/share/gnome-shell/search-providers"
 # KDE help directory.
@@ -104,7 +100,6 @@ print_config ()
     echo "APP_DBUS_SERVICES_SUBDIR=$APP_DBUS_SERVICES_SUBDIR"
     echo "APP_HELP_SUBDIR=$APP_HELP_SUBDIR"
     echo "APP_EKN_DATA_SUBDIR=$APP_EKN_DATA_SUBDIR"
-    echo "APP_EKN_MANIFEST_SUBDIR=$APP_EKN_MANIFEST_SUBDIR"
     echo "APP_SHELL_SEARCH_SUBDIR=$APP_SHELL_SEARCH_SUBDIR"
     echo "APP_KDE_HELP_SUBDIR=$APP_KDE_HELP_SUBDIR"
     echo "APP_KDE4_SUBDIR=$APP_KDE4_SUBDIR"
@@ -116,7 +111,6 @@ print_config ()
     echo "OS_HELP_DIR=$OS_HELP_DIR"
     echo "OS_DBUS_SERVICES_DIR=$OS_DBUS_SERVICES_DIR"
     echo "OS_EKN_DATA_DIR=$OS_EKN_DATA_DIR"
-    echo "OS_EKN_MANIFEST_DIR=$OS_EKN_MANIFEST_DIR"
     echo "OS_SHELL_SEARCH_DIR=$OS_SHELL_SEARCH_DIR"
     echo "OS_KDE_HELP_DIR=$OS_KDE_HELP_DIR"
     echo "OS_KDE4_DIR=$OS_KDE4_DIR"
