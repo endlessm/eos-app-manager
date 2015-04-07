@@ -286,10 +286,18 @@ eam_service_remove_active_transaction (EamService *service,
   eam_log_info_message ("Remove active transaction '%s'", remote->obj_path);
 
   if (priv->active_transactions == NULL ||
-      !g_hash_table_remove (priv->active_transactions, remote->obj_path))
+      !g_hash_table_remove (priv->active_transactions, remote->obj_path)) {
     eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.",
-                remote->obj_path,
-                remote);
+                           remote->obj_path,
+                           remote);
+    return;
+  }
+
+  /* Reset the hash table, so that we can use the pointer to know if
+   * there are remote transactions in progress
+   */
+  if (g_hash_table_size (priv->active_transactions) == 0)
+    g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
 }
 
 static void
@@ -665,7 +673,13 @@ eam_service_is_busy (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  return (priv->authorizing);
+  if (priv->authorizing)
+    return TRUE;
+
+  if (priv->active_transactions != NULL)
+    return TRUE;
+
+  return FALSE;
 }
 
 static void
