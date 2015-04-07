@@ -29,8 +29,6 @@ struct _EamServicePrivate {
 
   GTimer *timer;
 
-  GCancellable *cancellable;
-
   PolkitAuthority *authority;
 
   guint64 last_transaction;
@@ -228,7 +226,6 @@ eam_service_dispose (GObject *obj)
     priv->invocation_queue = NULL;
   }
 
-  g_clear_object (&priv->cancellable);
   g_clear_object (&priv->authority);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
@@ -247,7 +244,6 @@ eam_service_init (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  priv->cancellable = g_cancellable_new ();
   priv->timer = g_timer_new ();
   priv->invocation_queue = g_queue_new ();
 }
@@ -316,10 +312,6 @@ eam_service_check_queue (EamService *service)
 
   if (info == NULL)
     return;
-
-  /* do not need the old cancellable any more */
-  g_clear_object (&priv->cancellable);
-  priv->cancellable = g_cancellable_new ();
 
   run_method_with_authorization (service, info->invocation, info->method, info->params);
   eam_invocation_info_free (info);
@@ -448,11 +440,10 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   char *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
   EamTransaction *trans = eam_uninstall_new (appid);
   g_object_set_data (G_OBJECT (trans), "invocation", invocation);
 
-  eam_transaction_run_async (trans, priv->cancellable, uninstall_cb, service);
+  eam_transaction_run_async (trans, NULL, uninstall_cb, service);
   g_object_unref (trans);
 }
 
@@ -610,12 +601,6 @@ check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
     goto bail;
   }
 
-  /* Check if the operation was cancelled */
-  if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
-    g_dbus_method_invocation_take_error (info->invocation, error);
-    goto bail;
-  }
-
   /* Did not auth */
   if (!polkit_authorization_result_get_is_authorized (result)) {
     g_dbus_method_invocation_return_error (info->invocation, EAM_ERROR,
@@ -661,7 +646,7 @@ run_method_with_authorization (EamService *service, GDBusMethodInvocation *invoc
 
   EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
   polkit_authority_check_authorization (priv->authority, subject, auth_action[method].action_id,
-    details, POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, priv->cancellable,
+    details, POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, NULL,
     (GAsyncReadyCallback) check_authorization_cb, info);
 
   g_object_unref (subject);
