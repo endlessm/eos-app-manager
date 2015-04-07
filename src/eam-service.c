@@ -23,8 +23,6 @@ struct _EamServicePrivate {
   GDBusConnection *connection;
   guint registration_id;
 
-  GQueue *invocation_queue;
-
   GHashTable *active_transactions;
 
   GTimer *timer;
@@ -221,11 +219,6 @@ eam_service_dispose (GObject *obj)
   g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
   g_clear_pointer (&priv->timer, g_timer_destroy);
 
-  if (priv->invocation_queue) {
-    g_queue_free_full (priv->invocation_queue, (GDestroyNotify) eam_invocation_info_free);
-    priv->invocation_queue = NULL;
-  }
-
   g_clear_object (&priv->authority);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
@@ -245,7 +238,6 @@ eam_service_init (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   priv->timer = g_timer_new ();
-  priv->invocation_queue = g_queue_new ();
 }
 
 /**
@@ -304,19 +296,6 @@ eam_service_reset_timer (EamService *service)
   g_timer_reset (priv->timer);
 }
 
-static void
-eam_service_check_queue (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  EamInvocationInfo *info = g_queue_pop_head (priv->invocation_queue);
-
-  if (info == NULL)
-    return;
-
-  run_method_with_authorization (service, info->invocation, info->method, info->params);
-  eam_invocation_info_free (info);
-}
-
 typedef void (*EamRunService) (EamService *service, const gpointer params,
   GDBusMethodInvocation *invocation);
 
@@ -373,8 +352,6 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
   }
-
-  eam_service_check_queue (service);
 }
 
 static void
@@ -405,14 +382,11 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
   }
-
-  eam_service_check_queue (service);
 }
 
 static void
 uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
-  EamService *service = EAM_SERVICE (data);
   EamTransaction *trans = EAM_TRANSACTION (source);
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
@@ -423,14 +397,11 @@ uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   gboolean ret = eam_transaction_finish (trans, res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (invocation, error);
-    goto out;
   }
-
-  GVariant *value = g_variant_new ("(b)", ret);
-  g_dbus_method_invocation_return_value (invocation, value);
-
- out:
-  eam_service_check_queue (service);
+  else {
+    GVariant *value = g_variant_new ("(b)", ret);
+    g_dbus_method_invocation_return_value (invocation, value);
+  }
 }
 
 static void
@@ -579,8 +550,6 @@ out:
   g_variant_builder_close (&builder);
   GVariant *res = g_variant_builder_end (&builder);
   g_dbus_method_invocation_return_value (invocation, res);
-
-  eam_service_check_queue (service);
 }
 
 static void
@@ -671,16 +640,7 @@ static void
 eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
                  EamServiceMethod method, GVariant *params)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
   eam_service_reset_timer (service);
-
-  if (eam_service_is_busy (service)) {
-    EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
-    g_queue_push_tail (priv->invocation_queue, info);
-
-    return;
-  }
 
   run_method_with_authorization (service, invocation, method, params);
 }
