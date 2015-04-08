@@ -23,13 +23,9 @@ struct _EamServicePrivate {
   GDBusConnection *connection;
   guint registration_id;
 
-  GQueue *invocation_queue;
-
   GHashTable *active_transactions;
 
   GTimer *timer;
-
-  GCancellable *cancellable;
 
   PolkitAuthority *authority;
 
@@ -223,12 +219,6 @@ eam_service_dispose (GObject *obj)
   g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
   g_clear_pointer (&priv->timer, g_timer_destroy);
 
-  if (priv->invocation_queue) {
-    g_queue_free_full (priv->invocation_queue, (GDestroyNotify) eam_invocation_info_free);
-    priv->invocation_queue = NULL;
-  }
-
-  g_clear_object (&priv->cancellable);
   g_clear_object (&priv->authority);
 
   G_OBJECT_CLASS (eam_service_parent_class)->dispose (obj);
@@ -247,9 +237,10 @@ eam_service_init (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  priv->cancellable = g_cancellable_new ();
   priv->timer = g_timer_new ();
-  priv->invocation_queue = g_queue_new ();
+  priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
+						     NULL, /* the key is in the value */
+						     (GDestroyNotify) eam_remote_transaction_free);
 }
 
 /**
@@ -268,12 +259,6 @@ eam_service_add_active_transaction (EamService *service,
                                     EamRemoteTransaction *remote)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->active_transactions == NULL)
-    priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                       NULL, // the key is in the value
-                                                       (GDestroyNotify) eam_remote_transaction_free);
-
   g_hash_table_replace (priv->active_transactions, remote->obj_path, remote);
 }
 
@@ -285,11 +270,12 @@ eam_service_remove_active_transaction (EamService *service,
 
   eam_log_info_message ("Remove active transaction '%s'", remote->obj_path);
 
-  if (priv->active_transactions == NULL ||
-      !g_hash_table_remove (priv->active_transactions, remote->obj_path))
+  if (!g_hash_table_remove (priv->active_transactions, remote->obj_path)) {
     eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.",
-                remote->obj_path,
-                remote);
+                           remote->obj_path,
+                           remote);
+    return;
+  }
 }
 
 static void
@@ -298,23 +284,6 @@ eam_service_reset_timer (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   g_timer_reset (priv->timer);
-}
-
-static void
-eam_service_check_queue (EamService *service)
-{
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-  EamInvocationInfo *info = g_queue_pop_head (priv->invocation_queue);
-
-  if (info == NULL)
-    return;
-
-  /* do not need the old cancellable any more */
-  g_clear_object (&priv->cancellable);
-  priv->cancellable = g_cancellable_new ();
-
-  run_method_with_authorization (service, info->invocation, info->method, info->params);
-  eam_invocation_info_free (info);
 }
 
 typedef void (*EamRunService) (EamService *service, const gpointer params,
@@ -373,8 +342,6 @@ eam_service_install (EamService *service, GDBusMethodInvocation *invocation,
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
   }
-
-  eam_service_check_queue (service);
 }
 
 static void
@@ -405,14 +372,11 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
     g_dbus_method_invocation_return_gerror (invocation, error);
     g_error_free (error);
   }
-
-  eam_service_check_queue (service);
 }
 
 static void
 uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
-  EamService *service = EAM_SERVICE (data);
   EamTransaction *trans = EAM_TRANSACTION (source);
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
@@ -423,14 +387,11 @@ uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
   gboolean ret = eam_transaction_finish (trans, res, &error);
   if (error) {
     g_dbus_method_invocation_take_error (invocation, error);
-    goto out;
   }
-
-  GVariant *value = g_variant_new ("(b)", ret);
-  g_dbus_method_invocation_return_value (invocation, value);
-
- out:
-  eam_service_check_queue (service);
+  else {
+    GVariant *value = g_variant_new ("(b)", ret);
+    g_dbus_method_invocation_return_value (invocation, value);
+  }
 }
 
 static void
@@ -440,11 +401,10 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   char *appid = NULL;
   g_variant_get (params, "(&s)", &appid);
 
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
   EamTransaction *trans = eam_uninstall_new (appid);
   g_object_set_data (G_OBJECT (trans), "invocation", invocation);
 
-  eam_transaction_run_async (trans, priv->cancellable, uninstall_cb, service);
+  eam_transaction_run_async (trans, NULL, uninstall_cb, service);
   g_object_unref (trans);
 }
 
@@ -580,8 +540,6 @@ out:
   g_variant_builder_close (&builder);
   GVariant *res = g_variant_builder_end (&builder);
   g_dbus_method_invocation_return_value (invocation, res);
-
-  eam_service_check_queue (service);
 }
 
 static void
@@ -598,12 +556,6 @@ check_authorization_cb (GObject *source, GAsyncResult *res, gpointer data)
   result = polkit_authority_check_authorization_finish (priv->authority, res, &error);
 
   if (result == NULL) {
-    g_dbus_method_invocation_take_error (info->invocation, error);
-    goto bail;
-  }
-
-  /* Check if the operation was cancelled */
-  if (g_cancellable_set_error_if_cancelled (priv->cancellable, &error)) {
     g_dbus_method_invocation_take_error (info->invocation, error);
     goto bail;
   }
@@ -653,7 +605,7 @@ run_method_with_authorization (EamService *service, GDBusMethodInvocation *invoc
 
   EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
   polkit_authority_check_authorization (priv->authority, subject, auth_action[method].action_id,
-    details, POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, priv->cancellable,
+    details, POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION, NULL,
     (GAsyncReadyCallback) check_authorization_cb, info);
 
   g_object_unref (subject);
@@ -665,23 +617,20 @@ eam_service_is_busy (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
-  return (priv->authorizing);
+  if (priv->authorizing)
+    return TRUE;
+
+  if (g_hash_table_size (priv->active_transactions) > 0)
+    return TRUE;
+
+  return FALSE;
 }
 
 static void
 eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
                  EamServiceMethod method, GVariant *params)
 {
-  EamServicePrivate *priv = eam_service_get_instance_private (service);
-
   eam_service_reset_timer (service);
-
-  if (eam_service_is_busy (service)) {
-    EamInvocationInfo *info = eam_invocation_info_new (service, invocation, method, params);
-    g_queue_push_tail (priv->invocation_queue, info);
-
-    return;
-  }
 
   run_method_with_authorization (service, invocation, method, params);
 }
