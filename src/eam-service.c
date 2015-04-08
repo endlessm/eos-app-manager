@@ -238,6 +238,9 @@ eam_service_init (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   priv->timer = g_timer_new ();
+  priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
+						     NULL, /* the key is in the value */
+						     (GDestroyNotify) eam_remote_transaction_free);
 }
 
 /**
@@ -256,12 +259,6 @@ eam_service_add_active_transaction (EamService *service,
                                     EamRemoteTransaction *remote)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  if (priv->active_transactions == NULL)
-    priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                       NULL, // the key is in the value
-                                                       (GDestroyNotify) eam_remote_transaction_free);
-
   g_hash_table_replace (priv->active_transactions, remote->obj_path, remote);
 }
 
@@ -273,19 +270,12 @@ eam_service_remove_active_transaction (EamService *service,
 
   eam_log_info_message ("Remove active transaction '%s'", remote->obj_path);
 
-  if (priv->active_transactions == NULL ||
-      !g_hash_table_remove (priv->active_transactions, remote->obj_path)) {
+  if (!g_hash_table_remove (priv->active_transactions, remote->obj_path)) {
     eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.",
                            remote->obj_path,
                            remote);
     return;
   }
-
-  /* Reset the hash table, so that we can use the pointer to know if
-   * there are remote transactions in progress
-   */
-  if (g_hash_table_size (priv->active_transactions) == 0)
-    g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
 }
 
 static void
@@ -630,7 +620,7 @@ eam_service_is_busy (EamService *service)
   if (priv->authorizing)
     return TRUE;
 
-  if (priv->active_transactions != NULL)
+  if (g_hash_table_size (priv->active_transactions) > 0)
     return TRUE;
 
   return FALSE;
