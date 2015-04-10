@@ -19,14 +19,8 @@
 . ${BASH_SOURCE[0]%/*}/../../utils.sh
 
 print_header "${BASH_SOURCE[0]}"
-check_args_minimum_number "${#}" 2 "<app_id> <bundle_path>"
+check_args_minimum_number "${#}" 1 "<app_id>"
 APP_ID=$1
-BUNDLE=$2
 
 delete_dir "${EAM_PREFIX}/${APP_ID}"
 delete_dir "${EAM_TMP}/${APP_ID}"
-
-if [ "${EAM_EXTDOWNLOAD}" != "1" ]; then
-    delete_downloaded_file "${BUNDLE}" "${APP_ID}.sha256" "${APP_ID}.asc"
-fi
-

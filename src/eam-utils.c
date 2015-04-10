@@ -60,7 +60,7 @@ eam_utils_build_tarball_filename (const char *bundle_location, const char *appid
 
 void
 eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
-  const gchar *scriptdir, const gboolean external_download,
+  const gchar *scriptdir,
   GCancellable *cancellable, GAsyncReadyCallback callback, GTask *task)
 {
   /* scripts directory path */
@@ -77,8 +77,6 @@ eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
   g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
   g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
   g_hash_table_insert (env, (gpointer) "EAM_GPGKEYRING", (gpointer) eam_config_gpgkeyring ());
-  if (external_download)
-    g_hash_table_insert (env, (gpointer) "EAM_EXTDOWNLOAD", (gpointer) "1");
 
   EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
   eam_spawner_run_async (spawner, cancellable, callback, task);
