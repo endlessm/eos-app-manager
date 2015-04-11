@@ -23,7 +23,7 @@ struct _EamServicePrivate {
   GDBusConnection *connection;
   guint registration_id;
 
-  GHashTable *active_transactions;
+  guint busy_counter;
 
   GTimer *timer;
 
@@ -83,9 +83,6 @@ static void eam_service_get_user_caps (EamService *service, GDBusMethodInvocatio
 
 static void run_method_with_authorization (EamService *service, GDBusMethodInvocation *invocation,
   EamServiceMethod method, GVariant *params);
-
-static void eam_service_remove_active_transaction (EamService *service,
-                                                   EamRemoteTransaction *remote);
 
 static EamRemoteTransaction *eam_remote_transaction_new (EamService *service,
                                                          const char *sender,
@@ -216,7 +213,6 @@ eam_service_dispose (GObject *obj)
     priv->connection = NULL;
   }
 
-  g_clear_pointer (&priv->active_transactions, g_hash_table_unref);
   g_clear_pointer (&priv->timer, g_timer_destroy);
 
   g_clear_object (&priv->authority);
@@ -238,9 +234,6 @@ eam_service_init (EamService *service)
   EamServicePrivate *priv = eam_service_get_instance_private (service);
 
   priv->timer = g_timer_new ();
-  priv->active_transactions = g_hash_table_new_full (g_str_hash, g_str_equal,
-						     NULL, /* the key is in the value */
-						     (GDestroyNotify) eam_remote_transaction_free);
 }
 
 /**
@@ -255,27 +248,17 @@ eam_service_new (void)
 }
 
 static void
-eam_service_add_active_transaction (EamService *service,
-                                    EamRemoteTransaction *remote)
+eam_service_push_busy (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-  g_hash_table_replace (priv->active_transactions, remote->obj_path, remote);
+  priv->busy_counter++;
 }
 
 static void
-eam_service_remove_active_transaction (EamService *service,
-                                       EamRemoteTransaction *remote)
+eam_service_pop_busy (EamService *service)
 {
   EamServicePrivate *priv = eam_service_get_instance_private (service);
-
-  eam_log_info_message ("Remove active transaction '%s'", remote->obj_path);
-
-  if (!g_hash_table_remove (priv->active_transactions, remote->obj_path)) {
-    eam_log_error_message ("Asked to remove transaction '%s'[%p] without adding it first.",
-                           remote->obj_path,
-                           remote);
-    return;
-  }
+  priv->busy_counter--;
 }
 
 static void
@@ -312,7 +295,7 @@ start_dbus_transaction (EamService *service,
     return NULL;
   }
 
-  eam_service_add_active_transaction (service, remote);
+  eam_service_push_busy (service);
 
   return remote;
 }
@@ -620,7 +603,7 @@ eam_service_is_busy (EamService *service)
   if (priv->authorizing)
     return TRUE;
 
-  if (g_hash_table_size (priv->active_transactions) > 0)
+  if (priv->busy_counter > 0)
     return TRUE;
 
   return FALSE;
@@ -660,7 +643,9 @@ eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 {
   eam_log_info_message ("Transaction '%s' was cancelled.", remote->obj_path);
   g_cancellable_cancel (remote->cancellable);
-  eam_service_remove_active_transaction (remote->service, remote);
+  eam_remote_transaction_free (remote);
+
+  eam_service_pop_busy (remote->service);
 }
 
 static void
@@ -682,7 +667,9 @@ transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
   g_dbus_method_invocation_return_value (remote->invocation, value);
 
 out:
-  eam_service_remove_active_transaction (service, remote);
+  eam_remote_transaction_free (remote);
+
+  eam_service_pop_busy (service);
 }
 
 static void
