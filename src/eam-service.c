@@ -360,6 +360,7 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
 static void
 uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
+  EamService *service = data;
   EamTransaction *trans = EAM_TRANSACTION (source);
   GDBusMethodInvocation *invocation = g_object_get_data (source, "invocation");
   g_assert (invocation);
@@ -375,6 +376,8 @@ uninstall_cb (GObject *source, GAsyncResult *res, gpointer data)
     GVariant *value = g_variant_new ("(b)", ret);
     g_dbus_method_invocation_return_value (invocation, value);
   }
+
+  eam_service_pop_busy (service);
 }
 
 static void
@@ -389,6 +392,8 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
 
   eam_transaction_run_async (trans, NULL, uninstall_cb, service);
   g_object_unref (trans);
+
+  eam_service_push_busy (service);
 }
 
 static gboolean
