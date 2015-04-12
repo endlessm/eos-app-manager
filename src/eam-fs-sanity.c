@@ -140,9 +140,9 @@ is_application_dir (const char *path)
   if (!g_file_test (path, G_FILE_TEST_IS_DIR))
     return FALSE;
 
-  gchar *appid = g_path_get_basename (path);
-  gboolean retval = eam_utils_appid_is_legal (appid);
-  g_free (appid);
+  gchar *info_path = g_build_filename (path, ".info", NULL);
+  gboolean retval = g_file_test (info_path, G_FILE_TEST_EXISTS);
+  g_free (info_path);
 
   return retval;
 }
