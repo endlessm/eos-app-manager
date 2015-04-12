@@ -59,12 +59,6 @@ const getServer = function(args) {
     return server;
 }
 
-const refreshAppManager = function() {
-    let command = 'gdbus call --system --dest com.endlessm.AppManager --object-path /com/endlessm/AppManager --method com.endlessm.AppManager.Refresh'
-
-    GLib.spawn_command_line_sync(command);
-}
-
 let server = getServer(ARGV);
 
 if (server) {
@@ -83,6 +77,4 @@ if (server) {
     let configFileData = configKeyFile.to_data()[0];
     configFile.replace_contents(configFileData, null, true,
                                 Gio.FileCreateFlags.NONE, null);
-
-    refreshAppManager();
 }
