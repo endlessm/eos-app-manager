@@ -656,17 +656,17 @@ transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
 
   GError *error = NULL;
   gboolean ret = eam_transaction_finish (remote->transaction, res, &error);
-  if (error) {
-    g_dbus_method_invocation_take_error (remote->invocation, error);
-    goto out;
-  }
 
   eam_log_info_message ("Transaction '%s' result: %s", remote->obj_path, ret ? "success" : "failure");
 
-  GVariant *value = g_variant_new ("(b)", ret);
-  g_dbus_method_invocation_return_value (remote->invocation, value);
+  if (error != NULL) {
+    g_dbus_method_invocation_take_error (remote->invocation, error);
+  }
+  else {
+    GVariant *value = g_variant_new ("(b)", ret);
+    g_dbus_method_invocation_return_value (remote->invocation, value);
+  }
 
-out:
   eam_remote_transaction_free (remote);
 
   eam_service_pop_busy (service);
