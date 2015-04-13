@@ -217,7 +217,6 @@ run_scripts (EamUpdate *self, const gchar *scriptdir,
   eam_utils_run_bundle_scripts (priv->appid,
                                 build_tarball_filename (self),
                                 scriptdir,
-                                priv->bundle_location != NULL, /* external download? */
                                 cancellable,
                                 callback,
                                 task);

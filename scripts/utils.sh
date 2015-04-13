@@ -63,23 +63,6 @@ verify_downloaded_file ()
     gpgv --keyring="${EAM_GPGKEYRING}" --logger-fd 1 --quiet "${gpgfile}" "${file}"
 }
 
-# Deletes the downloaded file, its sha256file and GPG signature.
-# Receives the path to the downloaded file, the name of the sha256file
-# and the name of the GPG signature.
-delete_downloaded_file ()
-{
-    if [ "$#" -ne 3 ]; then
-        exit_error "delete_downloaded_file: incorrect number of arguments"
-    fi
-
-    file=$1
-    sha256file=$2
-    gpgfile=$3
-
-    DIR=${file%/*}
-    rm --force "${file}" "${DIR}/${sha256file}" "${DIR}/${gpgfile}"
-}
-
 # Desktop updates
 # ---------------
 # Refreshes the system metadata: compiles the settings XML schema files,

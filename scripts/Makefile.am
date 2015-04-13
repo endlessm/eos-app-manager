@@ -13,7 +13,6 @@ install_scripts = \
 	install/run/60-symlinks.sh \
 	install/run/70-desktop-updates.sh \
 	install/run/70-python-compile.sh \
-	install/run/80-cleanup.sh \
 	install/rollback/00-directories.sh \
 	install/rollback/01-delete-symlinks.sh \
 	install/rollback/02-cleanup.sh \

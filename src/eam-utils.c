@@ -13,35 +13,6 @@
 #define BUNDLE_SIGNATURE_EXT ".asc"
 #define BUNDLE_HASH_EXT ".sha256"
 
-gboolean
-eam_utils_appid_is_legal (const char *appid)
-{
-  static const char alsoallowed[] = "-+.";
-  static const char *reserveddirs[] = { "bin", "share", "lost+found" };
-
-  if (!appid || appid[0] == '\0')
-    return FALSE;
-
-  guint i;
-  for (i = 0; i < G_N_ELEMENTS(reserveddirs); i++) {
-    if (g_strcmp0(appid, reserveddirs[i]) == 0)
-      return FALSE;
-  }
-
-  if (!g_ascii_isalnum (appid[0]))
-    return FALSE; /* must start with an alphanumeric character */
-
-  int c;
-  while ((c = *appid++) != '\0')
-    if (!g_ascii_isalnum (c) && !strchr (alsoallowed, c))
-      break;
-
-  if (!c)
-    return TRUE;
-
-  return FALSE;
-}
-
 char *
 eam_utils_build_tarball_filename (const char *bundle_location, const char *appid,
   const char *extension)
@@ -60,7 +31,7 @@ eam_utils_build_tarball_filename (const char *bundle_location, const char *appid
 
 void
 eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
-  const gchar *scriptdir, const gboolean external_download,
+  const gchar *scriptdir,
   GCancellable *cancellable, GAsyncReadyCallback callback, GTask *task)
 {
   /* scripts directory path */
@@ -77,8 +48,6 @@ eam_utils_run_bundle_scripts (const gchar *appid, const gchar *filename,
   g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
   g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
   g_hash_table_insert (env, (gpointer) "EAM_GPGKEYRING", (gpointer) eam_config_gpgkeyring ());
-  if (external_download)
-    g_hash_table_insert (env, (gpointer) "EAM_EXTDOWNLOAD", (gpointer) "1");
 
   EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
   eam_spawner_run_async (spawner, cancellable, callback, task);
