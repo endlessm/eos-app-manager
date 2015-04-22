@@ -391,6 +391,12 @@ check_args_minimum_number ()
 # installation time and not just at daemon init.
 create_os_directories ()
 {
+    # The consistency of the file system is only checked at start up,
+    # but the directory could go away in the middle of a script run.
+    if [ ! -d ${EAM_PREFIX} ]; then
+        exit_error "create_os_directories: Missing EAM_PREFIX top-level directory"
+    fi
+
     for dir in \
         "${OS_BIN_DIR}" "${OS_DESKTOP_FILES_DIR}" \
         "${OS_DESKTOP_ICONS_DIR}" "${OS_GSETTINGS_DIR}" \
