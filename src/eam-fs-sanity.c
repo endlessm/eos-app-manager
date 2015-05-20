@@ -1,13 +1,15 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 #include "config.h"
 
-#include <gio/gio.h>
-#include <glib/gstdio.h>
-
 #include "eam-fs-sanity.h"
 #include "eam-config.h"
 #include "eam-log.h"
 #include "eam-utils.h"
+
+#include <errno.h>
+
+#include <gio/gio.h>
+#include <glib/gstdio.h>
 
 #define BIN_SUBDIR "bin"
 #define DESKTOP_FILES_SUBDIR "share/applications"
@@ -58,37 +60,37 @@ applications_directory_structure_create (void)
   const gint mode = 0755;
 
   if (g_mkdir_with_parents (bin_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", bin_dir);
+    eam_log_error_message ("Unable to create '%s': %s", bin_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
   if (g_mkdir_with_parents (desktop_files_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", desktop_files_dir);
+    eam_log_error_message ("Unable to create '%s': %s", desktop_files_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
   if (g_mkdir_with_parents (desktop_icons_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", desktop_icons_dir);
+    eam_log_error_message ("Unable to create '%s': %s", desktop_icons_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
   if (g_mkdir_with_parents (dbus_services_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", dbus_services_dir);
+    eam_log_error_message ("Unable to create '%s': %s", dbus_services_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
   if (g_mkdir_with_parents (ekn_data_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", ekn_data_dir);
+    eam_log_error_message ("Unable to create '%s': %s", ekn_data_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
   if (g_mkdir_with_parents (g_schemas_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", g_schemas_dir);
+    eam_log_error_message ("Unable to create '%s': %s", g_schemas_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
   if (g_mkdir_with_parents (xdg_autostart_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", xdg_autostart_dir);
+    eam_log_error_message ("Unable to create '%s': %s", xdg_autostart_dir, g_strerror (errno));
     retval = FALSE;
     goto bail;
   }
