@@ -45,17 +45,14 @@ PKG_PROG_PKG_CONFIG
 GLIB_TESTS
 
 GLIB_REQUIRED=2.40.0
-SOUP_REQUIRED=2.44.0
-JSON_GLIB_REQUIRED=0.16.2
 POLKIT_GOBJECT_REQUIRED=0.110
-PKG_CHECK_MODULES([DEPENDENCIES], [
-		  glib-2.0 >= $GLIB_REQUIRED
-		  gio-unix-2.0 >= $GLIB_REQUIRED
-		  libsoup-2.4 >= $SOUP_REQUIRED
-		  json-glib-1.0 >= $JSON_GLIB_REQUIRED
-		  systemd
-		  libsystemd-journal
-		  polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
+PKG_CHECK_MODULES([DEPENDENCIES],
+                  [
+		    glib-2.0 >= $GLIB_REQUIRED
+		    gio-unix-2.0 >= $GLIB_REQUIRED
+		    polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
+		    libsystemd-journal
+		    systemd
 		  ])
 
 # GResource
