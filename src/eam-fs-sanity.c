@@ -108,7 +108,7 @@ bail:
 }
 
 static gboolean
-applications_directory_symlink_exists ()
+applications_directory_symlink_exists (void)
 {
   const gchar *appdir = eam_config_appdir ();
   g_assert (appdir);
@@ -117,7 +117,7 @@ applications_directory_symlink_exists ()
 }
 
 static gboolean
-applications_directory_symlink_clear ()
+applications_directory_symlink_clear (void)
 {
   const gchar *appdir = eam_config_appdir ();
   g_assert (appdir);
@@ -126,7 +126,7 @@ applications_directory_symlink_clear ()
 }
 
 static gboolean
-applications_directory_symlink_create ()
+applications_directory_symlink_create (void)
 {
   gboolean retval = TRUE;
 
