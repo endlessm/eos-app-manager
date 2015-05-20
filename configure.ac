@@ -59,9 +59,8 @@ PKG_CHECK_MODULES([DEPENDENCIES], [
 		  ])
 
 # GResource
-AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources], [no])
-AS_IF([test "x$GLIB_COMPILE_RESOURCES" = xno],
-      [AC_MSG_ERROR(["Could not find a glib-compile-resources in your PATH"])])
+GLIB_COMPILE_RESOURCES=`$PKG_CONFIG --variable=glib_compile_resources gio-2.0`
+AC_SUBST(GLIB_COMPILE_RESOURCES)
 
 # systemd
 AC_SUBST([systemdsystemunitdir], [$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
