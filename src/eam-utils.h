@@ -5,7 +5,6 @@
 
 #include <glib.h>
 #include <gio/gio.h>
-#include <json-glib/json-glib.h>
 
 G_BEGIN_DECLS
 

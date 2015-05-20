@@ -3,7 +3,6 @@
 #include "config.h"
 
 #include <glib/gi18n.h>
-#include <json-glib/json-glib.h>
 
 #include "eam-log.h"
 #include "eam-error.h"
