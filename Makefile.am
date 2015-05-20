@@ -10,5 +10,3 @@ EXTRA_DIST = \
 	build/autotools/glib-tap.mk \
 	build/tap-driver.sh \
 	build/tap-test
-
--include $(top_srcdir)/build/autotools/git.mk

@@ -33,5 +33,3 @@ test_programs = \
 	spawner \
 	scripts \
 	$(NULL)
-
--include $(top_srcdir)/build/autotools/git.mk

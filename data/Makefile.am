@@ -67,5 +67,3 @@ DISTCLEANFILES = \
 	$(conf_DATA) \
 	$(dist_polkit_rules_DATA) \
 	$(NULL)
-
--include $(top_srcdir)/build/autotools/git.mk

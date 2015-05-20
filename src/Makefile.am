@@ -70,5 +70,3 @@ eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
 eam_LDADD = $(DEPENDENCIES_LIBS) libeam.la
 eam_LDFLAGS = -export-dynamic
 eam_SOURCES = main.c
-
--include $(top_srcdir)/build/autotools/git.mk
