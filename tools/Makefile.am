@@ -19,4 +19,4 @@ bin_SCRIPTS = \
 	eos-select-app-server \
 	$(NULL)
 
--include $(top_srcdir)/git.mk
+-include $(top_srcdir)/build/autotools/git.mk

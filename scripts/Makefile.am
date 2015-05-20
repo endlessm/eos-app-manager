@@ -76,4 +76,4 @@ EXTRA_DIST = \
 	$(update_scripts) \
 	$(NULL)
 
--include $(top_srcdir)/git.mk
+-include $(top_srcdir)/build/autotools/git.mk

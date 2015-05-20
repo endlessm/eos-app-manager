@@ -1,4 +1,4 @@
-include $(top_srcdir)/glib-tap.mk
+include $(top_srcdir)/build/autotools/glib-tap.mk
 
 TEST_ENVIRONMENT = EAM_TESTING=1
 
@@ -34,4 +34,4 @@ test_programs = \
 	scripts \
 	$(NULL)
 
--include $(top_srcdir)/git.mk
+-include $(top_srcdir)/build/autotools/git.mk

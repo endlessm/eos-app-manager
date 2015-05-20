@@ -1,12 +1,21 @@
-AC_INIT([EndlessOS Application Manager],[0.1],[https://github.com/endlessm/eos-shell/issues],[eos-app-manager])
+AC_INIT([EndlessOS Application Manager],
+        [0.1],
+        [https://github.com/endlessm/eos-shell/issues],
+        [eos-app-manager],
+        [https://endlessm.com])
 
-AC_PREREQ([2.59])
+AC_PREREQ([2.63])
 
-AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_SRCDIR([configure.ac])
+AC_CONFIG_MACRO_DIR([build/autotools])
+AC_CONFIG_AUX_DIR([build])
+AC_CONFIG_HEADER([src/config.h])
+AC_CONFIG_SRCDIR([src/main.c])
 
-AM_INIT_AUTOMAKE([1.11 subdir-objects foreign dist-xz no-dist-gzip])
+ACLOCAL="$ACLOCAL $ACLOCAL_FLAGS"
+
+AC_USE_SYSTEM_EXTENSIONS
+
+AM_INIT_AUTOMAKE([1.11 no-define -Wno-portability subdir-objects foreign tar-ustar dist-xz no-dist-gzip])
 AM_SILENT_RULES([yes])
 AM_MAINTAINER_MODE([enable])
 
@@ -77,14 +86,13 @@ AC_ARG_ENABLE([debug],
 AS_IF([test "x$enable_debug" = xyes], [AC_DEFINE([EAM_ENABLE_DEBUG], [1], [Enable debug code])])
 
 AC_CONFIG_FILES([
-Makefile
-data/Makefile
-src/Makefile
-tools/Makefile
-tests/Makefile
-scripts/Makefile
-po/Makefile.in
-],
-[])
+        Makefile
+        data/Makefile
+        src/Makefile
+        tools/Makefile
+        tests/Makefile
+        scripts/Makefile
+        po/Makefile.in
+], [])
 
 AC_OUTPUT
