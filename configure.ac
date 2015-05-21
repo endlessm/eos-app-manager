@@ -38,8 +38,6 @@ eam_ADD_CFLAGS([-Werror=implicit-function-declaration])
 eam_ADD_CFLAGS([-Werror=missing-declarations])
 eam_ADD_CFLAGS([-Werror=redundant-decls])
 
-IT_PROG_INTLTOOL([0.50.0])
-
 PKG_PROG_PKG_CONFIG
 
 GLIB_TESTS
@@ -62,10 +60,13 @@ AC_SUBST(GLIB_COMPILE_RESOURCES)
 # systemd
 AC_SUBST([systemdsystemunitdir], [$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
 
-GETTEXT_PACKAGE=eam
+# Localization
+AM_GNU_GETTEXT_VERSION([0.18])
+AM_GNU_GETTEXT([external])
+
+GETTEXT_PACKAGE="eam"
 AC_SUBST([GETTEXT_PACKAGE])
 AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE],["$GETTEXT_PACKAGE"],[Gettext package])
-AM_GLIB_GNU_GETTEXT
 
 EAM_USER=app-manager
 AC_SUBST(EAM_USER)

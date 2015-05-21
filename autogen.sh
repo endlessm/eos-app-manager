@@ -6,7 +6,6 @@ test -n "$srcdir" || srcdir=.
 olddir=`pwd`
 cd "$srcdir"
 
-intltoolize --force --copy || exit $?
 autoreconf --install --force --verbose || exit $?
 
 cd "$olddir"
