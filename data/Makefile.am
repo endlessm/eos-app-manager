@@ -18,7 +18,7 @@ systemdservice_in_files = eos-app-manager.service.in
 systemdservicedir = $(systemdsystemunitdir)
 systemdservice_DATA = $(systemdservice_in_files:.service.in=.service)
 
-$(systemdservice_DATA): $(systemdservice_in_files) $(systemdsystemunitdir) Makefile
+$(systemdservice_DATA): $(systemdservice_in_files) Makefile
 	@sed -e "s|\@bindir\@|$(bindir)|" -e "s|\@EAM_USER\@|$(EAM_USER)|" $< > $@
 
 xsessiondir = $(sysconfdir)/X11/Xsession.d

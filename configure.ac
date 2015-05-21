@@ -58,7 +58,18 @@ GLIB_COMPILE_RESOURCES=`$PKG_CONFIG --variable=glib_compile_resources gio-2.0`
 AC_SUBST(GLIB_COMPILE_RESOURCES)
 
 # systemd
-AC_SUBST([systemdsystemunitdir], [$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+AC_ARG_WITH([systemd-systemunitdir],
+            [AS_HELP_STRING([--with-systemd-systemunitdir], [Path to the system directory for systemd units])],
+            [systemunitdir="$withval"],
+            [systemunitdir=default])
+
+AS_IF([test "x$systemunitdir" = xdefault],
+      [
+        systemdsystemunitdir=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`
+      ],
+      [ systemdsystemunitdir="$systemunitdir" ])
+
+AC_SUBST([systemdsystemunitdir])
 
 # Localization
 AM_GNU_GETTEXT_VERSION([0.18])
