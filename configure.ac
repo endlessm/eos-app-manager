@@ -79,12 +79,22 @@ GETTEXT_PACKAGE="eam"
 AC_SUBST([GETTEXT_PACKAGE])
 AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE],["$GETTEXT_PACKAGE"],[Gettext package])
 
-EAM_USER=app-manager
+AC_ARG_WITH([eam-user],
+            [AS_HELP_STRING([--with-eam-user], [The app manager username (DEFAULT: app-manager)])],
+            [eam_user=$withval],
+            [eam_user=app-manager])
+
+EAM_USER="$eam_user"
 AC_SUBST(EAM_USER)
 
-EAM_ADMIN_GROUP=adm
-AC_SUBST(EAM_ADMIN_GROUP)
+AC_ARG_WITH([eam-admin-group],
+            [AS_HELP_STRING([--with-eam-admin-group], [Privileged admin groupname (DEFAULT: adm)])],
+            [eam_admin_group=$withval],
+            [eam_admin_group=adm])
+
+EAM_ADMIN_GROUP="$eam_admin_group"
 AC_DEFINE_UNQUOTED([EAM_ADMIN_GROUP_NAME],["$EAM_ADMIN_GROUP"],[System group with administration permissions])
+AC_SUBST(EAM_ADMIN_GROUP)
 
 AC_ARG_ENABLE([debug],
               [AS_HELP_STRING([--enable-debug], [Enable debug messages])],
