@@ -14,6 +14,7 @@ AC_CONFIG_SRCDIR([src/main.c])
 ACLOCAL="$ACLOCAL $ACLOCAL_FLAGS"
 
 AC_USE_SYSTEM_EXTENSIONS
+AC_SYS_LARGEFILE
 
 AM_INIT_AUTOMAKE([1.11 no-define -Wno-portability subdir-objects foreign tar-ustar dist-xz no-dist-gzip])
 AM_SILENT_RULES([yes])
@@ -42,13 +43,20 @@ PKG_PROG_PKG_CONFIG
 
 GLIB_TESTS
 
+# Dependencies
+GPGME_REQUIRED=1.4.3
+AM_PATH_GPGME("$GPGME_REQUIRED",,
+              AC_MSG_ERROR([*** libgpgme $GPGME_REQUIRED was not found ***]))
+
 GLIB_REQUIRED=2.40.0
 POLKIT_GOBJECT_REQUIRED=0.110
+LIBARCHIVE_REQUIRED=3.1.2
 PKG_CHECK_MODULES([DEPENDENCIES],
                   [
 		    glib-2.0 >= $GLIB_REQUIRED
 		    gio-unix-2.0 >= $GLIB_REQUIRED
 		    polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
+                    libarchive >= $LIBARCHIVE_REQUIRED
 		    libsystemd-journal
 		    systemd
 		  ])
@@ -102,6 +110,11 @@ AC_ARG_ENABLE([debug],
               [enable_debug=yes])
 
 AS_IF([test "x$enable_debug" = xyes], [AC_DEFINE([EAM_ENABLE_DEBUG], [1], [Enable debug code])])
+
+EAM_CFLAGS="$GPGME_FLAGS $DEPENDENCIES_CFLAGS"
+EAM_LIBS="$GPGME_LIBS $DEPENDENCIES_LIBS"
+AC_SUBST(EAM_CFLAGS)
+AC_SUBST(EAM_LIBS)
 
 AC_CONFIG_FILES([
         Makefile
