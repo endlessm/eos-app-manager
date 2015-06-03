@@ -4,6 +4,8 @@
 *.la
 *.log
 *.trs
+.*.swp
+.*.swo
 .deps
 .libs
 ABOUT-NLS
