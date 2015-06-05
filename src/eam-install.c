@@ -10,10 +10,11 @@
 #include "eam-spawner.h"
 #include "eam-config.h"
 #include "eam-utils.h"
+#include "eam-fs-sanity.h"
 
-#define INSTALL_SCRIPTDIR "install/run"
-#define INSTALL_ROLLBACKDIR "install/rollback"
-#define INSTALL_BUNDLE_EXT ".bundle"
+#define INSTALL_BUNDLE_EXT              "bundle"
+#define INSTALL_BUNDLE_DIGEST_EXT       "sha256"
+#define INSTALL_BUNDLE_SIGNATURE_EXT    "asc"
 
 typedef struct _EamInstallPrivate        EamInstallPrivate;
 
@@ -133,90 +134,134 @@ eam_install_new (const gchar *appid)
   return g_object_new (EAM_TYPE_INSTALL, "appid", appid, NULL);
 }
 
-static gchar *
+static char *
+build_bundle_filename (const char *basedir,
+                       const char *basename,
+                       const char *extension)
+{
+  g_autofree char *filename = g_strconcat (basename, ".", extension, NULL);
+
+  return g_build_filename (basedir, filename, NULL);
+}
+
+static char *
 build_tarball_filename (EamInstall *self)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  return eam_utils_build_tarball_filename (priv->bundle_location, priv->appid,
-                                           INSTALL_BUNDLE_EXT);
+  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_EXT);
 }
 
-static const gchar *
-get_rollback_scriptdir (EamInstall *self)
-{
-  return INSTALL_ROLLBACKDIR;
-}
-
-static const gchar *
-get_scriptdir (EamInstall *self)
-{
-  return INSTALL_SCRIPTDIR;
-}
-
-static void
-run_scripts (EamInstall *self, const gchar *scriptdir,
-  GCancellable *cancellable, GAsyncReadyCallback callback, GTask *task)
+static char *
+build_checksum_filename (EamInstall *self)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  eam_utils_run_bundle_scripts (priv->appid,
-                                build_tarball_filename (self),
-                                scriptdir,
-                                cancellable,
-                                callback,
-                                task);
+  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_DIGEST_EXT);
+}
+
+static char *
+build_signature_filename (EamInstall *self)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_SIGNATURE_EXT);
 }
 
 static void
-rollback (GTask *task, GError *error)
+install_thread_cb (GTask *task,
+                   gpointer source_obj,
+                   gpointer task_data,
+                   GCancellable *cancellable)
 {
-  EamInstall *self = EAM_INSTALL (g_task_get_source_object (task));
-
-  /* Log some messages about what happened */
-  eam_log_error_message ("Install failed: %s", error->message);
-
-  /* Rollback action if possible */
-  /* Use cancellable == NULL as we are returning immediately after
-     using g_task_return. */
-  run_scripts (self, get_rollback_scriptdir (self), NULL, NULL, NULL);
-
-  /* Clean up */
-  g_task_return_error (task, error);
-  g_object_unref (task);
-}
-
-static void
-action_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-
-  gboolean ret = eam_spawner_run_finish (EAM_SPAWNER (source), result, &error);
-  if (error) {
-    rollback (task, error);
+  if (!eam_fs_sanity_check ()) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Unable to access applications directory");
     return;
   }
 
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
+  EamInstall *self = source_obj;
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  g_task_return_boolean (task, ret);
+  if (eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Application already installed");
+    return;
+  }
 
-bail:
-  g_object_unref (task);
+  g_autofree char *bundle_file = build_tarball_filename (self);
+
+  g_autofree char *checksum_file = build_checksum_filename (self);
+  if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "The checksum for the application bundle is invalid");
+    return;
+  }
+
+  g_autofree char *signature_file = build_signature_filename (self);
+  if (!eam_utils_verify_signature (bundle_file, signature_file)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "The signature for the application bundle is invalid");
+    return;
+  }
+
+  /* Further operations require rollback */
+
+  GError *error = NULL;
+
+  if (!eam_utils_bundle_extract (bundle_file, eam_config_dldir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Could not extract the bundle");
+    goto error;
+  }
+
+  /* run 3rd party scripts */
+  if (!eam_utils_run_external_scripts (eam_config_dldir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Could not process the external script");
+    goto error;
+  }
+
+  /* Deploy the appdir from the extraction directory to the app directory */
+  if (!eam_fs_deploy_app (eam_config_dldir (),
+                          eam_config_appdir (),
+                          priv->appid)) {
+    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Could not deploy the bundle in the application directory");
+    goto error;
+  }
+
+  /* Build the symlink farm for files to appear in the OS locations */
+  if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_appdir (), priv->appid);
+    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Could not create all the symbolic links");
+    goto error;
+  }
+
+  /* These two errors are non-fatal */
+  if (!eam_utils_compile_python (eam_config_appdir (), priv->appid)) {
+    eam_log_error_message ("Python libraries compilation failed");
+  }
+
+  if (!eam_utils_update_desktop (eam_config_appdir ())) {
+    eam_log_error_message ("Could not update the desktop's metadata");
+  }
+
+  g_task_return_boolean (task, TRUE);
+  return;
+
+error:
+  g_task_return_error (task, error);
 }
 
-/**
- * 1. Download the update link
- * 1. Download the application and its sha256sum
- * 2. Set the envvars
- * 3. Run the scripts
- * 4. Rollback if something fails
- */
 static void
-eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data)
+eam_install_run_async (EamTransaction *trans,
+                       GCancellable *cancellable,
+                       GAsyncReadyCallback callback,
+                       gpointer data)
 {
   g_return_if_fail (EAM_IS_INSTALL (trans));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
@@ -234,7 +279,8 @@ eam_install_run_async (EamTransaction *trans, GCancellable *cancellable,
     return;
   }
 
-  run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
+  g_task_run_in_thread (task, install_thread_cb);
+  g_object_unref (task);
 }
 
 static gboolean
