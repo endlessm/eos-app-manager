@@ -2,10 +2,13 @@
 
 #include "config.h"
 
-#include "eam-error.h"
 #include "eam-uninstall.h"
-#include "eam-spawner.h"
+
 #include "eam-config.h"
+#include "eam-error.h"
+#include "eam-fs-sanity.h"
+#include "eam-log.h"
+#include "eam-utils.h"
 
 typedef struct _EamUninstallPrivate	EamUninstallPrivate;
 
@@ -27,24 +30,48 @@ enum
 
 
 static void
-run_cb (GObject *source, GAsyncResult *result, gpointer data)
+uninstall_thread_cb (GTask *task,
+                     gpointer source_obj,
+                     gpointer task_data,
+                     GCancellable *cancellable)
 {
-  GTask *task = data;
-  GError *error = NULL;
-
-  gboolean ret = eam_spawner_run_finish (EAM_SPAWNER (source), result, &error);
-  if (error) {
-    g_task_return_error (task, error);
-    goto bail;
+  if (!eam_fs_sanity_check ()) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Unable to access applications directory");
+    return;
   }
 
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
+  EamUninstall *self = source_obj;
+  EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
 
-  g_task_return_boolean (task, ret);
+  if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Application is not installed");
+    return;
+  }
 
-bail:
-  g_object_unref (task);
+  /* Remove the symbolic links first, so even if any later operation
+   * fails, the application won't appear in the system.
+   *
+   * XXX: On failure we may end up "leaking" the app, and wasting
+   * space; we should have a way to do "garbage collection" at boot
+   * or at shutdown, to remove uninstalled bundles that are still on
+   * disk, and reclaim space.
+   */
+  eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
+
+  if (!eam_fs_prune_dir (eam_config_appdir (), priv->appid)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Unable to remove the bundle files");
+    return;
+  }
+
+  /* This is not fatal */
+  if (!eam_utils_update_desktop (eam_config_appdir ())) {
+    eam_log_error_message ("Could not update the desktop's metadata");
+  }
+
+  g_task_return_boolean (task, TRUE);
 }
 
 /**
@@ -66,26 +93,11 @@ eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
   g_return_if_fail (callback);
 
   EamUninstall *self = EAM_UNINSTALL (trans);
-  EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
+
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  char *dir = g_build_filename (eam_config_scriptdir (), "uninstall", NULL);
-
-  GHashTable *env = g_hash_table_new (g_str_hash, g_str_equal);
-  g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
-  g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
-
-  GStrv params = g_new (gchar *, 2);
-  params[0] = g_strdup (priv->appid);
-  params[1] = NULL;
-
-  EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
-  eam_spawner_run_async (spawner, cancellable, run_cb, task);
-
-  g_free (dir);
-  g_hash_table_unref (env);
-  g_strfreev (params);
-  g_object_unref (spawner);
+  g_task_run_in_thread (task, uninstall_thread_cb);
+  g_object_unref (task);
 }
 
 /*
