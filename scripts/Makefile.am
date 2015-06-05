@@ -3,13 +3,6 @@ common_scripts = \
 	config.sh \
 	$(NULL)
 
-uninstall_scripts = \
-	uninstall/00-directories.sh \
-	uninstall/01-delete-symlinks.sh \
-	uninstall/02-delete-installation-dir.sh \
-	uninstall/03-desktop-updates.sh \
-	$(NULL)
-
 update_scripts = \
 	update/full/05-directories.sh \
 	update/full/10-extract.sh \
@@ -48,12 +41,10 @@ pkglibexec_SCRIPTS = \
 	$(NULL)
 
 nobase_pkglibexec_SCRIPTS = \
-	$(uninstall_scripts) \
 	$(update_scripts) \
 	$(NULL)
 
 EXTRA_DIST = \
 	$(common_scripts) \
-	$(uninstall_scripts) \
 	$(update_scripts) \
 	$(NULL)
