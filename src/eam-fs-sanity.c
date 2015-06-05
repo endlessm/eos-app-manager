@@ -1008,3 +1008,12 @@ eam_fs_create_symlinks (const char *prefix,
 
   return ret == 0;
 }
+
+void
+eam_fs_prune_symlinks (const char *prefix,
+                       const char *appid)
+{
+  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
+    (void) rmsymlinks (prefix, appid, i);
+  }
+}

@@ -20,7 +20,9 @@ gboolean        eam_fs_deploy_app       (const char *source,
                                          const char *target,
                                          const char *appdir);
 gboolean        eam_fs_create_symlinks  (const char *prefix,
-                                         const char *appdir);
+                                         const char *appid);
+void            eam_fs_prune_symlinks   (const char *prefix,
+                                         const char *appid);
 
 typedef enum {
   EAM_BUNDLE_DIRECTORY_BIN,
