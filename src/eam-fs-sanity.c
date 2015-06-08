@@ -579,8 +579,8 @@ cp_internal (GFile *source,
 
   GFile *target_child = NULL;
   while (TRUE) {
-    g_autoptr(GFileInfo) file_info = NULL;
-    g_autoptr(GFile) source_child;
+    GFileInfo *file_info = NULL;
+    GFile *source_child = NULL;
 
     if (!g_file_enumerator_iterate (enumerator, &file_info, &source_child, NULL, &error)) {
       eam_log_error_message ("Unable to enumerate source: %s", error->message);
