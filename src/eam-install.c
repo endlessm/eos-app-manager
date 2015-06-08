@@ -190,7 +190,6 @@ install_thread_cb (GTask *task,
   }
 
   g_autofree char *bundle_file = build_tarball_filename (self);
-
   g_autofree char *checksum_file = build_checksum_filename (self);
   if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
@@ -207,37 +206,36 @@ install_thread_cb (GTask *task,
 
   /* Further operations require rollback */
 
-  GError *error = NULL;
-
   if (!eam_utils_bundle_extract (bundle_file, eam_config_dldir (), priv->appid)) {
     eam_fs_prune_dir (eam_config_dldir (), priv->appid);
-    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
-                 "Could not extract the bundle");
-    goto error;
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Could not extract the bundle");
+    return;
   }
 
   /* run 3rd party scripts */
   if (!eam_utils_run_external_scripts (eam_config_dldir (), priv->appid)) {
     eam_fs_prune_dir (eam_config_dldir (), priv->appid);
-    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
-                 "Could not process the external script");
-    goto error;
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Could not process the external script");
+    return;
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
   if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), priv->appid)) {
-    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
-                 "Could not deploy the bundle in the application directory");
-    goto error;
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Could not deploy the bundle in the application directory");
+    return;
   }
 
   /* Build the symlink farm for files to appear in the OS locations */
   if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
     eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
     eam_fs_prune_dir (eam_config_appdir (), priv->appid);
-    g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
-                 "Could not create all the symbolic links");
-    goto error;
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Could not create all the symbolic links");
+    return;
   }
 
   /* These two errors are non-fatal */
@@ -250,10 +248,6 @@ install_thread_cb (GTask *task,
   }
 
   g_task_return_boolean (task, TRUE);
-  return;
-
-error:
-  g_task_return_error (task, error);
 }
 
 static void
