@@ -723,7 +723,7 @@ symlinkdirs_recursive (const char *source_dir,
   return TRUE;
 }
 
-static gchar *
+static char *
 find_first_desktop_file (const char *dir)
 {
   g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
@@ -732,11 +732,8 @@ find_first_desktop_file (const char *dir)
 
   const char *fn;
   while ((fn = g_dir_read_name (dp)) != NULL) {
-    if (is_dot_or_dotdot (fn))
-      continue;
-
     if (g_str_has_suffix (fn, ".desktop"))
-      return g_strdup (fn);
+      return g_build_filename (dir, fn, NULL);
   }
 
   return NULL;
@@ -839,32 +836,17 @@ do_binaries_symlinks (const char *appid)
   g_autofree char *appdesktopfile = g_build_filename (appdesktopdir, desktopfile, NULL);
 
   if (!g_file_test (appdesktopfile, G_FILE_TEST_EXISTS)) {
-    g_free (desktopfile);
     g_free (appdesktopfile);
-
-    desktopfile = find_first_desktop_file (appdesktopdir);
-    if (!desktopfile) {
-      return FALSE; /* none desktop file not found */
-    }
-
-    appdesktopfile = g_build_filename (appdesktopdir, desktopfile, NULL);
+    appdesktopfile = find_first_desktop_file (appdesktopdir);
+    if (appdesktopfile == NULL)
+      return FALSE;
   }
 
   g_autofree char *exec = app_info_get_executable (appdesktopfile);
 
-  /* 1. It is an absolute path */
+  /* 1. It is an absolute path, we don't do anything */
   if (g_path_is_absolute (exec)) {
-    if (g_file_test (exec, G_FILE_TEST_EXISTS))
-      return TRUE;
-
-    /* @HACK: let's force the things a bit */
-    char *tmp = g_path_get_basename (exec);
-    if (tmp) {
-      exec = tmp;
-    } else {
-      g_free (tmp);
-      return FALSE;
-    }
+    return g_file_test (exec, G_FILE_TEST_EXISTS);
   }
 
   /* 2. Try in /endless/$appid/bin */
