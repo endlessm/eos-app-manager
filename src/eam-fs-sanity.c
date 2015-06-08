@@ -875,8 +875,8 @@ do_binaries_symlinks (const char *appid)
 
   /* 4. Look if the command we are trying to link is already in $PATH
    *
-   * We don't want to match binaries in ${OS_BIN_DIR} here, so remove it
-   * from $PATH first
+   * We don't want to match binaries in EAM_BUNDLE_DIRECTORY_BIN here, so
+   * remove it from $PATH first.
    */
   const gchar* path = g_getenv ("PATH");
 
@@ -921,7 +921,7 @@ rmsymlinks_recursive (const char *appid,
       if (!unlink (path) || errno != ENOENT) /* remove link */
         continue;
 
-      eam_log_error_message ("Couldn't remove link %s: %s", path, strerror (errno));
+      eam_log_error_message ("Couldn't remove link %s: %s", path, g_strerror (errno));
     }
     else if (S_ISDIR (st.st_mode)) { /* recursive if directory */
       if (!rmsymlinks_recursive (appid, path)) {
@@ -958,7 +958,7 @@ eam_fs_create_symlinks (const char *prefix,
 {
   if (do_binaries_symlinks (appid) < 0) {
     /* If command is neither in $PATH nor in one of the binary
-     *  directories of the bundle, exit with error exit_error
+     * directories of the bundle, exit with error exit_error
      */
     g_warning ("Can't find app binary to link");
 
