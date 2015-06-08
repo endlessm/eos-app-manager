@@ -385,10 +385,12 @@ eam_fs_sanity_delete (const gchar *path)
       eam_log_error_message ("Trying to delete an unexistent file '%s'", path);
       retval = FALSE;
       goto bail;
-    } else if (code == G_IO_ERROR_NOT_DIRECTORY) {
+    }
+    else if (code == G_IO_ERROR_NOT_DIRECTORY) {
       /* The file is a regular file, not a directory */
       goto delete;
-    } else {
+    }
+    else {
       eam_log_error_message ("Failed to get the children of '%s': %s", path, error->message);
       g_clear_error (&error);
       retval = FALSE;
@@ -405,6 +407,7 @@ eam_fs_sanity_delete (const gchar *path)
     eam_fs_sanity_delete (child_path);
     g_free (child_path);
   }
+
   g_object_unref (children);
 
   if (error) {
@@ -753,9 +756,8 @@ remove_dir_from_path (const char *path,
   char *res = NULL;
   int i, len = g_strv_length (splitpath);
   for (i = 0; i < len; i++) {
-    if (g_strcmp0 (splitpath[i], dir)) {
+    if (g_strcmp0 (splitpath[i], dir))
       continue;
-    }
 
     char *tmp = res;
     res = g_strconcat (G_SEARCHPATH_SEPARATOR_S, tmp, splitpath[i], NULL);
@@ -846,9 +848,8 @@ do_binaries_symlinks (const char *appid)
   g_autofree char *exec = app_info_get_executable (appdesktopfile);
 
   /* 1. It is an absolute path, we don't do anything */
-  if (g_path_is_absolute (exec)) {
+  if (g_path_is_absolute (exec))
     return g_file_test (exec, G_FILE_TEST_EXISTS);
-  }
 
   /* 2. Try in /endless/$appid/bin */
   g_autofree char *bin =
