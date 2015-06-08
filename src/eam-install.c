@@ -225,9 +225,7 @@ install_thread_cb (GTask *task,
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_dldir (),
-                          eam_config_appdir (),
-                          priv->appid)) {
+  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), priv->appid)) {
     g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
                  "Could not deploy the bundle in the application directory");
     goto error;
@@ -235,6 +233,7 @@ install_thread_cb (GTask *task,
 
   /* Build the symlink farm for files to appear in the OS locations */
   if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
+    eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
     eam_fs_prune_dir (eam_config_appdir (), priv->appid);
     g_set_error (&error, EAM_ERROR, EAM_ERROR_FAILED,
                  "Could not create all the symbolic links");
