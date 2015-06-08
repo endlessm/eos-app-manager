@@ -437,50 +437,47 @@ is_dot_or_dotdot (const char *name)
 gboolean
 eam_fs_rmdir_recursive (const char *path)
 {
-  DIR *dir;
-  struct dirent *e;
-  gchar *epath;
-  int ret = TRUE;
-
-  dir = opendir (path);
-  if (!dir) {
-    if (errno == ENOENT)
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GDir) dir = g_dir_open (path, 0, &err);
+  if (err != NULL) {
+    /* If the directory is already gone, then we consider it a success */
+    if (g_error_matches (err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
       return TRUE;
-    else if (errno == EACCES) {
-      /* An empty dir could be removable even if it is unreadable. */
+
+    /* An empty dir could be removable even if it is unreadable. */
+    if (g_error_matches (err, G_FILE_ERROR, G_FILE_ERROR_ACCES))
       return rmdir (path) == 0;
-    }
-    else
-      return FALSE;
+
+    return FALSE;
   }
 
-  epath = NULL;
-  while ((e = readdir (dir)) != NULL) {
-    if (is_dot_or_dotdot (e->d_name))
+  gboolean ret = TRUE;
+
+  const char *fn;
+  while ((fn = g_dir_read_name (dir)) != NULL) {
+    if (is_dot_or_dotdot (fn))
       continue;
 
-    g_free (epath);
-    epath = g_build_filename (path, e->d_name, NULL);
+    g_autofree char *epath = g_build_filename (path, fn, NULL);
 
     struct stat st;
-    if (lstat (epath, &st)) {
+    if (lstat (epath, &st) == -1) {
       /* file disappeared, which is what we wanted anyway */
       if (errno == ENOENT)
         continue;
-    } else if (S_ISDIR(st.st_mode)) {
+    }
+    else if (S_ISDIR (st.st_mode)) {
       if (eam_fs_rmdir_recursive (epath) == 0)
         continue; /* happy */
-    } else if (!unlink (epath) || errno == ENOENT) {
+    }
+    else if (!unlink (epath) || errno == ENOENT) {
       continue; /* happy, too */
     }
 
-    /* path too long, stat fails, or non-directory still exists */
+    /* stat fails, or non-directory still exists */
     ret = FALSE;
     break;
   }
-
-  g_free (epath);
-  closedir (dir);
 
   /* The directory at path should now be empty */
   if (ret)
