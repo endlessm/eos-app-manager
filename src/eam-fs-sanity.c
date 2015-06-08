@@ -40,6 +40,7 @@ static const char *fs_layout[] = {
   [EAM_BUNDLE_DIRECTORY_SHELL_SEARCH] = "share/gnome-shell/search-providers",
   [EAM_BUNDLE_DIRECTORY_KDE4] = "share/kde4",
   [EAM_BUNDLE_DIRECTORY_XDG_AUTOSTART] = "xdg/autostart",
+  [EAM_BUNDLE_DIRECTORY_GAMES] = "games",
 };
 
 const char *
@@ -864,7 +865,7 @@ do_binaries_symlinks (const char *appid)
   g_free (bin);
   bin = g_build_filename (eam_config_appdir (),
                           appid,
-                          "games",
+                          eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES),
                           exec,
                           NULL);
 
