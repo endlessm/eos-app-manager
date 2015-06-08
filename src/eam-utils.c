@@ -665,10 +665,11 @@ eam_utils_apply_xdelta (const char *prefix,
                         const char *appid,
                         const char *delta_bundle)
 {
-  if (!eam_fs_prune_dir (eam_config_dldir (), appid))
+  g_autofree char *dir = g_build_filename (eam_config_dldir (), appid, NULL);
+
+  if (!eam_fs_rmdir_recursive (dir))
     return FALSE;
 
-  g_autofree char *dir = g_build_filename (eam_config_dldir (), appid, NULL);
   if (g_mkdir (dir, 0755) < 0)
     return FALSE;
 
