@@ -224,9 +224,8 @@ eam_utils_app_is_installed (const char *prefix,
 {
   g_autofree char *appdir = g_build_filename (prefix, appid, NULL);
 
-  if (!g_file_test (appdir, G_FILE_TEST_IS_DIR)) {
+  if (!g_file_test (appdir, G_FILE_TEST_IS_DIR))
     return FALSE;
-  }
 
   g_autofree char *info_file = g_build_filename (appdir, ".info", NULL);
 
@@ -445,9 +444,8 @@ download_external_file (const char  *appid,
 
   /* get the filename */
   g_autoptr(GHashTable) params = NULL;
-  if (soup_message_headers_get_content_disposition (msg->response_headers, NULL, &params)) {
+  if (soup_message_headers_get_content_disposition (msg->response_headers, NULL, &params))
     *filename = g_strdup (g_hash_table_lookup (params, "filename"));
-  }
 
   if (!*filename)
     *filename = g_path_get_basename (soup_uri_get_path (soup_message_get_uri (msg)));
@@ -492,9 +490,8 @@ run_external_script (const char *prefix,
   g_autofree char *wd = g_build_filename (prefix, appid, NULL);
   g_autofree char *fn = g_build_filename (wd, ".script.install", NULL);
 
-  if (!g_file_test (fn, G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_EXECUTABLE)) {
-    return 0; /* this is perfectly  OK */
-  }
+  if (!g_file_test (fn, G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_EXECUTABLE))
+    return 0;
 
   g_autoptr(GError) err = NULL;
   g_autoptr(GSubprocess) sub = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &err, fn, appid, wd, NULL);
@@ -600,23 +597,20 @@ eam_utils_compile_python (const char *prefix,
 
   g_autofree char *dir = g_build_filename (prefix, appid, "lib", NULL);
   g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
-  if (!dp) {
+  if (!dp)
     return TRUE;
-  }
 
   gboolean compilation_successful = FALSE;
   gboolean found_python = FALSE;
   const char *fn;
 
   while ((fn = g_dir_read_name (dp)) != NULL) {
-    if (!g_str_has_prefix (fn, "python")) {
+    if (!g_str_has_prefix (fn, "python"))
       continue;
-    }
 
     g_autofree char *pydir = g_build_filename (dir, fn, NULL);
-    if (!g_file_test (pydir, G_FILE_TEST_IS_DIR)) {
+    if (!g_file_test (pydir, G_FILE_TEST_IS_DIR))
       continue;
-    }
 
     found_python = TRUE;
 
@@ -732,9 +726,8 @@ eam_utils_find_program_in_path (const char *program,
 
     char *res = g_build_filename (path_c, program, NULL);
     if (g_file_test (res, G_FILE_TEST_IS_EXECUTABLE) &&
-        !g_file_test (res, G_FILE_TEST_IS_DIR)) {
+        !g_file_test (res, G_FILE_TEST_IS_DIR))
       return res;
-    }
 
     g_free (res);
   }
