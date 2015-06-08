@@ -407,6 +407,26 @@ has_external_script (const char  *prefix,
   return 1;
 }
 
+static gboolean
+run_cmd (const char * const *argv)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
+
+  if (err != NULL) {
+    eam_log_error_message ("%s failed: %s", argv[0], err->message);
+    return -1;
+  }
+
+  g_subprocess_wait (sub, NULL, &err);
+  if (err != NULL) {
+    eam_log_error_message ("%s failed: %s", argv[0], err->message);
+    return -1;
+  }
+
+  return g_subprocess_get_exit_status (sub) == 0;
+}
+
 /* XXX: These will eventually be defined by libsoup, but we don't have a way to
  * check for them beforehand, so the build will fail once libsoup adds these
  * symbols.
@@ -486,7 +506,7 @@ download_external_file (const char  *appid,
   return 0;
 }
 
-static int
+static gboolean
 run_external_script (const char *prefix,
                      const char *appid)
 {
@@ -494,26 +514,14 @@ run_external_script (const char *prefix,
   g_autofree char *fn = g_build_filename (wd, ".script.install", NULL);
 
   if (!g_file_test (fn, G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_EXECUTABLE))
-    return 0;
+    return TRUE;
 
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GSubprocess) sub = g_subprocess_new (G_SUBPROCESS_FLAGS_NONE, &err, fn, appid, wd, NULL);
+  char *argv[2] = {
+    fn,
+    NULL,
+  };
 
-  if (err != NULL) {
-    eam_log_error_message ("External script %s failed: %s", fn, err->message);
-    return -1;
-  }
-
-  g_subprocess_wait (sub, NULL, &err);
-  if (err != NULL) {
-    eam_log_error_message ("External script %s failed: %s", fn, err->message);
-    return -1;
-  }
-
-  int status = g_subprocess_get_exit_status (sub);
-  eam_log_info_message ("Script exit status: %d", status);
-
-  return status == 0;
+  return run_cmd ((const char * const *) argv);
 }
 
 gboolean
@@ -556,7 +564,7 @@ eam_utils_run_external_scripts (const char *prefix,
   if (!ok)
     goto out;
 
-  if (run_external_script (prefix, appid) < 0)
+  if (!run_external_script (prefix, appid))
     goto out;
 
   ret = TRUE;
@@ -566,26 +574,6 @@ out:
     eam_log_info_message ("Couldn't remove the directory: %s", dir);
 
   return ret;
-}
-
-static gboolean
-run_cmd (const char * const *argv)
-{
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
-
-  if (err != NULL) {
-    eam_log_error_message ("%s failed: %s", argv[0], err->message);
-    return -1;
-  }
-
-  g_subprocess_wait (sub, NULL, &err);
-  if (err != NULL) {
-    eam_log_error_message ("%s failed: %s", argv[0], err->message);
-    return -1;
-  }
-
-  return g_subprocess_get_exit_status (sub) == 0;
 }
 
 gboolean
