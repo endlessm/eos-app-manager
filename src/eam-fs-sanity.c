@@ -654,70 +654,73 @@ eam_fs_deploy_app (const char *source,
   return ret;
 }
 
-static int
+static gboolean
 symlinkdirs_recursive (const char *source_dir,
                        const char *target_dir,
                        gboolean    shallow)
 {
-  struct dirent *e;
-  int ret = 0;
-  gchar *spath, *tpath;
-
   if (g_mkdir_with_parents (target_dir, 0755) < 0)
-    return -1;
+    return FALSE;
 
-  DIR *dir = opendir (source_dir);
-  if (!dir)
-    return 0; /* it's OK if the bundle doesn't have that dir */
+  g_autoptr(GDir) dir = g_dir_open (source_dir, 0, NULL);
+  if (dir == NULL)
+    return TRUE; /* it's OK if the bundle doesn't have that dir */
 
-  spath = tpath = NULL;
-  while ((e = readdir (dir)) != NULL) {
-    if (is_dot_or_dotdot (e->d_name))
+  const char *fn;
+  while ((fn = g_dir_read_name (dir)) != NULL) {
+    if (is_dot_or_dotdot (fn))
       continue;
 
-    g_free (spath);
-    g_free (tpath);
-    spath = g_build_filename (source_dir, e->d_name, NULL);
-    tpath = g_build_filename (target_dir, e->d_name, NULL);
+    g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
+    g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
     struct stat st;
-    if (lstat (spath, &st)) {
+    if (lstat (spath, &st) != 0) {
       if (errno == ENOENT)
         continue;
-    } else if (S_ISLNK (st.st_mode)) {
-      gchar *file = g_file_read_link (spath, NULL);
-      if (file) {
-        if (!symlink (file, tpath) || errno == EEXIST)
-          g_debug ("%s -> %s", file, tpath);
-        g_free (file);
+    }
+    else if (S_ISLNK (st.st_mode)) {
+      g_autofree char *file = g_file_read_link (spath, NULL);
+      if (file != NULL) {
+        if (symlink (file, tpath) != 0 || errno == EEXIST) {
+          eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                                 file,
+                                 tpath,
+                                 g_strerror (errno));
+        }
       }
       continue;
-    } else if (S_ISREG (st.st_mode)) { /* symbolic link if regular file */
-      if (!symlink (spath, tpath) || errno == EEXIST) {
-        g_debug ("%s -> %s", spath, tpath);
+    }
+    else if (S_ISREG (st.st_mode)) { /* symbolic link if regular file */
+      if (symlink (spath, tpath) != 0 || errno == EEXIST) {
+        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                               spath,
+                               tpath,
+                               g_strerror (errno));
         continue;
       }
-    } else if (S_ISDIR (st.st_mode)) { /* recursive if directory and not shallow */
-      if (!shallow && !symlinkdirs_recursive (spath, tpath, shallow))
-        continue;
-      else if (shallow && (!symlink (spath, tpath) || errno == EEXIST)) {
-        g_debug ("%s -> %s", spath, tpath);
+    }
+    else if (S_ISDIR (st.st_mode)) { /* recursive if directory and not shallow */
+      if (!shallow && !symlinkdirs_recursive (spath, tpath, FALSE)) {
         continue;
       }
-    } else { /* ignore the rest */
+      else if (shallow && (symlink (spath, tpath) != 0 || errno == EEXIST)) {
+        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                               spath,
+                               tpath,
+                               g_strerror (errno));
+        continue;
+      }
+    } else {
+      /* ignore the rest */
       continue;
     }
 
-    ret = -1;
-    break;
+    /* error */
+    return FALSE;
   }
 
-  g_free (spath);
-  g_free (tpath);
-
-  closedir (dir);
-
-  return ret;
+  return TRUE;
 }
 
 static gchar *
@@ -907,18 +910,15 @@ rmsymlinks_recursive (const char *appid,
 {
   g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
   if (dp == NULL)
-    return -1;
+    return FALSE;
 
-  int ret = 0;
-
-  g_autofree char *path = NULL;
   const char *fn;
 
   while ((fn = g_dir_read_name (dp)) != NULL) {
     if (is_dot_or_dotdot (fn))
       continue;
 
-    path = g_build_filename (dir, fn, NULL);
+    g_autofree char *path = g_build_filename (dir, fn, NULL);
 
     struct stat st;
     if (lstat (path, &st)) {
@@ -927,13 +927,12 @@ rmsymlinks_recursive (const char *appid,
     }
     else if (S_ISLNK (st.st_mode)) {
       g_autofree char *file = g_file_read_link (path, NULL);
-      if (file == NULL) {
+      if (file == NULL)
         continue;
-      }
 
-      if (strstr (file, appid) == NULL) { /* does it belong to appid? */
+      /* does it belong to appid? */
+      if (strstr (file, appid) == NULL)
         continue;
-      }
 
       if (!unlink (path) || errno != ENOENT) /* remove link */
         continue;
@@ -946,16 +945,16 @@ rmsymlinks_recursive (const char *appid,
           continue;
       }
     }
-    else { /* ignore the rest */
+    else {
+      /* ignore the rest */
       continue;
     }
 
     /* error */
-    ret = -1;
-    break;
+    return FALSE;
   }
 
-  return ret;
+  return TRUE;
 }
 
 
@@ -984,21 +983,19 @@ eam_fs_create_symlinks (const char *prefix,
     return FALSE;
   }
 
-  int ret = 0;
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
     g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (i), NULL);
     g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = i == EAM_BUNDLE_DIRECTORY_EKN_DATA;
-    ret = symlinkdirs_recursive (sdir, tdir, is_shallow);
-    if (ret != 0) {
+    if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
       rmsymlinks (prefix, appid, i);
-      break;
+      return FALSE;
     }
   }
 
-  return ret == 0;
+  return TRUE;
 }
 
 void
