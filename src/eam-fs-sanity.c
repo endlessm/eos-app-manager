@@ -624,7 +624,6 @@ eam_fs_cpdir_recursive (const char *src,
   return cp_internal (source, target);
 }
 
-
 gboolean
 eam_fs_deploy_app (const char *source,
                    const char *target,
@@ -646,8 +645,7 @@ eam_fs_deploy_app (const char *source,
   }
 
   if (!ret) {
-    eam_log_error_message ("Moving '%s' from '%s' to '%s' failed: %s",
-                           appid, sdir, tdir, g_strerror (errno));
+    eam_log_error_message ("Moving '%s' from '%s' to '%s' failed", appid, sdir, tdir);
     eam_fs_rmdir_recursive (tdir); /* clean up the appdir */
   }
 
