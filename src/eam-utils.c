@@ -198,10 +198,15 @@ eam_utils_verify_signature (const char *source_file,
   for (; sig; sig = sig->next) {
     num_sigs += 1;
 
-    if (sig->summary & (GPGME_SIGSUM_VALID |
-                        GPGME_SIGSUM_GREEN |
-                        GPGME_SIGSUM_RED))
+    if ((sig->summary & (GPGME_SIGSUM_VALID | GPGME_SIGSUM_GREEN)) != 0) {
       num_valid += 1;
+      continue;
+    }
+
+    eam_log_info_message ("Signature %d is bad or invalid (revoked:%s, expired:%s)",
+                          num_sigs,
+                          sig->summary & GPGME_SIGSUM_KEY_REVOKED ? "yes" : "no",
+                          sig->summary & GPGME_SIGSUM_KEY_EXPIRED ? "yes" : "no");
   }
 
   ret = num_sigs > 0 && num_sigs == num_valid;
