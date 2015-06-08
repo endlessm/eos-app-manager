@@ -490,12 +490,9 @@ gboolean
 eam_fs_prune_dir (const char *prefix,
                   const char *appdir)
 {
-  char *path = g_build_filename (prefix, appdir, NULL);
-  gboolean res = eam_fs_rmdir_recursive (path);
+  g_autofree char *path = g_build_filename (prefix, appdir, NULL);
 
-  g_free (path);
-
-  return res;
+  return eam_fs_rmdir_recursive (path);
 }
 
 #define CP_ENUMERATE_ATTRS \
