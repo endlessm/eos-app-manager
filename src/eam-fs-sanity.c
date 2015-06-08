@@ -496,21 +496,21 @@ eam_fs_prune_dir (const char *prefix,
 }
 
 #define CP_ENUMERATE_ATTRS \
-  "standard::type," \
-  "standard::name," \
-  "unix::uid," \
-  "unix::gid," \
-  "unix::mode"
+  G_FILE_ATTRIBUTE_STANDARD_TYPE "," \
+  G_FILE_ATTRIBUTE_STANDARD_NAME "," \
+  G_FILE_ATTRIBUTE_UNIX_UID "," \
+  G_FILE_ATTRIBUTE_UNIX_GID "," \
+  G_FILE_ATTRIBUTE_UNIX_MODE
 
 #define CP_QUERY_ATTRS \
-  "standard::name," \
-  "unix::mode," \
-  "unix::uid," \
-  "unix::gid," \
-  "time::modified," \
-  "time::modified-usec," \
-  "time::access," \
-  "time::access-usec"
+  G_FILE_ATTRIBUTE_STANDARD_NAME "," \
+  G_FILE_ATTRIBUTE_UNIX_MODE "," \
+  G_FILE_ATTRIBUTE_UNIX_UID "," \
+  G_FILE_ATTRIBUTE_UNIX_GID "," \
+  G_FILE_ATTRIBUTE_TIME_MODIFIED "," \
+  G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC "," \
+  G_FILE_ATTRIBUTE_TIME_ACCESS "," \
+  G_FILE_ATTRIBUTE_TIME_ACCESS_USEC
 
 static gboolean
 cp_internal (GFile *source,
@@ -556,8 +556,8 @@ cp_internal (GFile *source,
   }
 
   do {
-    guint32 src_uid = g_file_info_get_attribute_uint32 (source_info, "unix::uid");
-    guint32 src_gid = g_file_info_get_attribute_uint32 (source_info, "uinx::gid");
+    guint32 src_uid = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_UID);
+    guint32 src_gid = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_GID);
     r = fchown (target_fd, src_uid, src_gid);
   } while (r == -1 && errno == EINTR);
   if (r == -1) {
@@ -567,7 +567,7 @@ cp_internal (GFile *source,
   }
 
   do {
-    guint32 src_mode = g_file_info_get_attribute_uint32 (source_info, "unix::mode");
+    guint32 src_mode = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_MODE);
     r = fchmod (target_fd, src_mode);
   } while (r == -1 && errno == EINTR);
   if (r == -1) {
