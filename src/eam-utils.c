@@ -328,10 +328,9 @@ eam_utils_bundle_extract (const char *bundle_file,
 
     const char *entpath = archive_entry_pathname (entry);
 
-    gchar *newpath = g_build_filename (target_prefix, entpath, NULL);
+    g_autofree char *newpath = g_build_filename (target_prefix, entpath, NULL);
     archive_entry_set_pathname (entry, newpath);
     eam_log_info_message ("Extracting '%s' to '%s", entpath, newpath);
-    g_free (newpath);
 
     err = archive_write_header (ext, entry);
     if (err == ARCHIVE_OK && archive_entry_size (entry) > 0) {
