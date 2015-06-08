@@ -294,6 +294,8 @@ eam_utils_bundle_extract (const char *bundle_file,
                           const char *target_prefix,
                           const char *appid)
 {
+#define READ_ARCHIVE_BLOCK_SIZE      8192
+
   gboolean ret = FALSE;
 
   struct archive *a = archive_read_new ();
@@ -308,7 +310,7 @@ eam_utils_bundle_extract (const char *bundle_file,
   archive_write_disk_set_options (ext, flags);
   archive_write_disk_set_standard_lookup (ext);
 
-  int err = archive_read_open_filename (a, bundle_file, 10240);
+  int err = archive_read_open_filename (a, bundle_file, READ_ARCHIVE_BLOCK_SIZE);
   if (err != ARCHIVE_OK)
     goto bail;
 
@@ -368,6 +370,8 @@ bail:
   archive_write_free (ext);
 
   return ret;
+
+#undef READ_ARCHIVE_BLOCK_SIZE
 }
 
 static int
