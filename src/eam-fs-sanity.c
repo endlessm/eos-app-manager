@@ -570,7 +570,6 @@ cp_internal (GFile *source,
 
   (void) close (target_fd);
 
-  GFile *target_child = NULL;
   while (TRUE) {
     GFileInfo *file_info = NULL;
     GFile *source_child = NULL;
@@ -583,12 +582,10 @@ cp_internal (GFile *source,
     if (file_info == NULL)
       break;
 
-    g_clear_object (&target_child);
-    target_child = g_file_get_child (target, g_file_info_get_name (file_info));
+    g_autoptr(GFile) target_child = g_file_get_child (target, g_file_info_get_name (file_info));
 
     if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY) {
       if (!cp_internal (source_child, target_child)) {
-        g_object_unref (target_child);
         return FALSE;
       }
     }
