@@ -54,14 +54,14 @@ LIBARCHIVE_REQUIRED=3.1.2
 LIBSOUP_REQUIRED=2.46
 PKG_CHECK_MODULES([DEPENDENCIES],
                   [
-		    glib-2.0 >= $GLIB_REQUIRED
-		    gio-unix-2.0 >= $GLIB_REQUIRED
-		    polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
+                    glib-2.0 >= $GLIB_REQUIRED
+                    gio-unix-2.0 >= $GLIB_REQUIRED
+                    polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
                     libarchive >= $LIBARCHIVE_REQUIRED
                     libsoup-2.4 >= $LIBSOUP_REQUIRED
-		    libsystemd-journal
-		    systemd
-		  ])
+                    libsystemd-journal
+                    systemd
+                  ])
 
 # GResource
 GLIB_COMPILE_RESOURCES=`$PKG_CONFIG --variable=glib_compile_resources gio-2.0`
