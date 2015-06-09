@@ -177,7 +177,7 @@ fix_permissions_for_application (const gchar *path)
   if (!retval)
     goto bail;
 
-  if (g_stat (path, &buf) == -1) {
+  if (stat (path, &buf) != 0) {
     eam_log_error_message ("Error retrieving information about path '%s'", path);
     retval = FALSE;
     goto bail;
@@ -189,7 +189,7 @@ fix_permissions_for_application (const gchar *path)
   mode_t mod_mask = buf.st_mode;
   mod_mask |= (((buf.st_mode & S_IRUSR) | (buf.st_mode & S_IXUSR)) >> 6);
 
-  if (g_chmod (path, mod_mask) == -1) {
+  if (chmod (path, mod_mask) != 0) {
     eam_log_error_message ("Error fixing permissions for path '%s'", path);
     retval = FALSE;
     goto bail;
@@ -207,7 +207,7 @@ fix_application_permissions_if_needed (const gchar *path)
 
   g_assert (path);
 
-  if (g_stat (path, &buf) == -1) {
+  if (stat (path, &buf) != 0) {
     eam_log_error_message ("Error retrieving information about file '%s'", path);
     return;
   }
@@ -454,7 +454,7 @@ eam_fs_rmdir_recursive (const char *path)
     g_autofree char *epath = g_build_filename (path, fn, NULL);
 
     struct stat st;
-    if (lstat (epath, &st) == -1) {
+    if (lstat (epath, &st) != 0) {
       /* file disappeared, which is what we wanted anyway */
       if (errno == ENOENT)
         continue;
@@ -534,9 +534,9 @@ cp_internal (GFile *source,
 
   do {
     r = mkdir (target_path, 0755);
-  } while (r == -1 && errno == EINTR);
+  } while (r != 0 && errno == EINTR);
 
-  if (r == -1) {
+  if (r != 0) {
     eam_log_error_message ("Unable to create target directory: %s", g_strerror (errno));
     return FALSE;
   }
@@ -552,8 +552,9 @@ cp_internal (GFile *source,
     guint32 src_uid = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_UID);
     guint32 src_gid = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_GID);
     r = fchown (target_fd, src_uid, src_gid);
-  } while (r == -1 && errno == EINTR);
-  if (r == -1) {
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
     eam_log_error_message ("Unable to set ownership of target directory: %s",
                            g_strerror (errno));
     return FALSE;
@@ -562,8 +563,9 @@ cp_internal (GFile *source,
   do {
     guint32 src_mode = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_MODE);
     r = fchmod (target_fd, src_mode);
-  } while (r == -1 && errno == EINTR);
-  if (r == -1) {
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
     eam_log_error_message ("Unable to set mode of target directory: %s", g_strerror (errno));
     return FALSE;
   }
@@ -624,7 +626,7 @@ eam_fs_deploy_app (const char *source,
 
   gboolean ret = FALSE;
 
-  if (rename (sdir, tdir) < 0) {
+  if (rename (sdir, tdir) != 0) {
     /* If the rename() failed because we tried to move across
      * file system boundaries, then we do an explicit recursive
      * copy.
@@ -649,7 +651,7 @@ symlinkdirs_recursive (const char *source_dir,
                        const char *target_dir,
                        gboolean    shallow)
 {
-  if (g_mkdir_with_parents (target_dir, 0755) < 0)
+  if (g_mkdir_with_parents (target_dir, 0755) != 0)
     return FALSE;
 
   g_autoptr(GDir) dir = g_dir_open (source_dir, 0, NULL);
@@ -723,7 +725,7 @@ remove_dir_from_path (const char *path,
   char *res = NULL;
   int i, len = g_strv_length (splitpath);
   for (i = 0; i < len; i++) {
-    if (g_strcmp0 (splitpath[i], dir))
+    if (g_strcmp0 (splitpath[i], dir) != 0)
       continue;
 
     char *tmp = res;
