@@ -711,22 +711,6 @@ symlinkdirs_recursive (const char *source_dir,
 }
 
 static char *
-find_first_desktop_file (const char *dir)
-{
-  g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
-  if (!dp)
-    return NULL;
-
-  const char *fn;
-  while ((fn = g_dir_read_name (dp)) != NULL) {
-    if (g_str_has_suffix (fn, ".desktop"))
-      return g_build_filename (dir, fn, NULL);
-  }
-
-  return NULL;
-}
-
-static char *
 remove_dir_from_path (const char *path,
                       const char *dir)
 {
@@ -810,6 +794,27 @@ app_info_get_executable (const char *desktop_file)
   return NULL;
 }
 
+static char *
+ensure_desktop_file (const char *dir,
+                     const char *file)
+{
+  g_autofree char *path = g_build_filename (dir, file, NULL);
+
+  if (g_file_test (path, G_FILE_TEST_EXISTS))
+    return g_strdup (path);
+
+  g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
+  if (dp == NULL)
+    return NULL;
+
+  const char *fn;
+  while ((fn = g_dir_read_name (dp)) != NULL) {
+    if (g_str_has_suffix (fn, ".desktop"))
+      return g_build_filename (dir, fn, NULL);
+  }
+
+  return NULL;
+}
 
 static gboolean
 do_binaries_symlinks (const char *appid)
@@ -819,14 +824,10 @@ do_binaries_symlinks (const char *appid)
                                                      appid,
                                                      eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_DESKTOP),
                                                      NULL);
-  g_autofree char *appdesktopfile = g_build_filename (appdesktopdir, desktopfile, NULL);
+  g_autofree char *appdesktopfile = ensure_desktop_file (appdesktopdir, desktopfile);
 
-  if (!g_file_test (appdesktopfile, G_FILE_TEST_EXISTS)) {
-    g_free (appdesktopfile);
-    appdesktopfile = find_first_desktop_file (appdesktopdir);
-    if (appdesktopfile == NULL)
-      return FALSE;
-  }
+  if (appdesktopfile == NULL)
+    return FALSE;
 
   g_autofree char *exec = app_info_get_executable (appdesktopfile);
 
@@ -920,7 +921,6 @@ rmsymlinks_recursive (const char *appid,
 
   return TRUE;
 }
-
 
 static int
 rmsymlinks (const char *prefix,
