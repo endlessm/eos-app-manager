@@ -430,14 +430,6 @@ bail:
   return retval;
 }
 
-static inline int
-is_dot_or_dotdot (const char *name)
-{
-  return (strlen (name) < 3 &&
-          name[0] == '.' &&
-          (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')));
-}
-
 gboolean
 eam_fs_rmdir_recursive (const char *path)
 {
@@ -459,9 +451,6 @@ eam_fs_rmdir_recursive (const char *path)
 
   const char *fn;
   while ((fn = g_dir_read_name (dir)) != NULL) {
-    if (is_dot_or_dotdot (fn))
-      continue;
-
     g_autofree char *epath = g_build_filename (path, fn, NULL);
 
     struct stat st;
@@ -672,9 +661,6 @@ symlinkdirs_recursive (const char *source_dir,
 
   const char *fn;
   while ((fn = g_dir_read_name (dir)) != NULL) {
-    if (is_dot_or_dotdot (fn))
-      continue;
-
     g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
     g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
@@ -899,9 +885,6 @@ rmsymlinks_recursive (const char *appid,
   const char *fn;
 
   while ((fn = g_dir_read_name (dp)) != NULL) {
-    if (is_dot_or_dotdot (fn))
-      continue;
-
     g_autofree char *path = g_build_filename (dir, fn, NULL);
 
     struct stat st;
