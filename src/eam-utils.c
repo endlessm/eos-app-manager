@@ -431,7 +431,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupSession, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupMessage, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupURI, soup_uri_free)
 
-static int
+static gboolean
 download_external_file (const char  *appid,
                         const char  *url,
                         const char  *dir,
@@ -440,7 +440,7 @@ download_external_file (const char  *appid,
   g_autoptr(SoupURI) uri = soup_uri_new (url);
   if (!uri) {
     eam_log_error_message ("Could not parse '%s' as a URL", url);
-    return -1;
+    return FALSE;
   }
 
   g_autoptr(SoupSession) session =
@@ -456,7 +456,7 @@ download_external_file (const char  *appid,
   g_autoptr(GInputStream) ins = soup_session_send (session, msg, NULL, &err);
   if (err != NULL) {
     eam_log_error_message ("Couldn't download %s: %s", url, err->message);
-    return -1;
+    return FALSE;
   }
 
   goffset len = soup_message_headers_get_content_length (msg->response_headers);
@@ -482,7 +482,7 @@ download_external_file (const char  *appid,
                                      NULL, &err));
   if (err != NULL) {
     eam_log_error_message ("Could not create %s: %s", path, err->message);
-    return -1;
+    return FALSE;
   }
 
   eam_log_info_message ("Downloading %s into %s", url, path);
@@ -491,15 +491,15 @@ download_external_file (const char  *appid,
                                        NULL, &err);
   if (err != NULL) {
     eam_log_error_message ("Could not save %s: %s", path, err->message);
-    return -1;
+    return FALSE;
   }
 
   if (siz < 0 || siz > len) {
     eam_log_error_message ("Could not save %s: invalid size", path);
-    return -1;
+    return FALSE;
   }
 
-  return 0;
+  return TRUE;
 }
 
 static gboolean
@@ -545,10 +545,9 @@ eam_utils_run_external_scripts (const char *prefix,
   if (g_mkdir_with_parents (dir, 0755) < 0)
     return FALSE;
 
-  g_autofree char *filename = NULL;
   g_autofree char *path = NULL;
-
-  if (download_external_file (appid, url, dir, &filename) < 0)
+  g_autofree char *filename = NULL;
+  if (!download_external_file (appid, url, dir, &filename))
     goto out;
 
   g_assert (filename != NULL);
