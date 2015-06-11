@@ -27,14 +27,34 @@ applications_directory_create (void)
   const gchar *appdir = eam_config_appdir ();
   g_assert (appdir);
 
-  /* Create the applications' directory structure under ROOT_DIR */
-  gchar *bin_dir = g_build_filename (ROOT_DIR, appdir, BIN_SUBDIR, NULL);
-  gchar *desktop_files_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_FILES_SUBDIR, NULL);
-  gchar *desktop_icons_dir = g_build_filename (ROOT_DIR, appdir, DESKTOP_ICONS_SUBDIR, NULL);
-  gchar *dbus_services_dir = g_build_filename (ROOT_DIR, appdir, DBUS_SERVICES_SUBDIR, NULL);
-  gchar *ekn_data_dir = g_build_filename (ROOT_DIR, appdir, EKN_DATA_SUBDIR, NULL);
-  gchar *g_schemas_dir = g_build_filename (ROOT_DIR, appdir, G_SCHEMAS_SUBDIR, NULL);
-  gchar *xdg_autostart_dir = g_build_filename (ROOT_DIR, appdir, XDG_AUTOSTART_SUBDIR, NULL);
+  gchar *root_appdir = g_build_filename (ROOT_DIR, appdir, NULL);
+  const gint mode = 0755;
+  if (g_mkdir_with_parents (root_appdir, mode) != 0) {
+    eam_log_error_message ("Unable to create '%s'", root_appdir);
+    retval = FALSE;
+  }
+
+  g_free (root_appdir);
+
+  return retval;
+}
+
+static gboolean
+applications_directory_structure_create (void)
+{
+  gboolean retval = TRUE;
+
+  const gchar *appdir = eam_config_appdir ();
+  g_assert (appdir);
+
+  /* Create the applications' directory structure */
+  gchar *bin_dir = g_build_filename (appdir, BIN_SUBDIR, NULL);
+  gchar *desktop_files_dir = g_build_filename (appdir, DESKTOP_FILES_SUBDIR, NULL);
+  gchar *desktop_icons_dir = g_build_filename (appdir, DESKTOP_ICONS_SUBDIR, NULL);
+  gchar *dbus_services_dir = g_build_filename (appdir, DBUS_SERVICES_SUBDIR, NULL);
+  gchar *ekn_data_dir = g_build_filename (appdir, EKN_DATA_SUBDIR, NULL);
+  gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
+  gchar *xdg_autostart_dir = g_build_filename (appdir, XDG_AUTOSTART_SUBDIR, NULL);
   const gint mode = 0755;
 
   if (g_mkdir_with_parents (bin_dir, mode) != 0) {
@@ -263,11 +283,15 @@ eam_fs_sanity_check (void)
 
   /* Ensure the applications installation directory exists */
   if (!applications_directory_create ()) {
-    eam_log_error_message ("Failed to create the applications directory structure '%s' under '%s'", appdir, ROOT_DIR);
+    eam_log_error_message ("Failed to create the applications directory '%s%s'", ROOT_DIR, appdir);
     return FALSE;
   }
   if (!applications_directory_symlink_exists () && !applications_directory_symlink_create ()) {
     eam_log_error_message ("Failed to create the symbolic link '%s' to the applications directory", appdir);
+    return FALSE;
+  }
+  if (!applications_directory_structure_create ()) {
+    eam_log_error_message ("Failed to create the applications directory structure under '%s'", appdir);
     return FALSE;
   }
 
