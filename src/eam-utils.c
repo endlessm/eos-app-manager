@@ -228,7 +228,7 @@ eam_utils_app_is_installed (const char *prefix,
 
   g_autofree char *info_file = g_build_filename (appdir, ".info", NULL);
 
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
   g_autoptr(GKeyFile) keyfile = g_key_file_new ();
   g_key_file_load_from_file (keyfile, info_file, G_KEY_FILE_NONE, &error);
 
@@ -236,7 +236,6 @@ eam_utils_app_is_installed (const char *prefix,
     eam_log_error_message ("Unable to open bundle metadata for '%s': %s",
                            appid,
                            error->message);
-    g_error_free (error);
     return FALSE;
   }
 
