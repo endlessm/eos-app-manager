@@ -509,8 +509,10 @@ run_external_script (const char *prefix,
   g_autofree char *wd = g_build_filename (prefix, appid, NULL);
   g_autofree char *fn = g_build_filename (wd, ".script.install", NULL);
 
-  if (!g_file_test (fn, G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_EXECUTABLE))
-    return TRUE;
+  if (!g_file_test (fn, G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_EXECUTABLE)) {
+    eam_log_error_message ("External script '%s' is not a valid executable", fn);
+    return FALSE;
+  }
 
   char *argv[2] = {
     fn,
