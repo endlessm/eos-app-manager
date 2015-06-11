@@ -567,7 +567,7 @@ eam_utils_run_external_scripts (const char *prefix,
   ret = TRUE;
 
 out:
-  if (eam_fs_rmdir_recursive (dir) < 0)
+  if (!eam_fs_rmdir_recursive (dir))
     eam_log_info_message ("Couldn't remove the directory: %s", dir);
 
   return ret;
