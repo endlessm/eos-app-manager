@@ -100,9 +100,8 @@ verify_checksum_hash (const char    *source_file,
     if (feof (fp))
       break;
 
-    if (ferror (fp)) {
+    if (ferror (fp))
       return FALSE;
-    }
   }
 
   const char *hash = g_checksum_get_string (checksum);
@@ -288,7 +287,6 @@ copy_data (struct archive *ar,
   g_assert_not_reached ();
 }
 
-
 gboolean
 eam_utils_bundle_extract (const char *bundle_file,
                           const char *target_prefix,
@@ -388,9 +386,8 @@ has_external_script (const char  *prefix,
     return -1;
   }
 
-  if (!g_key_file_has_group (kf, "External")) {
+  if (!g_key_file_has_group (kf, "External"))
     return 0;
-  }
 
   *url = g_key_file_get_string (kf, "External", "url", &err);
   if (err) {
