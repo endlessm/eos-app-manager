@@ -463,7 +463,7 @@ eam_fs_rmdir_recursive (const char *path)
       if (eam_fs_rmdir_recursive (epath) == 0)
         continue; /* happy */
     }
-    else if (!unlink (epath) || errno == ENOENT) {
+    else if (unlink (epath) != 0 && errno == ENOENT) {
       continue; /* happy, too */
     }
 
@@ -665,35 +665,43 @@ symlinkdirs_recursive (const char *source_dir,
 
     struct stat st;
     if (lstat (spath, &st) != 0) {
+      /* We ignore files that go missing */
       if (errno == ENOENT)
         continue;
     }
-    else if (S_ISLNK (st.st_mode)) {
+    else if (S_ISLNK (st.st_mode)) { /* symbolic link */
       g_autofree char *file = g_file_read_link (spath, NULL);
       if (file != NULL) {
-        if (symlink (file, tpath) != 0 || errno == EEXIST) {
+        if (symlink (file, tpath) != 0 && errno != EEXIST) {
           eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
                                  file,
                                  tpath,
                                  g_strerror (errno));
         }
       }
+      else {
+        eam_log_error_message ("Broken link at '%s', skipping", spath);
+      }
+
       continue;
     }
     else if (S_ISREG (st.st_mode)) { /* symbolic link if regular file */
-      if (symlink (spath, tpath) != 0 || errno == EEXIST) {
+      if (symlink (spath, tpath) != 0 || errno != EEXIST) {
         eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
                                spath,
                                tpath,
                                g_strerror (errno));
-        continue;
       }
+
+      continue;
     }
     else if (S_ISDIR (st.st_mode)) { /* recursive if directory and not shallow */
-      if (!shallow && !symlinkdirs_recursive (spath, tpath, FALSE)) {
-        continue;
+      if (!shallow) {
+        /* If symlinkdirs_recursive() fails, we fail the whole operation */
+        if (symlinkdirs_recursive (spath, tpath, FALSE))
+          continue;
       }
-      else if (shallow && (symlink (spath, tpath) != 0 || errno == EEXIST)) {
+      else if (shallow && (symlink (spath, tpath) != 0 && errno != EEXIST)) {
         eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
                                spath,
                                tpath,
@@ -701,11 +709,13 @@ symlinkdirs_recursive (const char *source_dir,
         continue;
       }
     } else {
-      /* ignore the rest */
+      /* ignore the rest of potential st_mode values */
       continue;
     }
 
-    /* error */
+    /* Any error in one of the conditions above was not handled will
+     * result in in a failure condition
+     */
     return FALSE;
   }
 
@@ -871,6 +881,8 @@ do_binaries_symlinks (const char *appid)
   if (full_exec != NULL)
     return TRUE;
 
+  eam_log_error_message ("Could not find binary for %s", appid);
+
   return FALSE;
 }
 
@@ -901,14 +913,18 @@ rmsymlinks_recursive (const char *appid,
       if (strstr (file, appid) == NULL)
         continue;
 
-      if (!unlink (path) || errno != ENOENT) /* remove link */
+      /* remove link unless the file was removed */
+      if (unlink (path) != 0 && errno != ENOENT)
         continue;
 
       eam_log_error_message ("Couldn't remove link %s: %s", path, g_strerror (errno));
     }
     else if (S_ISDIR (st.st_mode)) { /* recursive if directory */
-      if (!rmsymlinks_recursive (appid, path)) {
-        if (!rmdir (path) || errno != ENOTEMPTY) /* remove directory if empty */
+      if (rmsymlinks_recursive (appid, path)) {
+        /* remove directory if empty */
+        if (rmdir (path) != 0)
+          eam_log_error_message ("Could not remove directory %s: %s", path, g_strerror (errno));
+        else
           continue;
       }
     }
@@ -924,30 +940,12 @@ rmsymlinks_recursive (const char *appid,
   return TRUE;
 }
 
-static int
-rmsymlinks (const char *prefix,
-            const char *appid,
-            EamBundleDirectory dir)
-{
-  g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (dir), NULL);
-
-  return rmsymlinks_recursive (appid, tdir);
-}
-
 gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  if (do_binaries_symlinks (appid) < 0) {
-    /* If command is neither in $PATH nor in one of the binary
-     * directories of the bundle, exit with error exit_error
-     */
-    g_warning ("Can't find app binary to link");
-
-    rmsymlinks (prefix, appid, EAM_BUNDLE_DIRECTORY_BIN);
-
+  if (!do_binaries_symlinks (appid))
     return FALSE;
-  }
 
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
     g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (i), NULL);
@@ -956,7 +954,6 @@ eam_fs_create_symlinks (const char *prefix,
     /* shallow symlinks to EKN data */
     gboolean is_shallow = i == EAM_BUNDLE_DIRECTORY_EKN_DATA;
     if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
-      rmsymlinks (prefix, appid, i);
       return FALSE;
     }
   }
@@ -969,6 +966,8 @@ eam_fs_prune_symlinks (const char *prefix,
                        const char *appid)
 {
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
-    (void) rmsymlinks (prefix, appid, i);
+    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+
+    (void) rmsymlinks_recursive (appid, tdir);
   }
 }
