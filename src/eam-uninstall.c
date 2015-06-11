@@ -67,9 +67,8 @@ uninstall_thread_cb (GTask *task,
   }
 
   /* This is not fatal */
-  if (!eam_utils_update_desktop (eam_config_appdir ())) {
+  if (!eam_utils_update_desktop (eam_config_appdir ()))
     eam_log_error_message ("Could not update the desktop's metadata");
-  }
 
   g_task_return_boolean (task, TRUE);
 }
