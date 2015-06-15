@@ -6,4 +6,4 @@ protocolversion = v1
 scriptdir = @pkglibexecdir@
 gpgkeyring = @pkgdatadir@/eos-keyring.gpg
 timeout = 300
-deltaupdates = false
+deltaupdates = true
