@@ -648,9 +648,10 @@ eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 {
   eam_log_info_message ("Transaction '%s' was cancelled.", remote->obj_path);
   g_cancellable_cancel (remote->cancellable);
-  eam_remote_transaction_free (remote);
 
   eam_service_pop_busy (remote->service);
+
+  eam_remote_transaction_free (remote);
 }
 
 static void
