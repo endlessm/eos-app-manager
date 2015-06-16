@@ -675,9 +675,14 @@ transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
     g_dbus_method_invocation_return_value (remote->invocation, value);
   }
 
-  eam_remote_transaction_free (remote);
-
-  eam_service_pop_busy (service);
+  /* When the GCancellable is cancelled, we will free the transaction
+   * with eam_remote_transaction_cancel().
+   */
+  if (!g_cancellable_is_cancelled (remote->cancellable))
+    {
+      eam_remote_transaction_free (remote);
+      eam_service_pop_busy (service);
+    }
 }
 
 static void
