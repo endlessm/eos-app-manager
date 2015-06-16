@@ -626,6 +626,8 @@ eam_service_run (EamService *service, GDBusMethodInvocation *invocation,
 static void
 eam_remote_transaction_free (EamRemoteTransaction *remote)
 {
+  eam_log_info_message ("Transaction '%s' is being freed.", remote->obj_path);
+
   if (remote->watch_id != 0)
     g_bus_unwatch_name (remote->watch_id);
 
