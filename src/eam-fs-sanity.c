@@ -447,36 +447,44 @@ eam_fs_rmdir_recursive (const char *path)
     return FALSE;
   }
 
-  gboolean ret = TRUE;
-
   const char *fn;
+
   while ((fn = g_dir_read_name (dir)) != NULL) {
     g_autofree char *epath = g_build_filename (path, fn, NULL);
 
     struct stat st;
     if (lstat (epath, &st) != 0) {
-      /* file disappeared, which is what we wanted anyway */
-      if (errno == ENOENT)
-        continue;
-    }
-    else if (S_ISDIR (st.st_mode)) {
-      if (eam_fs_rmdir_recursive (epath) == 0)
-        continue; /* happy */
-    }
-    else if (unlink (epath) != 0 && errno == ENOENT) {
-      continue; /* happy, too */
+      /* Bail out, unless the file disappeared */
+      if (errno != ENOENT)
+        return FALSE;
+
+      continue;
     }
 
-    /* stat fails, or non-directory still exists */
-    ret = FALSE;
-    break;
+    if (S_ISDIR (st.st_mode)) {
+      if (!eam_fs_rmdir_recursive (epath))
+        return FALSE;
+
+      continue;
+    }
+    else {
+      if (unlink (epath) != 0) {
+        /* Bail out, unless the file disappeared */
+        if (errno != ENOENT)
+          return FALSE;
+      }
+    }
   }
 
-  /* The directory at path should now be empty */
-  if (ret)
-    ret = (rmdir (path) == 0 || errno == ENOENT) ? TRUE : FALSE;
+  /* The directory at path should now be empty, or not exist */
+  if (rmdir (path) == 0)
+    return TRUE;
+  else {
+    if (errno == ENOENT)
+      return TRUE;
+  }
 
-  return ret;
+  return FALSE;
 }
 
 gboolean
@@ -631,7 +639,8 @@ eam_fs_deploy_app (const char *source,
      * file system boundaries, then we do an explicit recursive
      * copy.
      */
-    ret = (errno == EXDEV) && (eam_fs_cpdir_recursive (sdir, tdir));
+    if (errno == EXDEV)
+      ret = eam_fs_cpdir_recursive (sdir, tdir);
   } else {
     ret = TRUE;
   }
@@ -664,59 +673,55 @@ symlinkdirs_recursive (const char *source_dir,
     g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
     struct stat st;
-    if (lstat (spath, &st) != 0) {
-      /* We ignore files that go missing */
-      if (errno == ENOENT)
-        continue;
-    }
-    else if (S_ISLNK (st.st_mode)) { /* symbolic link */
-      g_autofree char *file = g_file_read_link (spath, NULL);
-      if (file != NULL) {
-        if (symlink (file, tpath) != 0 && errno != EEXIST) {
-          eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
-                                 file,
-                                 tpath,
-                                 g_strerror (errno));
-        }
-      }
-      else {
-        eam_log_error_message ("Broken link at '%s', skipping", spath);
-      }
+    if (lstat (spath, &st) != 0)
+      return FALSE;
 
-      continue;
+    if (S_ISLNK (st.st_mode)) {
+      /* If the file is a symlink, we create a new symlink to the source file */
+      g_autofree char *sfile = g_file_read_link (spath, NULL);
+      if (sfile == NULL)
+        continue;
+
+      if (symlink (sfile, tpath) != 0) {
+        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                               sfile,
+                               tpath,
+                               g_strerror (errno));
+        return FALSE;
+      }
     }
-    else if (S_ISREG (st.st_mode)) { /* symbolic link if regular file */
-      if (symlink (spath, tpath) != 0 || errno != EEXIST) {
+    else if (S_ISREG (st.st_mode)) {
+      if (symlink (spath, tpath) != 0) {
         eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
                                spath,
                                tpath,
                                g_strerror (errno));
-      }
 
-      continue;
+        /* If the target file exists we just continue */
+        if (errno != EEXIST)
+          return FALSE;
+      }
     }
-    else if (S_ISDIR (st.st_mode)) { /* recursive if directory and not shallow */
+    else if (S_ISDIR (st.st_mode)) {
+      /* recursive if directory and not shallow */
       if (!shallow) {
         /* If symlinkdirs_recursive() fails, we fail the whole operation */
-        if (symlinkdirs_recursive (spath, tpath, FALSE))
-          continue;
+        if (!symlinkdirs_recursive (spath, tpath, FALSE))
+          return FALSE;
       }
-      else if (shallow && (symlink (spath, tpath) != 0 && errno != EEXIST)) {
-        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
-                               spath,
-                               tpath,
-                               g_strerror (errno));
-        continue;
-      }
-    } else {
-      /* ignore the rest of potential st_mode values */
-      continue;
-    }
+      else {
+        if (symlink (spath, tpath) != 0) {
+          eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                                 spath,
+                                 tpath,
+                                 g_strerror (errno));
 
-    /* Any error in one of the conditions above was not handled will
-     * result in in a failure condition
-     */
-    return FALSE;
+          /* Like above, if the target file exists, we just continue */
+          if (errno != EEXIST)
+            return FALSE;
+        }
+      }
+    }
   }
 
   return TRUE;
@@ -758,7 +763,11 @@ make_binary_symlink (const char *bin,
                                             exec,
                                             NULL);
 
-  if (symlink (bin, path) == 0 || errno == EEXIST)
+  if (symlink (bin, path) == 0)
+    return TRUE;
+
+  /* The symlink already exists */
+  if (errno == EEXIST)
     return TRUE;
 
   return FALSE;
@@ -900,41 +909,41 @@ rmsymlinks_recursive (const char *appid,
     g_autofree char *path = g_build_filename (dir, fn, NULL);
 
     struct stat st;
-    if (lstat (path, &st)) {
-      if (errno == ENOENT)
-        continue;
+    if (lstat (path, &st) != 0) {
+      /* Bail out, unless the file disappeared */
+      if (errno != ENOENT)
+        return FALSE;
+
+      continue;
     }
-    else if (S_ISLNK (st.st_mode)) {
+
+    /* If the file is a link, we remove it */
+    if (S_ISLNK (st.st_mode)) {
       g_autofree char *file = g_file_read_link (path, NULL);
       if (file == NULL)
         continue;
 
-      /* does it belong to appid? */
+      /* Does it belong to appid? */
       if (strstr (file, appid) == NULL)
         continue;
 
-      /* remove link unless the file was removed */
-      if (unlink (path) != 0 && errno != ENOENT)
-        continue;
-
-      eam_log_error_message ("Couldn't remove link %s: %s", path, g_strerror (errno));
-    }
-    else if (S_ISDIR (st.st_mode)) { /* recursive if directory */
-      if (rmsymlinks_recursive (appid, path)) {
-        /* remove directory if empty */
-        if (rmdir (path) != 0)
-          eam_log_error_message ("Could not remove directory %s: %s", path, g_strerror (errno));
-        else
-          continue;
+      /* Remove link unless the file was removed */
+      if (unlink (path) != 0) {
+        /* Bail out, unless the file disappeared */
+        if (errno != ENOENT)
+          return FALSE;
       }
-    }
-    else {
-      /* ignore the rest */
+
       continue;
     }
+    else if (S_ISDIR (st.st_mode)) {
+      /* If the file is a directory, we recurse into it */
+      if (!rmsymlinks_recursive (appid, path))
+        return FALSE;
 
-    /* error */
-    return FALSE;
+      if (rmdir (path) != 0)
+        return FALSE;
+    }
   }
 
   return TRUE;
