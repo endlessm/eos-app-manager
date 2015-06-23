@@ -8,6 +8,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <errno.h>
+#include <ftw.h>
 
 #include <libsoup/soup.h>
 #include <gio/gio.h>
@@ -626,6 +627,53 @@ eam_utils_compile_python (const char *prefix,
     return FALSE;
 
   return TRUE;
+}
+
+static gboolean
+is_python_object_file (const char *path)
+{
+  return g_str_has_suffix (path, ".pyc") ||
+         g_str_has_suffix (path, ".pyo");
+}
+
+static gboolean
+is_python_cache_directory (const char *path)
+{
+  g_autofree char *base = g_path_get_basename (path);
+
+  return g_strcmp0 (base, "__pycache__") == 0;
+}
+
+static int
+rm_python_artifacts (const char *full_path,
+                     const struct stat *statbuf,
+                     int tflag,
+                     struct FTW *ftwbuf)
+{
+  if (tflag == FTW_F && is_python_object_file (full_path))
+    return unlink (full_path);
+
+  if (tflag == FTW_D && is_python_cache_directory (full_path)) {
+    if (!eam_fs_rmdir_recursive (full_path))
+      return -1;
+  }
+
+  return 0;
+}
+
+gboolean
+eam_utils_cleanup_python (const char *prefix,
+                          const char *appid)
+{
+  g_autofree char *dir = g_build_filename (prefix, appid, "lib", NULL);
+
+  if (!g_file_test (dir, G_FILE_TEST_IS_DIR))
+    return TRUE;
+
+  if (nftw (dir, rm_python_artifacts, 64, FTW_DEPTH | FTW_PHYS) == 0)
+    return TRUE;
+
+  return FALSE;
 }
 
 gboolean
