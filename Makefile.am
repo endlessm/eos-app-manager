@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I build/autotools
 
-SUBDIRS = data src scripts tools po tests
+SUBDIRS = data src tools po tests
 
 DISTCHECK_CONFIGURE_FLAGS = --enable-debug
 
