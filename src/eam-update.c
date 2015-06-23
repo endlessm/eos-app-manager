@@ -9,18 +9,21 @@
 #include "eam-update.h"
 #include "eam-spawner.h"
 #include "eam-config.h"
-#include "eam-utils.c"
+#include "eam-utils.h"
+#include "eam-fs-sanity.h"
 
 #define UPDATE_SCRIPTDIR "update/full"
 #define UPDATE_ROLLBACKDIR "update/rollback"
 #define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
 #define XDELTA_UPDATE_ROLLBACKDIR "update/rollback"
 
-#define UPDATE_BUNDLE_EXT ".xdelta"
-#define INSTALL_BUNDLE_EXT ".bundle"
+#define XDELTA_BUNDLE_EXT               "xdelta"
+#define INSTALL_BUNDLE_EXT              "bundle"
+#define INSTALL_BUNDLE_DIGEST_EXT       "sha256"
+#define INSTALL_BUNDLE_SIGNATURE_EXT    "asc"
 
 typedef enum {
-  EAM_ACTION_UPDATE,        /* Update downloading the complete bundle */
+  EAM_ACTION_FULL_UPDATE,   /* Update downloading the complete bundle */
   EAM_ACTION_XDELTA_UPDATE, /* Update applying xdelta diff files */
 } EamAction;
 
@@ -116,7 +119,7 @@ eam_update_constructed (GObject *gobject)
   if (eam_config_deltaupdates () && priv->allow_deltas)
     priv->action = EAM_ACTION_XDELTA_UPDATE;
   else
-    priv->action = EAM_ACTION_UPDATE;
+    priv->action = EAM_ACTION_FULL_UPDATE;
 
   G_OBJECT_CLASS (eam_update_parent_class)->constructed (gobject);
 }
@@ -172,121 +175,189 @@ eam_update_new (const gchar *appid,
                        NULL);
 }
 
-static const char *
-get_extension (EamUpdate *self)
+static char *
+build_bundle_filename (const char *basedir,
+                       const char *basename,
+                       const char *extension)
 {
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+  g_autofree char *filename = g_strconcat (basename, ".", extension, NULL);
 
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    return UPDATE_BUNDLE_EXT;
-
-  return INSTALL_BUNDLE_EXT;
+  return g_build_filename (basedir, filename, NULL);
 }
 
-static gchar *
+static char *
 build_tarball_filename (EamUpdate *self)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  return eam_utils_build_tarball_filename (priv->bundle_location, priv->appid,
-                                           get_extension (self));
+  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
+    return build_bundle_filename (priv->bundle_location, priv->appid, XDELTA_BUNDLE_EXT);
+
+  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_EXT);
 }
 
-static const gchar *
-get_scriptdir (EamUpdate *self)
+static char *
+build_checksum_filename (EamUpdate *self)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  switch (priv->action) {
-  case EAM_ACTION_UPDATE:
-    return UPDATE_SCRIPTDIR;
-  case EAM_ACTION_XDELTA_UPDATE:
-    return XDELTA_UPDATE_SCRIPTDIR;
-  default:
-    g_assert_not_reached ();
+  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_DIGEST_EXT);
+}
+
+static char *
+build_signature_filename (EamUpdate *self)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
+
+  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_SIGNATURE_EXT);
+}
+
+static gboolean
+do_xdelta_update (const char *appid,
+                  const char *delta_file,
+                  GError **error)
+{
+  eam_utils_cleanup_python (eam_config_appdir (), appid);
+
+  if (!eam_utils_apply_xdelta (eam_config_appdir (), appid, delta_file)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not update the application via xdelta");
+    return FALSE;
   }
+
+  return TRUE;
+}
+
+static gboolean
+do_full_update (const char *appid,
+                const char *bundle_file,
+                GError **error)
+{
+  if (!eam_utils_bundle_extract (bundle_file, eam_config_dldir (), appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not extract the bundle");
+    return FALSE;
+  }
+
+  /* run 3rd party scripts */
+  if (!eam_utils_run_external_scripts (eam_config_dldir (), appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not process the external script");
+    return FALSE;
+  }
+
+  /* Deploy the appdir from the extraction directory to the app directory */
+  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), appid);
+
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not deploy the bundle in the application directory");
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static void
-run_scripts (EamUpdate *self, const gchar *scriptdir,
-  GCancellable *cancellable, GAsyncReadyCallback callback, GTask *task)
+update_thread_cb (GTask *task,
+                  gpointer source_obj,
+                  gpointer task_data,
+                  GCancellable *cancellable)
 {
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  eam_utils_run_bundle_scripts (priv->appid,
-                                build_tarball_filename (self),
-                                scriptdir,
-                                cancellable,
-                                callback,
-                                task);
-}
-
-static const gchar *
-get_rollback_scriptdir (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  switch (priv->action) {
-  case EAM_ACTION_UPDATE:
-    return UPDATE_ROLLBACKDIR;
-  case EAM_ACTION_XDELTA_UPDATE:
-    return XDELTA_UPDATE_ROLLBACKDIR;
-  default:
-    g_assert_not_reached ();
-  }
-}
-
-static void
-rollback (GTask *task, GError *error)
-{
-  EamUpdate *self = EAM_UPDATE (g_task_get_source_object (task));
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  /* Log some messages about what happened */
-  switch (priv->action) {
-  case EAM_ACTION_XDELTA_UPDATE:
-    eam_log_error_message ("Incremental update failed: %s", error->message);
-    break;
-  case EAM_ACTION_UPDATE:
-    eam_log_error_message ("Full update failed: %s", error->message);
-    break;
-  }
-
-  /* We cannot rollback an xdelta update */
-  if (priv->action != EAM_ACTION_XDELTA_UPDATE) {
-    eam_log_info_message ("Trying to roll back");
-    run_scripts (self, get_rollback_scriptdir (self), NULL, NULL, NULL);
-  }
-
-  /* Clean up */
-  g_task_return_error (task, error);
-  g_object_unref (task);
-}
-
-static void
-action_cb (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GTask *task = data;
-  GError *error = NULL;
-
-  gboolean ret = eam_spawner_run_finish (EAM_SPAWNER (source), result, &error);
-  if (error) {
-    rollback (task, error);
+  if (!eam_fs_sanity_check ()) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Unable to access applications directory");
     return;
   }
 
-  if (g_task_return_error_if_cancelled (task))
-    goto bail;
+  EamUpdate *self = source_obj;
+  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  g_task_return_boolean (task, ret);
+  if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Application is not installed");
+    return;
+  }
 
-bail:
-  g_object_unref (task);
+  g_autofree char *bundle_file = build_tarball_filename (self);
+  g_autofree char *checksum_file = build_checksum_filename (self);
+  if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "The checksum for the application bundle is invalid");
+    return;
+  }
+
+  g_autofree char *signature_file = build_signature_filename (self);
+  if (!eam_utils_verify_signature (bundle_file, signature_file)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "The signature for the application bundle is invalid");
+    return;
+  }
+
+  /* Keep a copy of the old app around, in case the update fails */
+  g_autofree char *backupdir = NULL;
+  if (!eam_fs_backup_app (eam_config_appdir (), priv->appid, &backupdir)) {
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Could not keep a copy of the app");
+    return;
+  }
+
+  GError *error = NULL;
+  gboolean res;
+
+  switch (priv->action) {
+    case EAM_ACTION_FULL_UPDATE:
+      res = do_full_update (priv->appid, bundle_file, &error);
+      break;
+
+    case EAM_ACTION_XDELTA_UPDATE:
+      res = do_xdelta_update (priv->appid, bundle_file, &error);
+      break;
+
+    default:
+      g_assert_not_reached ();
+  }
+
+  if (!res) {
+    eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
+    g_task_return_error (task, error);
+    return;
+  }
+
+  /* Remove the old app */
+  if (backupdir != NULL) {
+    eam_fs_rmdir_recursive (backupdir);
+  }
+
+  /* Build the symlink farm for files to appear in the OS locations */
+  if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
+    eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
+    eam_fs_prune_dir (eam_config_appdir (), priv->appid);
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
+                             "Could not create all the symbolic links");
+    return;
+  }
+
+  /* These two errors are non-fatal */
+  if (!eam_utils_compile_python (eam_config_appdir (), priv->appid)) {
+    eam_log_error_message ("Python libraries compilation failed");
+  }
+
+  if (!eam_utils_update_desktop (eam_config_appdir ())) {
+    eam_log_error_message ("Could not update the desktop's metadata");
+  }
+
+  g_task_return_boolean (task, TRUE);
 }
 
 static void
-eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data)
+eam_update_run_async (EamTransaction *trans,
+                      GCancellable *cancellable,
+                      GAsyncReadyCallback callback,
+                      gpointer data)
 {
   g_return_if_fail (EAM_IS_UPDATE (trans));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
@@ -304,7 +375,8 @@ eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
     return;
   }
 
-  run_scripts (self, get_scriptdir (self), cancellable, action_cb, task);
+  g_task_run_in_thread (task, update_thread_cb);
+  g_object_unref (task);
 }
 
 static gboolean
