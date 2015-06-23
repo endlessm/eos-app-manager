@@ -1030,8 +1030,10 @@ eam_fs_restore_app (const char *prefix,
 {
   g_autofree char *tdir = g_build_filename (prefix, appid, NULL);
 
-  if (rename (backup_dir, tdir) == 0)
+  if (rename (backup_dir, tdir) == 0) {
+    eam_fs_create_symlinks (prefix, appid);
     return TRUE;
+  }
 
   if (errno != EXDEV)
     return FALSE;
