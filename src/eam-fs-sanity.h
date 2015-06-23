@@ -24,6 +24,13 @@ gboolean        eam_fs_create_symlinks  (const char *prefix,
 void            eam_fs_prune_symlinks   (const char *prefix,
                                          const char *appid);
 
+gboolean        eam_fs_backup_app       (const char *prefix,
+                                         const char *appid,
+                                         char      **backup_dir);
+gboolean        eam_fs_restore_app      (const char *prefix,
+                                         const char *appid,
+                                         const char *backup_dir);
+
 typedef enum {
   EAM_BUNDLE_DIRECTORY_BIN,
   EAM_BUNDLE_DIRECTORY_DESKTOP,

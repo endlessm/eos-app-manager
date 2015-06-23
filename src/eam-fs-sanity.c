@@ -980,3 +980,67 @@ eam_fs_prune_symlinks (const char *prefix,
     (void) rmsymlinks_recursive (appid, tdir);
   }
 }
+
+gboolean
+eam_fs_backup_app (const char *prefix,
+                   const char *appid,
+                   char      **backup_dir)
+{
+  /* Remove symbolic links, to avoid recursion */
+  eam_fs_prune_symlinks (prefix, appid);
+
+  g_autofree char *backup_id = g_strconcat (appid, ".backup", NULL);
+
+  g_autofree char *sdir = g_build_filename (prefix, appid, NULL);
+  g_autofree char *tdir = g_build_filename (prefix, backup_id, NULL);
+
+  /* We try renaming the directory first */
+  if (rename (sdir, tdir) == 0) {
+    *backup_dir = g_strdup (tdir);
+    return TRUE;
+  }
+
+  if (errno != EXDEV)
+    return FALSE;
+
+  /* If the rename failed because we tried to cross device boundaries,
+   * we fall back to a recursive copy, and then we delete the source
+   * directory
+   */
+  if (eam_fs_cpdir_recursive (sdir, tdir)) {
+    eam_fs_rmdir_recursive (sdir);
+    *backup_dir = g_strdup (tdir);
+    return TRUE;
+  }
+
+  eam_log_error_message ("Backing up '%s' from '%s' to '%s' failed", appid, sdir, tdir);
+
+  eam_fs_rmdir_recursive (tdir);
+
+  /* Restore symbolic links */
+  eam_fs_create_symlinks (prefix, appid);
+
+  return FALSE;
+}
+
+gboolean
+eam_fs_restore_app (const char *prefix,
+                    const char *appid,
+                    const char *backup_dir)
+{
+  g_autofree char *tdir = g_build_filename (prefix, appid, NULL);
+
+  if (rename (backup_dir, tdir) == 0)
+    return TRUE;
+
+  if (errno != EXDEV)
+    return FALSE;
+
+  if (eam_fs_cpdir_recursive (backup_dir, tdir)) {
+    eam_fs_rmdir_recursive (backup_dir);
+    eam_fs_create_symlinks (prefix, appid);
+    return TRUE;
+  }
+
+  return FALSE;
+}
