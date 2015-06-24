@@ -11,22 +11,8 @@ AM_CPPFLAGS = \
 	$(NULL)
 
 dist_test_data = \
-	appdir/app01/.info \
-	appdir/com.application.id1/.info \
-	appdir/com.application.id2/.info \
-	data/test-app.tar.gz \
-	data/test-app.sha256 \
-	data/test-app.asc \
-	data/dummy.pub \
-	scriptdir/README \
-	scriptdir/script3 \
-	scriptdir/script2 \
-	scriptdir/script1 \
-	scriptdir/.hidden \
 	$(NULL)
 
 test_programs = \
 	cfg \
-	spawner \
-	scripts \
 	$(NULL)

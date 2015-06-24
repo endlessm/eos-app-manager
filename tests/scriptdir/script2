@@ -1,4 +1,0 @@
-#!/bin/bash
-
-echo "this will fail"
-exit 255
