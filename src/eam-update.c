@@ -251,7 +251,6 @@ do_full_update (const char *appid,
   /* Deploy the appdir from the extraction directory to the app directory */
   if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), appid)) {
     eam_fs_prune_dir (eam_config_dldir (), appid);
-
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
     return FALSE;
@@ -299,7 +298,6 @@ update_thread_cb (GTask *task,
   /* Keep a copy of the old app around, in case the update fails */
   g_autofree char *backupdir = NULL;
   if (!eam_fs_backup_app (eam_config_appdir (), priv->appid, &backupdir)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
                              "Could not keep a copy of the app");
     return;
@@ -321,23 +319,23 @@ update_thread_cb (GTask *task,
       g_assert_not_reached ();
   }
 
+  /* If the update failed, restore from backup and bail out */
   if (!res) {
-    eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
+    if (backupdir)
+      eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
+
     g_task_return_error (task, error);
     return;
   }
 
-  /* Remove the old app */
-  if (backupdir != NULL) {
-    eam_fs_rmdir_recursive (backupdir);
-  }
+  /* If the symbolic link creation fails, we restore from backup */
+  res = eam_fs_create_symlinks (eam_config_appdir (), priv->appid);
+  if (!res) {
+    if (backupdir)
+      eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
 
-  /* Build the symlink farm for files to appear in the OS locations */
-  if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
-    eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
-    eam_fs_prune_dir (eam_config_appdir (), priv->appid);
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not create all the symbolic links");
+                             "Could not create symbolic links");
     return;
   }
 
@@ -349,6 +347,10 @@ update_thread_cb (GTask *task,
   if (!eam_utils_update_desktop (eam_config_appdir ())) {
     eam_log_error_message ("Could not update the desktop's metadata");
   }
+
+  /* The update was successful; we can delete the back up directory */
+  if (backupdir)
+    eam_fs_rmdir_recursive (backupdir);
 
   g_task_return_boolean (task, TRUE);
 }
