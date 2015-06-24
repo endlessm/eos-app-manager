@@ -1,3 +1,11 @@
+eos-app-manager (0.1-3) eos; urgency=medium
+
+  * debian/control:
+    Update dependencies
+    [endlessm/eos-shell#5014]
+
+ -- Emmanuele Bassi <emmanuele@endlessm.com>  Wed, 24 Jun 2015 18:59:00 +0100
+
 eos-app-manager (0.1-2) eos; urgency=medium
 
   * debian/postinst:

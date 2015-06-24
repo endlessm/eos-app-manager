@@ -7,18 +7,20 @@ Build-Depends: debhelper (>= 9),
                desktop-file-utils,
                dh-autoreconf (>= 7),
                dh-systemd,
-               intltool,
+               libarchive13,
+               libarchive-dev,
                libglib2.0-dev (>= 2.40),
                libglib2.0-bin,
+               libgpgme11,
+               libgpgme11-dev,
                libgtk2.0-bin,
-               libjson-glib-dev (>= 0.16.2),
+               libpolkit-gobject-1-dev (>= 0.110),
                libsoup2.4-dev (>= 2.44),
                libsystemd-journal-dev,
                pkg-config (>= 0.24),
+               policykit-1,
                shared-mime-info,
-               systemd,
-               libpolkit-gobject-1-dev (>= 0.110),
-               policykit-1
+               systemd
 Homepage: http://www.endlessm.com
 
 Package: eos-app-manager
