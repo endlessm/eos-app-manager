@@ -1,7 +1,12 @@
-SUBDIRS = data src tools tests scripts po
+ACLOCAL_AMFLAGS = -I build/autotools
 
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
+SUBDIRS = data src tools po tests
 
-EXTRA_DIST = tap-driver.sh glib-tap.mk tap-test
+DISTCHECK_CONFIGURE_FLAGS = --enable-debug
 
--include $(top_srcdir)/git.mk
+EXTRA_DIST = \
+	build/autotools/eam.m4 \
+	build/autotools/glibtests.m4 \
+	build/autotools/glib-tap.mk \
+	build/tap-driver.sh \
+	build/tap-test

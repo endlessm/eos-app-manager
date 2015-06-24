@@ -1,13 +1,22 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 #include "config.h"
 
-#include <gio/gio.h>
-#include <glib/gstdio.h>
-
 #include "eam-fs-sanity.h"
 #include "eam-config.h"
 #include "eam-log.h"
 #include "eam-utils.h"
+
+#include <errno.h>
+#include <fcntl.h>
+#include <glib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <unistd.h>
+
+#include <gio/gio.h>
+#include <glib/gstdio.h>
 
 #define BIN_SUBDIR "bin"
 #define DESKTOP_FILES_SUBDIR "share/applications"
@@ -19,94 +28,52 @@
 
 #define ROOT_DIR "/var"
 
+static const char *fs_layout[] = {
+  [EAM_BUNDLE_DIRECTORY_BIN] = "bin",
+  [EAM_BUNDLE_DIRECTORY_DESKTOP] = "share/applications",
+  [EAM_BUNDLE_DIRECTORY_ICONS] = "share/icons",
+  [EAM_BUNDLE_DIRECTORY_DBUS_SERVICES] = "share/dbus-1/services",
+  [EAM_BUNDLE_DIRECTORY_GSETTINGS_SCHEMAS] = "share/glib-2.0/schemas",
+  [EAM_BUNDLE_DIRECTORY_GNOME_HELP] = "share/help",
+  [EAM_BUNDLE_DIRECTORY_KDE_HELP] = "share/doc/kde",
+  [EAM_BUNDLE_DIRECTORY_EKN_DATA] = "share/ekn/data",
+  [EAM_BUNDLE_DIRECTORY_SHELL_SEARCH] = "share/gnome-shell/search-providers",
+  [EAM_BUNDLE_DIRECTORY_KDE4] = "share/kde4",
+  [EAM_BUNDLE_DIRECTORY_XDG_AUTOSTART] = "xdg/autostart",
+  [EAM_BUNDLE_DIRECTORY_GAMES] = "games",
+};
+
+const char *
+eam_fs_get_bundle_system_dir (EamBundleDirectory dir)
+{
+  return (dir >= EAM_BUNDLE_DIRECTORY_BIN && dir < EAM_BUNDLE_DIRECTORY_MAX)
+    ? fs_layout[dir]
+    : NULL;
+}
+
+static char *
+get_bundle_path (EamBundleDirectory dir)
+{
+  return g_build_filename (ROOT_DIR, eam_config_appdir (), eam_fs_get_bundle_system_dir (dir), NULL);
+}
+
 static gboolean
 applications_directory_create (void)
 {
-  gboolean retval = TRUE;
+  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
+    g_autofree char *dir = get_bundle_path (i);
 
-  const gchar *appdir = eam_config_appdir ();
-  g_assert (appdir);
-
-  gchar *root_appdir = g_build_filename (ROOT_DIR, appdir, NULL);
-  const gint mode = 0755;
-  if (g_mkdir_with_parents (root_appdir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", root_appdir);
-    retval = FALSE;
+    if (g_mkdir_with_parents (dir, 0755) != 0) {
+      eam_log_error_message ("Unable to create '%s': %s", dir, g_strerror (errno));
+      return FALSE;
+    }
   }
 
-  g_free (root_appdir);
-
-  return retval;
+  return TRUE;
 }
 
 static gboolean
-applications_directory_structure_create (void)
-{
-  gboolean retval = TRUE;
-
-  const gchar *appdir = eam_config_appdir ();
-  g_assert (appdir);
-
-  /* Create the applications' directory structure */
-  gchar *bin_dir = g_build_filename (appdir, BIN_SUBDIR, NULL);
-  gchar *desktop_files_dir = g_build_filename (appdir, DESKTOP_FILES_SUBDIR, NULL);
-  gchar *desktop_icons_dir = g_build_filename (appdir, DESKTOP_ICONS_SUBDIR, NULL);
-  gchar *dbus_services_dir = g_build_filename (appdir, DBUS_SERVICES_SUBDIR, NULL);
-  gchar *ekn_data_dir = g_build_filename (appdir, EKN_DATA_SUBDIR, NULL);
-  gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
-  gchar *xdg_autostart_dir = g_build_filename (appdir, XDG_AUTOSTART_SUBDIR, NULL);
-  const gint mode = 0755;
-
-  if (g_mkdir_with_parents (bin_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", bin_dir);
-    retval = FALSE;
-    goto bail;
-  }
-  if (g_mkdir_with_parents (desktop_files_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", desktop_files_dir);
-    retval = FALSE;
-    goto bail;
-  }
-  if (g_mkdir_with_parents (desktop_icons_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", desktop_icons_dir);
-    retval = FALSE;
-    goto bail;
-  }
-  if (g_mkdir_with_parents (dbus_services_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", dbus_services_dir);
-    retval = FALSE;
-    goto bail;
-  }
-  if (g_mkdir_with_parents (ekn_data_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", ekn_data_dir);
-    retval = FALSE;
-    goto bail;
-  }
-  if (g_mkdir_with_parents (g_schemas_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", g_schemas_dir);
-    retval = FALSE;
-    goto bail;
-  }
-  if (g_mkdir_with_parents (xdg_autostart_dir, mode) != 0) {
-    eam_log_error_message ("Unable to create '%s'", xdg_autostart_dir);
-    retval = FALSE;
-    goto bail;
-  }
-
-bail:
-  g_free (bin_dir);
-  g_free (desktop_files_dir);
-  g_free (desktop_icons_dir);
-  g_free (dbus_services_dir);
-  g_free (ekn_data_dir);
-  g_free (g_schemas_dir);
-  g_free (xdg_autostart_dir);
-
-  return retval;
-}
-
-static gboolean
-applications_directory_symlink_exists ()
+applications_directory_symlink_exists (void)
 {
   const gchar *appdir = eam_config_appdir ();
   g_assert (appdir);
@@ -115,7 +82,7 @@ applications_directory_symlink_exists ()
 }
 
 static gboolean
-applications_directory_symlink_clear ()
+applications_directory_symlink_clear (void)
 {
   const gchar *appdir = eam_config_appdir ();
   g_assert (appdir);
@@ -124,32 +91,25 @@ applications_directory_symlink_clear ()
 }
 
 static gboolean
-applications_directory_symlink_create ()
+applications_directory_symlink_create (void)
 {
-  gboolean retval = TRUE;
+  const char *appdir = eam_config_appdir ();
 
-  const gchar *appdir = eam_config_appdir ();
-  g_assert (appdir);
-
-  GFile *sym_link = g_file_new_for_path (appdir);
-  gchar *dir = g_build_filename (ROOT_DIR, appdir, NULL);
-  GError *error = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GFile) sym_link = g_file_new_for_path (appdir);
+  g_autofree char *dir = g_build_filename (ROOT_DIR, appdir, NULL);
 
   g_file_make_symbolic_link (sym_link, dir, NULL, &error);
   if (error) {
     eam_log_error_message ("Unable to create symbolic link from '%s' to '%s'", appdir, dir);
-    g_clear_error (&error);
 
     if (applications_directory_symlink_exists () && !applications_directory_symlink_clear ())
-        eam_log_error_message ("Unable to clear a failed symlink creation");
+      eam_log_error_message ("Unable to clear a failed symlink creation");
 
-    retval = FALSE;
+    return FALSE;
   }
 
-  g_free (dir);
-  g_object_unref (sym_link);
-
-  return retval;
+  return TRUE;
 }
 
 static gboolean
@@ -160,11 +120,9 @@ is_application_dir (const char *path)
   if (!g_file_test (path, G_FILE_TEST_IS_DIR))
     return FALSE;
 
-  gchar *info_path = g_build_filename (path, ".info", NULL);
-  gboolean retval = g_file_test (info_path, G_FILE_TEST_EXISTS);
-  g_free (info_path);
+  g_autofree char *info_path = g_build_filename (path, ".info", NULL);
 
-  return retval;
+  return g_file_test (info_path, G_FILE_TEST_EXISTS);
 }
 
 static gboolean
@@ -219,7 +177,7 @@ fix_permissions_for_application (const gchar *path)
   if (!retval)
     goto bail;
 
-  if (g_stat (path, &buf) == -1) {
+  if (stat (path, &buf) != 0) {
     eam_log_error_message ("Error retrieving information about path '%s'", path);
     retval = FALSE;
     goto bail;
@@ -231,7 +189,7 @@ fix_permissions_for_application (const gchar *path)
   mode_t mod_mask = buf.st_mode;
   mod_mask |= (((buf.st_mode & S_IRUSR) | (buf.st_mode & S_IXUSR)) >> 6);
 
-  if (g_chmod (path, mod_mask) == -1) {
+  if (chmod (path, mod_mask) != 0) {
     eam_log_error_message ("Error fixing permissions for path '%s'", path);
     retval = FALSE;
     goto bail;
@@ -249,7 +207,7 @@ fix_application_permissions_if_needed (const gchar *path)
 
   g_assert (path);
 
-  if (g_stat (path, &buf) == -1) {
+  if (stat (path, &buf) != 0) {
     eam_log_error_message ("Error retrieving information about file '%s'", path);
     return;
   }
@@ -288,10 +246,6 @@ eam_fs_sanity_check (void)
   }
   if (!applications_directory_symlink_exists () && !applications_directory_symlink_create ()) {
     eam_log_error_message ("Failed to create the symbolic link '%s' to the applications directory", appdir);
-    return FALSE;
-  }
-  if (!applications_directory_structure_create ()) {
-    eam_log_error_message ("Failed to create the applications directory structure under '%s'", appdir);
     return FALSE;
   }
 
@@ -431,10 +385,12 @@ eam_fs_sanity_delete (const gchar *path)
       eam_log_error_message ("Trying to delete an unexistent file '%s'", path);
       retval = FALSE;
       goto bail;
-    } else if (code == G_IO_ERROR_NOT_DIRECTORY) {
+    }
+    else if (code == G_IO_ERROR_NOT_DIRECTORY) {
       /* The file is a regular file, not a directory */
       goto delete;
-    } else {
+    }
+    else {
       eam_log_error_message ("Failed to get the children of '%s': %s", path, error->message);
       g_clear_error (&error);
       retval = FALSE;
@@ -451,6 +407,7 @@ eam_fs_sanity_delete (const gchar *path)
     eam_fs_sanity_delete (child_path);
     g_free (child_path);
   }
+
   g_object_unref (children);
 
   if (error) {
@@ -471,4 +428,621 @@ delete:
 bail:
   g_object_unref (file);
   return retval;
+}
+
+gboolean
+eam_fs_rmdir_recursive (const char *path)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GDir) dir = g_dir_open (path, 0, &err);
+  if (err != NULL) {
+    /* If the directory is already gone, then we consider it a success */
+    if (g_error_matches (err, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+      return TRUE;
+
+    /* An empty dir could be removable even if it is unreadable. */
+    if (g_error_matches (err, G_FILE_ERROR, G_FILE_ERROR_ACCES))
+      return rmdir (path) == 0;
+
+    return FALSE;
+  }
+
+  const char *fn;
+
+  while ((fn = g_dir_read_name (dir)) != NULL) {
+    g_autofree char *epath = g_build_filename (path, fn, NULL);
+
+    struct stat st;
+    if (lstat (epath, &st) != 0) {
+      /* Bail out, unless the file disappeared */
+      if (errno != ENOENT)
+        return FALSE;
+
+      continue;
+    }
+
+    if (S_ISDIR (st.st_mode)) {
+      if (!eam_fs_rmdir_recursive (epath))
+        return FALSE;
+
+      continue;
+    }
+    else {
+      if (unlink (epath) != 0) {
+        /* Bail out, unless the file disappeared */
+        if (errno != ENOENT)
+          return FALSE;
+      }
+    }
+  }
+
+  /* The directory at path should now be empty, or not exist */
+  if (rmdir (path) == 0)
+    return TRUE;
+  else {
+    if (errno == ENOENT)
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
+gboolean
+eam_fs_prune_dir (const char *prefix,
+                  const char *appdir)
+{
+  g_autofree char *path = g_build_filename (prefix, appdir, NULL);
+
+  return eam_fs_rmdir_recursive (path);
+}
+
+#define CP_ENUMERATE_ATTRS \
+  G_FILE_ATTRIBUTE_STANDARD_TYPE "," \
+  G_FILE_ATTRIBUTE_STANDARD_NAME "," \
+  G_FILE_ATTRIBUTE_UNIX_UID "," \
+  G_FILE_ATTRIBUTE_UNIX_GID "," \
+  G_FILE_ATTRIBUTE_UNIX_MODE
+
+#define CP_QUERY_ATTRS \
+  G_FILE_ATTRIBUTE_STANDARD_NAME "," \
+  G_FILE_ATTRIBUTE_UNIX_MODE "," \
+  G_FILE_ATTRIBUTE_UNIX_UID "," \
+  G_FILE_ATTRIBUTE_UNIX_GID "," \
+  G_FILE_ATTRIBUTE_TIME_MODIFIED "," \
+  G_FILE_ATTRIBUTE_TIME_MODIFIED_USEC "," \
+  G_FILE_ATTRIBUTE_TIME_ACCESS "," \
+  G_FILE_ATTRIBUTE_TIME_ACCESS_USEC
+
+static gboolean
+cp_internal (GFile *source,
+             GFile *target)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GFileEnumerator) enumerator =
+    g_file_enumerate_children (source, CP_ENUMERATE_ATTRS,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                               NULL, &error);
+
+  if (error != NULL) {
+    eam_log_error_message ("Unable to enumerate source: %s", error->message);
+    return FALSE;
+  }
+
+  g_autoptr(GFileInfo) source_info =
+    g_file_query_info (source, CP_QUERY_ATTRS,
+                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                       NULL, &error);
+  if (error != NULL) {
+    eam_log_error_message ("Unable to query source info: %s", error->message);
+    return FALSE;
+  }
+
+  g_autofree char *target_path = g_file_get_path (target);
+  int r;
+
+  do {
+    r = mkdir (target_path, 0755);
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
+    eam_log_error_message ("Unable to create target directory: %s", g_strerror (errno));
+    return FALSE;
+  }
+
+  /* XXX: This is Linux-specific */
+  int target_fd = open (target_path, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+  if (target_fd == -1) {
+    eam_log_error_message ("Unable to open target directory: %s", g_strerror (errno));
+    return FALSE;
+  }
+
+  do {
+    guint32 src_uid = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_UID);
+    guint32 src_gid = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_GID);
+    r = fchown (target_fd, src_uid, src_gid);
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
+    eam_log_error_message ("Unable to set ownership of target directory: %s",
+                           g_strerror (errno));
+    return FALSE;
+  }
+
+  do {
+    guint32 src_mode = g_file_info_get_attribute_uint32 (source_info, G_FILE_ATTRIBUTE_UNIX_MODE);
+    r = fchmod (target_fd, src_mode);
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
+    eam_log_error_message ("Unable to set mode of target directory: %s", g_strerror (errno));
+    return FALSE;
+  }
+
+  (void) close (target_fd);
+
+  while (TRUE) {
+    GFileInfo *file_info = NULL;
+    GFile *source_child = NULL;
+
+    if (!g_file_enumerator_iterate (enumerator, &file_info, &source_child, NULL, &error)) {
+      eam_log_error_message ("Unable to enumerate source: %s", error->message);
+      return FALSE;
+    }
+
+    if (file_info == NULL)
+      break;
+
+    g_autoptr(GFile) target_child = g_file_get_child (target, g_file_info_get_name (file_info));
+
+    if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY) {
+      if (!cp_internal (source_child, target_child)) {
+        return FALSE;
+      }
+    }
+    else {
+      GFileCopyFlags flags = G_FILE_COPY_OVERWRITE |
+                             G_FILE_COPY_NOFOLLOW_SYMLINKS |
+                             G_FILE_COPY_ALL_METADATA;
+
+      if (!g_file_copy (source_child, target_child, flags, NULL, NULL, NULL, &error)) {
+        eam_log_error_message ("Unable to copy source file: %s", error->message);
+        return FALSE;
+      }
+    }
+  }
+
+  return TRUE;
+}
+
+gboolean
+eam_fs_cpdir_recursive (const char *src,
+                        const char *dst)
+{
+  g_autoptr(GFile) source = g_file_new_for_path (src);
+  g_autoptr(GFile) target = g_file_new_for_path (dst);
+
+  return cp_internal (source, target);
+}
+
+gboolean
+eam_fs_deploy_app (const char *source,
+                   const char *target,
+                   const char *appid)
+{
+  g_autofree char *sdir = g_build_filename (source, appid, NULL);
+  g_autofree char *tdir = g_build_filename (target, appid, NULL);
+
+  gboolean ret = FALSE;
+
+  if (rename (sdir, tdir) != 0) {
+    /* If the rename() failed because we tried to move across
+     * file system boundaries, then we do an explicit recursive
+     * copy.
+     */
+    if (errno == EXDEV)
+      ret = eam_fs_cpdir_recursive (sdir, tdir);
+  } else {
+    ret = TRUE;
+  }
+
+  if (!ret) {
+    eam_log_error_message ("Moving '%s' from '%s' to '%s' failed", appid, sdir, tdir);
+    eam_fs_rmdir_recursive (tdir); /* clean up the appdir */
+  }
+
+  eam_fs_rmdir_recursive (sdir);
+
+  return ret;
+}
+
+static gboolean
+symlinkdirs_recursive (const char *source_dir,
+                       const char *target_dir,
+                       gboolean    shallow)
+{
+  if (g_mkdir_with_parents (target_dir, 0755) != 0)
+    return FALSE;
+
+  g_autoptr(GDir) dir = g_dir_open (source_dir, 0, NULL);
+  if (dir == NULL)
+    return TRUE; /* it's OK if the bundle doesn't have that dir */
+
+  const char *fn;
+  while ((fn = g_dir_read_name (dir)) != NULL) {
+    g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
+    g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
+
+    struct stat st;
+    if (lstat (spath, &st) != 0)
+      return FALSE;
+
+    if (S_ISLNK (st.st_mode)) {
+      /* If the file is a symlink, we create a new symlink to the source file */
+      g_autofree char *sfile = g_file_read_link (spath, NULL);
+      if (sfile == NULL)
+        continue;
+
+      if (symlink (sfile, tpath) != 0) {
+        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                               sfile,
+                               tpath,
+                               g_strerror (errno));
+        return FALSE;
+      }
+    }
+    else if (S_ISREG (st.st_mode)) {
+      if (symlink (spath, tpath) != 0) {
+        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                               spath,
+                               tpath,
+                               g_strerror (errno));
+
+        /* If the target file exists we just continue */
+        if (errno != EEXIST)
+          return FALSE;
+      }
+    }
+    else if (S_ISDIR (st.st_mode)) {
+      /* recursive if directory and not shallow */
+      if (!shallow) {
+        /* If symlinkdirs_recursive() fails, we fail the whole operation */
+        if (!symlinkdirs_recursive (spath, tpath, FALSE))
+          return FALSE;
+      }
+      else {
+        if (symlink (spath, tpath) != 0) {
+          eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                                 spath,
+                                 tpath,
+                                 g_strerror (errno));
+
+          /* Like above, if the target file exists, we just continue */
+          if (errno != EEXIST)
+            return FALSE;
+        }
+      }
+    }
+  }
+
+  return TRUE;
+}
+
+static char *
+remove_dir_from_path (const char *path,
+                      const char *dir)
+{
+  const char *env_path = g_getenv ("PATH");
+  if (env_path == NULL)
+    return NULL;
+
+  g_auto(GStrv) splitpath = g_strsplit (env_path, G_SEARCHPATH_SEPARATOR_S, -1);
+
+  char *res = NULL;
+  int i, len = g_strv_length (splitpath);
+  for (i = 0; i < len; i++) {
+    if (g_strcmp0 (splitpath[i], dir) != 0)
+      continue;
+
+    char *tmp = res;
+    res = g_strconcat (G_SEARCHPATH_SEPARATOR_S, tmp, splitpath[i], NULL);
+    g_free (tmp);
+  }
+
+  return res;
+}
+
+static gboolean
+make_binary_symlink (const char *bin,
+                     const char *exec)
+{
+  if (!g_file_test (bin, G_FILE_TEST_EXISTS))
+    return FALSE;
+
+  g_autofree char *path = g_build_filename (eam_config_appdir (),
+                                            eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
+                                            exec,
+                                            NULL);
+
+  if (symlink (bin, path) == 0)
+    return TRUE;
+
+  /* The symlink already exists */
+  if (errno == EEXIST)
+    return TRUE;
+
+  return FALSE;
+}
+
+static char *
+app_info_get_executable (const char *desktop_file)
+{
+  g_autoptr(GKeyFile) keyfile = g_key_file_new ();
+  g_autoptr(GError) error = NULL;
+  g_key_file_load_from_file (keyfile, desktop_file, G_KEY_FILE_NONE, &error);
+  if (error != NULL) {
+    eam_log_error_message ("Error loading desktop file '%s': %s",
+                           desktop_file,
+                           error->message);
+    return NULL;
+  }
+
+  /* TryExec */
+  char *exec = g_key_file_get_string (keyfile, G_KEY_FILE_DESKTOP_GROUP,
+                                      G_KEY_FILE_DESKTOP_KEY_TRY_EXEC,
+                                      NULL);
+
+  if (exec && exec[0] != '\0')
+    return exec;
+
+  /* Exec */
+  exec = g_key_file_get_string (keyfile, G_KEY_FILE_DESKTOP_GROUP,
+                                G_KEY_FILE_DESKTOP_KEY_EXEC,
+                                NULL);
+
+  if (exec && exec[0] != '\0') {
+    g_auto(GStrv) argv;
+    if (!g_shell_parse_argv (exec, NULL, &argv, NULL)) {
+      g_free (exec);
+      return NULL;
+    }
+
+    g_free (exec);
+    exec = g_strdup (argv[0]);
+
+    return exec;
+  }
+
+  return NULL;
+}
+
+static char *
+ensure_desktop_file (const char *dir,
+                     const char *file)
+{
+  g_autofree char *path = g_build_filename (dir, file, NULL);
+
+  if (g_file_test (path, G_FILE_TEST_EXISTS))
+    return g_strdup (path);
+
+  g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
+  if (dp == NULL)
+    return NULL;
+
+  const char *fn;
+  while ((fn = g_dir_read_name (dp)) != NULL) {
+    if (g_str_has_suffix (fn, ".desktop"))
+      return g_build_filename (dir, fn, NULL);
+  }
+
+  return NULL;
+}
+
+static gboolean
+do_binaries_symlinks (const char *appid)
+{
+  g_autofree char *desktopfile = g_strdup_printf ("%s.desktop", appid);
+  g_autofree char *appdesktopdir = g_build_filename (eam_config_appdir (),
+                                                     appid,
+                                                     eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_DESKTOP),
+                                                     NULL);
+  g_autofree char *appdesktopfile = ensure_desktop_file (appdesktopdir, desktopfile);
+
+  if (appdesktopfile == NULL)
+    return FALSE;
+
+  g_autofree char *exec = app_info_get_executable (appdesktopfile);
+
+  /* 1. It is an absolute path, we don't do anything */
+  if (g_path_is_absolute (exec))
+    return g_file_test (exec, G_FILE_TEST_EXISTS);
+
+  /* 2. Try in /endless/$appid/bin */
+  g_autofree char *bin =
+    g_build_filename (eam_config_appdir (),
+                      appid,
+                      eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
+                      exec,
+                      NULL);
+
+  if (make_binary_symlink (bin, exec))
+    return TRUE;
+
+  /* 3. Try in /endless/$appid/games */
+  g_free (bin);
+  bin = g_build_filename (eam_config_appdir (),
+                          appid,
+                          eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES),
+                          exec,
+                          NULL);
+
+  if (make_binary_symlink (bin, exec))
+    return TRUE;
+
+  /* 4. Look if the command we are trying to link is already in $PATH
+   *
+   * We don't want to match binaries in EAM_BUNDLE_DIRECTORY_BIN here, so
+   * remove it from $PATH first.
+   */
+  const gchar* path = g_getenv ("PATH");
+
+  g_autofree char *safe_path = remove_dir_from_path (path, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN));
+  g_autofree char *full_exec = eam_utils_find_program_in_path (safe_path, exec);
+  if (full_exec != NULL)
+    return TRUE;
+
+  eam_log_error_message ("Could not find binary for %s", appid);
+
+  return FALSE;
+}
+
+static int
+rmsymlinks_recursive (const char *appid,
+                      const char *dir)
+{
+  g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
+  if (dp == NULL)
+    return FALSE;
+
+  const char *fn;
+
+  while ((fn = g_dir_read_name (dp)) != NULL) {
+    g_autofree char *path = g_build_filename (dir, fn, NULL);
+
+    struct stat st;
+    if (lstat (path, &st) != 0) {
+      /* Bail out, unless the file disappeared */
+      if (errno != ENOENT)
+        return FALSE;
+
+      continue;
+    }
+
+    /* If the file is a link, we remove it */
+    if (S_ISLNK (st.st_mode)) {
+      g_autofree char *file = g_file_read_link (path, NULL);
+      if (file == NULL)
+        continue;
+
+      /* Does it belong to appid? */
+      if (strstr (file, appid) == NULL)
+        continue;
+
+      /* Remove link unless the file was removed */
+      if (unlink (path) != 0) {
+        /* Bail out, unless the file disappeared */
+        if (errno != ENOENT)
+          return FALSE;
+      }
+
+      continue;
+    }
+    else if (S_ISDIR (st.st_mode)) {
+      /* If the file is a directory, we recurse into it */
+      if (!rmsymlinks_recursive (appid, path))
+        return FALSE;
+
+      if (rmdir (path) != 0)
+        return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+gboolean
+eam_fs_create_symlinks (const char *prefix,
+                        const char *appid)
+{
+  if (!do_binaries_symlinks (appid))
+    return FALSE;
+
+  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
+    g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (i), NULL);
+    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+
+    /* shallow symlinks to EKN data */
+    gboolean is_shallow = i == EAM_BUNDLE_DIRECTORY_EKN_DATA;
+    if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+void
+eam_fs_prune_symlinks (const char *prefix,
+                       const char *appid)
+{
+  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
+    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+
+    (void) rmsymlinks_recursive (appid, tdir);
+  }
+}
+
+gboolean
+eam_fs_backup_app (const char *prefix,
+                   const char *appid,
+                   char      **backup_dir)
+{
+  /* Remove symbolic links, to avoid recursion */
+  eam_fs_prune_symlinks (prefix, appid);
+
+  g_autofree char *backup_id = g_strconcat (appid, ".backup", NULL);
+
+  g_autofree char *sdir = g_build_filename (prefix, appid, NULL);
+  g_autofree char *tdir = g_build_filename (prefix, backup_id, NULL);
+
+  /* We try renaming the directory first */
+  if (rename (sdir, tdir) == 0) {
+    *backup_dir = g_strdup (tdir);
+    return TRUE;
+  }
+
+  if (errno != EXDEV)
+    return FALSE;
+
+  /* If the rename failed because we tried to cross device boundaries,
+   * we fall back to a recursive copy, and then we delete the source
+   * directory
+   */
+  if (eam_fs_cpdir_recursive (sdir, tdir)) {
+    eam_fs_rmdir_recursive (sdir);
+    *backup_dir = g_strdup (tdir);
+    return TRUE;
+  }
+
+  eam_log_error_message ("Backing up '%s' from '%s' to '%s' failed", appid, sdir, tdir);
+
+  eam_fs_rmdir_recursive (tdir);
+
+  /* Restore symbolic links */
+  eam_fs_create_symlinks (prefix, appid);
+
+  return FALSE;
+}
+
+gboolean
+eam_fs_restore_app (const char *prefix,
+                    const char *appid,
+                    const char *backup_dir)
+{
+  g_autofree char *tdir = g_build_filename (prefix, appid, NULL);
+
+  if (rename (backup_dir, tdir) == 0) {
+    eam_fs_create_symlinks (prefix, appid);
+    return TRUE;
+  }
+
+  if (errno != EXDEV)
+    return FALSE;
+
+  if (eam_fs_cpdir_recursive (backup_dir, tdir)) {
+    eam_fs_rmdir_recursive (backup_dir);
+    eam_fs_create_symlinks (prefix, appid);
+    return TRUE;
+  }
+
+  return FALSE;
 }

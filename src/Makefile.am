@@ -60,15 +60,13 @@ eam-resources.h: $(gresource_file) $(resource_files)
 BUILT_SOURCES = $(eam_built_sources)
 
 noinst_LTLIBRARIES = libeam.la
-libeam_la_CFLAGS = $(DEPENDENCIES_CFLAGS)
-libeam_la_LIBADD = $(DEPENDENCIES_LIBS)
+libeam_la_CFLAGS = $(EAM_CFLAGS)
+libeam_la_LIBADD = $(EAM_LIBS)
 libeam_la_SOURCES = $(source_c) $(source_h) $(BUILT_SOURCES)
 nodist_libeam_la_SOURCES = $(eam_built_sources) 
 
 eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
-eam_CFLAGS = $(DEPENDENCIES_CFLAGS)
-eam_LDADD = $(DEPENDENCIES_LIBS) libeam.la
+eam_CFLAGS = $(EAM_CFLAGS)
+eam_LDADD = $(EAM_LIBS) libeam.la
 eam_LDFLAGS = -export-dynamic
 eam_SOURCES = main.c
-
--include $(top_srcdir)/git.mk

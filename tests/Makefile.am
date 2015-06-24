@@ -1,4 +1,4 @@
-include $(top_srcdir)/glib-tap.mk
+include $(top_srcdir)/build/autotools/glib-tap.mk
 
 TEST_ENVIRONMENT = EAM_TESTING=1
 
@@ -14,9 +14,6 @@ dist_test_data = \
 	appdir/app01/.info \
 	appdir/com.application.id1/.info \
 	appdir/com.application.id2/.info \
-	data/link-db.json \
-	data/update-db.json \
-	data/available.json \
 	data/test-app.tar.gz \
 	data/test-app.sha256 \
 	data/test-app.asc \
@@ -33,5 +30,3 @@ test_programs = \
 	spawner \
 	scripts \
 	$(NULL)
-
--include $(top_srcdir)/git.mk

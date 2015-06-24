@@ -1,5 +1,13 @@
 #!/bin/sh
 
-intltoolize --force --copy
-autoreconf --install
-./configure $*
+test -n "$srcdir" || srcdir=`dirname "$0"`
+test -n "$srcdir" || srcdir=.
+
+olddir=`pwd`
+cd "$srcdir"
+
+autoreconf --install --force --verbose || exit $?
+
+cd "$olddir"
+
+test -n "$NOCONFIGURE" || "$srcdir/configure" "$@"
