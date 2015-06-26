@@ -1,4 +1,4 @@
-bin_PROGRAMS = eam
+bin_PROGRAMS = eamd
 
 AM_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"Eam\" \
@@ -65,8 +65,8 @@ libeam_la_LIBADD = $(EAM_LIBS)
 libeam_la_SOURCES = $(source_c) $(source_h) $(BUILT_SOURCES)
 nodist_libeam_la_SOURCES = $(eam_built_sources) 
 
-eam_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
-eam_CFLAGS = $(EAM_CFLAGS)
-eam_LDADD = $(EAM_LIBS) libeam.la
-eam_LDFLAGS = -export-dynamic
-eam_SOURCES = main.c
+eamd_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
+eamd_CFLAGS = $(EAM_CFLAGS)
+eamd_LDADD = $(EAM_LIBS) libeam.la
+eamd_LDFLAGS = -export-dynamic
+eamd_SOURCES = main.c

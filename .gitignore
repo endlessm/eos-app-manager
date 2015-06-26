@@ -85,7 +85,7 @@ po/remove-potcdate.sed
 po/remove-potcdate.sin
 po/stamp-it
 po/stamp-po
-src/eam
+src/eamd
 src/eam-resources.[ch]
 stamp-h1
 tests/cfg
