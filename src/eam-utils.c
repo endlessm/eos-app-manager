@@ -4,7 +4,6 @@
 #include <string.h>
 #include <glib/gstdio.h>
 #include <glib/gi18n.h>
-#include <gpgme.h>
 #include <archive.h>
 #include <archive_entry.h>
 #include <errno.h>
@@ -24,8 +23,6 @@
 #define BUNDLE_SIGNATURE_EXT ".asc"
 #define BUNDLE_HASH_EXT ".sha256"
 
-G_DEFINE_AUTO_CLEANUP_FREE_FUNC (gpgme_data_t, gpgme_data_release, NULL)
-G_DEFINE_AUTO_CLEANUP_FREE_FUNC (gpgme_ctx_t, gpgme_release, NULL)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose)
 
 char *
@@ -123,99 +120,45 @@ eam_utils_verify_checksum (const char *source_file,
   return verify_checksum_hash (source_file, checksum_str, checksum_len, G_CHECKSUM_SHA256);
 }
 
+static gboolean
+run_cmd (const char * const *argv)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
+
+  if (err != NULL) {
+    eam_log_error_message ("%s failed: %s", argv[0], err->message);
+    return -1;
+  }
+
+  g_subprocess_wait (sub, NULL, &err);
+  if (err != NULL) {
+    eam_log_error_message ("%s failed: %s", argv[0], err->message);
+    return -1;
+  }
+
+  return g_subprocess_get_exit_status (sub) == 0;
+}
+
 gboolean
 eam_utils_verify_signature (const char *source_file,
                             const char *signature_file)
 {
-  static gsize gpgme_initialized;
-  gpgme_error_t err;
-
-  if (g_once_init_enter (&gpgme_initialized)) {
-    gpgme_check_version (NULL);
-
-    /* There is no point in recovering if this fails */
-    err = gpgme_engine_check_version (GPGME_PROTOCOL_OpenPGP);
-    if (err != GPG_ERR_NO_ERROR)
-      g_error ("%s/%s", gpgme_strsource (err), gpgme_strerror (err));
-
-    g_once_init_leave (&gpgme_initialized, 1);
-  }
-
-  gboolean ret = FALSE;
-
-  g_auto(gpgme_ctx_t) ctx = NULL;
-  err = gpgme_new (&ctx);
-  if (err != GPG_ERR_NO_ERROR) {
-    eam_log_error_message ("GPG error: %s/%s", gpgme_strsource (err), gpgme_strerror (err));
-    return FALSE;
-  }
-
-  gpgme_set_protocol (ctx, GPGME_PROTOCOL_OpenPGP);
-
   const char *gpgdir = eam_config_gpgkeyring ();
-  gpgme_ctx_set_engine_info (ctx, GPGME_PROTOCOL_OpenPGP, NULL, gpgdir);
-  if (err != GPG_ERR_NO_ERROR)
-    goto bail;
 
-  g_autoptr(FILE) datafp = NULL;
-  g_autoptr(FILE) signfp = NULL;
+  char *argv[9] = {
+    "gpgv",
+    "--keyring",
+    (char *) gpgdir,
+    "--logger-fd",
+    "1",
+    "--quiet",
+    (char *) signature_file,
+    (char *) source_file,
+    NULL
+  };
 
-  datafp = fopen (source_file, "r");
-  if (!datafp) {
-    err = gpgme_error_from_syserror ();
-    goto bail;
-  }
-
-  signfp = fopen (signature_file, "r");
-  if (!signfp) {
-    err = gpgme_error_from_syserror ();
-    goto bail;
-  }
-
-  g_auto(gpgme_data_t) datadh = NULL;
-  g_auto(gpgme_data_t) signdh = NULL;
-  err = gpgme_data_new_from_stream (&datadh, datafp);
-  if (err != GPG_ERR_NO_ERROR)
-    goto bail;
-
-  err = gpgme_data_set_file_name (datadh, source_file);
-  if (err != GPG_ERR_NO_ERROR)
-    goto bail;
-
-  err = gpgme_data_new_from_stream (&signdh, signfp);
-  if (err != GPG_ERR_NO_ERROR)
-    goto bail;
-
-  err = gpgme_op_verify (ctx, signdh, NULL, datadh);
-  if (err != GPG_ERR_NO_ERROR)
-    goto bail;
-
-  gpgme_verify_result_t result = gpgme_op_verify_result (ctx);
-  gpgme_signature_t sig = result->signatures;
-
-  int num_sigs = 0, num_valid = 0;
-
-  for (; sig; sig = sig->next) {
-    num_sigs += 1;
-
-    if ((sig->summary & (GPGME_SIGSUM_VALID | GPGME_SIGSUM_GREEN)) != 0) {
-      num_valid += 1;
-      continue;
-    }
-
-    eam_log_info_message ("Signature %d is bad or invalid (revoked:%s, expired:%s)",
-                          num_sigs,
-                          sig->summary & GPGME_SIGSUM_KEY_REVOKED ? "yes" : "no",
-                          sig->summary & GPGME_SIGSUM_KEY_EXPIRED ? "yes" : "no");
-  }
-
-  ret = num_sigs > 0 && num_sigs == num_valid;
-
-bail:
-  if (err != GPG_ERR_NO_ERROR)
-    eam_log_error_message ("GPG error: %s/%s", gpgme_strsource (err), gpgme_strerror (err));
-
-  return ret;
+  return run_cmd ((const char * const *) argv);
 }
 
 gboolean
@@ -402,26 +345,6 @@ has_external_script (const char  *prefix,
   }
 
   return 1;
-}
-
-static gboolean
-run_cmd (const char * const *argv)
-{
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
-
-  if (err != NULL) {
-    eam_log_error_message ("%s failed: %s", argv[0], err->message);
-    return -1;
-  }
-
-  g_subprocess_wait (sub, NULL, &err);
-  if (err != NULL) {
-    eam_log_error_message ("%s failed: %s", argv[0], err->message);
-    return -1;
-  }
-
-  return g_subprocess_get_exit_status (sub) == 0;
 }
 
 /* XXX: These will eventually be defined by libsoup, but we don't have a way to
