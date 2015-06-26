@@ -8,7 +8,6 @@ eos-select-app-server: eos-select-app-server.in Makefile
 
 EXTRA_DIST = \
 	eos-select-app-server.in \
-	bundler-tool.sh \
 	$(NULL)
 
 CLEANFILES = \
