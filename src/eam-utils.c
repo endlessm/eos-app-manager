@@ -255,8 +255,9 @@ eam_utils_bundle_extract (const char *bundle_file,
   if (err != ARCHIVE_OK)
     goto bail;
 
-  struct archive_entry *entry;
   while (TRUE) {
+    struct archive_entry *entry;
+
     err = archive_read_next_header (a, &entry);
 
     if (err == ARCHIVE_EOF) {
@@ -270,7 +271,8 @@ eam_utils_bundle_extract (const char *bundle_file,
     const char *entpath = archive_entry_pathname (entry);
 
     g_autofree char *newpath = g_build_filename (target_prefix, entpath, NULL);
-    archive_entry_set_pathname (entry, newpath);
+    archive_entry_copy_pathname (entry, newpath);
+
     eam_log_info_message ("Extracting '%s' to '%s", entpath, newpath);
 
     err = archive_write_header (ext, entry);
