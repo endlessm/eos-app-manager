@@ -470,28 +470,25 @@ eam_utils_run_external_scripts (const char *prefix,
   if (g_mkdir_with_parents (dir, 0755) < 0)
     return FALSE;
 
-  g_autofree char *path = NULL;
-  if (!download_external_file (appid, url, dir, filename))
-    goto out;
+  if (!download_external_file (appid, url, dir, filename)) {
+    eam_fs_rmdir_recursive (dir);
+    return FALSE;
+  }
 
-  path = g_build_filename (dir, filename, NULL);
+  g_autofree char *path = g_build_filename (dir, filename, NULL);
+  if (!verify_checksum_hash (path, digest, -1, G_CHECKSUM_SHA256)) {
+    eam_fs_rmdir_recursive (dir);
+    return FALSE;
+  }
 
-  gboolean ok = verify_checksum_hash (path, digest, -1, G_CHECKSUM_SHA256);
-  gboolean ret = FALSE;
+  if (!run_external_script (prefix, appid)) {
+    eam_fs_rmdir_recursive (dir);
+    return FALSE;
+  }
 
-  if (!ok)
-    goto out;
+  eam_fs_rmdir_recursive (dir);
 
-  if (!run_external_script (prefix, appid))
-    goto out;
-
-  ret = TRUE;
-
-out:
-  if (!eam_fs_rmdir_recursive (dir))
-    eam_log_info_message ("Couldn't remove the directory: %s", dir);
-
-  return ret;
+  return TRUE;
 }
 
 gboolean
