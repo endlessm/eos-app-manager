@@ -120,7 +120,7 @@ eam_config_set_key (const EamConfigKey *key,
     case G_TYPE_STRING:
       str_value = g_key_file_get_string (keyfile, key->key_group, key->key_name, &error);
       if (error == NULL)
-        (* (gpointer *) field_p) = str_value;
+        (* (gpointer *) field_p) = g_strdup (str_value);
       else
         (* (gpointer *) field_p) = g_strdup (key->key_default.str_val);
       break;
