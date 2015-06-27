@@ -145,10 +145,12 @@ eam_config_set_key (const EamConfigKey *key,
       g_assert_not_reached ();
   }
 
-  if (error != NULL)
+  if (error != NULL) {
     eam_log_error_message ("Unable to read configuration key '%s': %s",
                            key->key_name,
                            error->message);
+    g_error_free (error);
+  }
 }
 
 static EamConfig *
