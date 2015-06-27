@@ -78,6 +78,7 @@
     <method name="Uninstall" >
       <annotation name="org.freedesktop.DBus.GLib.Async" value="" />
       <arg name="appid" type="s" direction="in" />
+      <arg name="prefix" type="s" direction="in" />
       <arg name="transaction" type="b" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>

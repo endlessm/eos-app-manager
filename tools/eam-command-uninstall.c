@@ -53,7 +53,7 @@ eam_command_uninstall (int argc, char *argv[])
   const char *appid = opt_appid[0];
 
   if (opt_prefix == NULL)
-    opt_prefix = g_strdup (eam_config_get_applications_dir ());
+    opt_prefix = g_strdup (eam_config_get_primary_storage ());
 
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
@@ -108,7 +108,7 @@ eam_command_uninstall (int argc, char *argv[])
   }
 
   gboolean retval = FALSE;
-  eos_app_manager_call_uninstall_sync (proxy, appid, &retval, NULL, &error);
+  eos_app_manager_call_uninstall_sync (proxy, appid, opt_prefix, &retval, NULL, &error);
   if (error != NULL) {
     g_printerr ("Unable to uninstall '%s': %s\n", appid, error->message);
     return EXIT_FAILURE;

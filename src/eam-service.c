@@ -384,10 +384,14 @@ static void
 eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
   GVariant *params)
 {
-  char *appid = NULL;
-  g_variant_get (params, "(&s)", &appid);
+  const char *appid = NULL;
+  const char *prefix = NULL;
+
+  g_variant_get (params, "(&s&s)", &appid, &prefix);
 
   EamTransaction *trans = eam_uninstall_new (appid);
+  eam_uninstall_set_prefix (EAM_UNINSTALL (trans), prefix);
+
   g_object_set_data (G_OBJECT (trans), "invocation", invocation);
 
   eam_transaction_run_async (trans, NULL, uninstall_cb, service);
