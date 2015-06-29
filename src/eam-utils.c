@@ -320,6 +320,7 @@ static int
 has_external_script (const char  *prefix,
                      const char  *appid,
                      char       **url,
+                     char       **filename,
                      char       **digest)
 {
   g_autofree char *info = g_build_filename (prefix, appid, ".info", NULL);
@@ -337,6 +338,12 @@ has_external_script (const char  *prefix,
   *url = g_key_file_get_string (kf, "External", "url", &err);
   if (err) {
     eam_log_error_message ("Could find 'url' key in %s: %s", info, err->message);
+    return -1;
+  }
+
+  *filename = g_key_file_get_string (kf, "External", "filename", &err);
+  if (err) {
+    eam_log_error_message ("Could find 'filename' key in %s: %s", info, err->message);
     return -1;
   }
 
@@ -361,7 +368,7 @@ static gboolean
 download_external_file (const char  *appid,
                         const char  *url,
                         const char  *dir,
-                        char       **filename)
+                        const char  *filename)
 {
   g_autoptr(SoupURI) uri = soup_uri_new (url);
   if (!uri) {
@@ -387,20 +394,8 @@ download_external_file (const char  *appid,
 
   goffset len = soup_message_headers_get_content_length (msg->response_headers);
 
-  /* get the filename */
-  g_autoptr(GHashTable) params = NULL;
-  if (soup_message_headers_get_content_disposition (msg->response_headers, NULL, &params))
-    *filename = g_strdup (g_hash_table_lookup (params, "filename"));
-
-  if (!*filename)
-    *filename = g_path_get_basename (soup_uri_get_path (soup_message_get_uri (msg)));
-
-  if (!*filename || (*filename[0] == G_DIR_SEPARATOR) || (*filename[0] == '.')) {
-    g_free (*filename);
-    *filename = g_strdup_printf ("%s-external.tmp", appid);
-  }
-
-  g_autofree char *path = g_build_filename (dir, *filename, NULL);
+  /* TODO: Verify that we don't have any strange data in filename */
+  g_autofree char *path = g_build_filename (dir, filename, NULL);
   g_autoptr(GFile) file = g_file_new_for_path (path);
   g_autoptr(GOutputStream) outs =
     G_OUTPUT_STREAM (g_file_replace (file, NULL, FALSE,
@@ -455,9 +450,10 @@ eam_utils_run_external_scripts (const char *prefix,
                                 const char *appid)
 {
   g_autofree char *url = NULL;
+  g_autofree char *filename = NULL;
   g_autofree char *digest = NULL;
 
-  int res = has_external_script (prefix, appid, &url, &digest);
+  int res = has_external_script (prefix, appid, &url, &filename, &digest);
   if (res == 0) {
     /* No external script */
     return TRUE;
@@ -468,7 +464,7 @@ eam_utils_run_external_scripts (const char *prefix,
   }
   else {
     /* We need these to be set */
-    g_assert (url != NULL && digest != NULL);
+    g_assert (url != NULL && digest != NULL && filename != NULL);
   }
 
   g_autofree char *dir = g_build_filename (prefix, appid, "external", NULL);
@@ -476,13 +472,11 @@ eam_utils_run_external_scripts (const char *prefix,
     return FALSE;
 
   g_autofree char *path = NULL;
-  g_autofree char *filename = NULL;
-  if (!download_external_file (appid, url, dir, &filename))
+  if (!download_external_file (appid, url, dir, filename))
     goto out;
 
-  g_assert (filename != NULL);
-
   path = g_build_filename (dir, filename, NULL);
+
   gboolean ok = verify_checksum_hash (path, digest, -1, G_CHECKSUM_SHA256);
   gboolean ret = FALSE;
 
