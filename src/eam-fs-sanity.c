@@ -656,6 +656,31 @@ eam_fs_deploy_app (const char *source,
 }
 
 static gboolean
+create_symlink (const char *source,
+                const char *target)
+{
+  /* Try removing the link manually first if we had leftover junk from last
+   * install
+   */
+  if (faccessat (0, target, R_OK, AT_SYMLINK_NOFOLLOW | AT_EACCESS) == F_OK &&
+      unlink(target) == 0)
+    {
+      eam_log_error_message ("Doing forced cleanup of link: %s!",
+                             target);
+    }
+
+  if (symlink (source, target) != 0) {
+    eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
+                           source,
+                           target,
+                           g_strerror (errno));
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static gboolean
 symlinkdirs_recursive (const char *source_dir,
                        const char *target_dir,
                        gboolean    shallow)
@@ -682,25 +707,12 @@ symlinkdirs_recursive (const char *source_dir,
       if (sfile == NULL)
         continue;
 
-      if (symlink (sfile, tpath) != 0) {
-        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
-                               sfile,
-                               tpath,
-                               g_strerror (errno));
+      if (!create_symlink (sfile, tpath))
         return FALSE;
-      }
     }
     else if (S_ISREG (st.st_mode)) {
-      if (symlink (spath, tpath) != 0) {
-        eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
-                               spath,
-                               tpath,
-                               g_strerror (errno));
-
-        /* If the target file exists we just continue */
-        if (errno != EEXIST)
-          return FALSE;
-      }
+      if (!create_symlink (spath, tpath))
+        return FALSE;
     }
     else if (S_ISDIR (st.st_mode)) {
       /* recursive if directory and not shallow */
@@ -710,16 +722,8 @@ symlinkdirs_recursive (const char *source_dir,
           return FALSE;
       }
       else {
-        if (symlink (spath, tpath) != 0) {
-          eam_log_error_message ("Error while creating link from '%s' to '%s': %s",
-                                 spath,
-                                 tpath,
-                                 g_strerror (errno));
-
-          /* Like above, if the target file exists, we just continue */
-          if (errno != EEXIST)
-            return FALSE;
-        }
+        if (!create_symlink (spath, tpath))
+          return FALSE;
       }
     }
   }
@@ -938,6 +942,7 @@ rmsymlinks_recursive (const char *appid,
     }
     else if (S_ISDIR (st.st_mode)) {
       /* If the file is a directory, we recurse into it */
+      /* TODO: Recursively remove dirs that match appid exactly */
       if (!rmsymlinks_recursive (appid, path))
         return FALSE;
 
