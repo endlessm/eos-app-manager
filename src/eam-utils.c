@@ -440,8 +440,10 @@ run_external_script (const char *prefix,
     return FALSE;
   }
 
-  char *argv[2] = {
+  const char *argv[4] = {
     fn,
+    appid,
+    wd,
     NULL,
   };
 
