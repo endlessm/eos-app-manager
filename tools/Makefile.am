@@ -8,6 +8,10 @@ DISTCLEANFILES =
 
 EXTRA_DIST =
 
+completiondir = $(datadir)/bash-completion/completions
+completion_DATA = completion/eam
+EXTRA_DIST += $(completion_DATA)
+
 do_subst = sed \
 	-e 's|@DATA_DIR[@]|$(datadir)|g' \
 	-e 's|@SYSCONF_DIR[@]|$(sysconfdir)|g'
