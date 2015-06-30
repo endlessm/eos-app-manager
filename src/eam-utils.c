@@ -161,6 +161,22 @@ eam_utils_verify_signature (const char *source_file,
   return run_cmd ((const char * const *) argv);
 }
 
+GKeyFile *
+eam_utils_load_app_info (const char *prefix,
+                         const char *appid)
+{
+  g_autofree char *appdir = g_build_filename (prefix, appid, NULL);
+  g_autofree char *info_file = g_build_filename (appdir, ".info", NULL);
+
+  GKeyFile *keyfile = g_key_file_new ();
+  if (!g_key_file_load_from_file (keyfile, info_file, G_KEY_FILE_NONE, NULL)) {
+    g_key_file_unref (keyfile);
+    return NULL;
+  }
+
+  return keyfile;
+}
+
 gboolean
 eam_utils_app_is_installed (const char *prefix,
                             const char *appid)

@@ -46,6 +46,9 @@ gboolean        eam_utils_apply_xdelta          (const char *prefix,
 char *          eam_utils_find_program_in_path  (const char *program,
                                                  const char *path);
 
+GKeyFile *      eam_utils_load_app_info         (const char *prefix,
+                                                 const char *appid);
+
 G_END_DECLS
 
 #endif
