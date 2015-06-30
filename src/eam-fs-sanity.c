@@ -662,7 +662,7 @@ create_symlink (const char *source,
   /* Try removing the link manually first if we had leftover junk from last
    * install
    */
-  if (faccessat (0, target, R_OK, AT_SYMLINK_NOFOLLOW | AT_EACCESS) == F_OK &&
+  if (faccessat (0, target, F_OK, AT_SYMLINK_NOFOLLOW | AT_EACCESS) == F_OK &&
       unlink(target) == 0)
     {
       eam_log_error_message ("Doing forced cleanup of link: %s!",
