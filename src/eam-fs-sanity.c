@@ -112,8 +112,8 @@ applications_directory_symlink_create (void)
   return TRUE;
 }
 
-static gboolean
-is_application_dir (const char *path)
+gboolean
+eam_fs_is_app_dir (const char *path)
 {
   g_assert (path);
 
@@ -311,7 +311,7 @@ eam_fs_sanity_check (void)
     g_object_unref (child_info);
     g_object_unref (dir);
 
-    if (is_application_dir (path))
+    if (eam_fs_is_app_dir (path))
       fix_application_permissions_if_needed (path);
 
     g_free (path);

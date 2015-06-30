@@ -31,6 +31,8 @@ gboolean        eam_fs_restore_app      (const char *prefix,
                                          const char *appid,
                                          const char *backup_dir);
 
+gboolean        eam_fs_is_app_dir       (const char *path);
+
 typedef enum {
   EAM_BUNDLE_DIRECTORY_BIN,
   EAM_BUNDLE_DIRECTORY_DESKTOP,
