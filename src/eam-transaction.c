@@ -12,6 +12,16 @@ eam_transaction_default_init (EamTransactionInterface *iface)
 {
 }
 
+gboolean
+eam_transaction_run_sync (EamTransaction *trans,
+                          GCancellable *cancellable,
+                          GError **error)
+{
+  g_return_val_if_fail (EAM_IS_TRANSACTION (trans), FALSE);
+
+  return EAM_TRANSACTION_GET_IFACE (trans)->run_sync (trans, cancellable, error);
+}
+
 /**
  * eam_transaction_run_async:
  * @trans: a #GType supporting #EamTransaction.
@@ -22,8 +32,10 @@ eam_transaction_default_init (EamTransactionInterface *iface)
  * Run the main method of the transaction.
  **/
 void
-eam_transaction_run_async (EamTransaction *trans, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data)
+eam_transaction_run_async (EamTransaction *trans,
+                           GCancellable *cancellable,
+                           GAsyncReadyCallback callback,
+                           gpointer data)
 {
   g_return_if_fail (EAM_IS_TRANSACTION (trans));
 
@@ -42,7 +54,9 @@ eam_transaction_run_async (EamTransaction *trans, GCancellable *cancellable,
  * Returns: %TRUE if everything went OK.
  **/
 gboolean
-eam_transaction_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
+eam_transaction_finish (EamTransaction *trans,
+                        GAsyncResult *res,
+                        GError **error)
 {
   g_return_val_if_fail (EAM_IS_TRANSACTION (trans), FALSE);
 
