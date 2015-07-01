@@ -8,7 +8,6 @@
 G_BEGIN_DECLS
 
 gboolean        eam_fs_sanity_check     (void);
-gboolean        eam_fs_sanity_delete    (const gchar *path);
 
 gboolean        eam_fs_rmdir_recursive  (const char *path);
 gboolean        eam_fs_cpdir_recursive  (const char *src,
