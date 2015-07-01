@@ -33,7 +33,11 @@ struct _EamUpdatePrivate
 {
   gchar *appid;
   gboolean allow_deltas;
-  char *bundle_location;
+
+  char *bundle_file;
+  char *signature_file;
+  char *checksum_file;
+
   EamAction action;
 };
 
@@ -66,8 +70,10 @@ eam_update_finalize (GObject *obj)
   EamUpdate *self = EAM_UPDATE (obj);
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->bundle_location, g_free);
+  g_free (priv->appid);
+  g_free (priv->bundle_file);
+  g_free (priv->signature_file);
+  g_free (priv->checksum_file);
 
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
@@ -175,43 +181,6 @@ eam_update_new (const gchar *appid,
                        NULL);
 }
 
-static char *
-build_bundle_filename (const char *basedir,
-                       const char *basename,
-                       const char *extension)
-{
-  g_autofree char *filename = g_strconcat (basename, ".", extension, NULL);
-
-  return g_build_filename (basedir, filename, NULL);
-}
-
-static char *
-build_tarball_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    return build_bundle_filename (priv->bundle_location, priv->appid, XDELTA_BUNDLE_EXT);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_EXT);
-}
-
-static char *
-build_checksum_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_DIGEST_EXT);
-}
-
-static char *
-build_signature_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_SIGNATURE_EXT);
-}
-
 static gboolean
 do_xdelta_update (const char *appid,
                   const char *delta_file,
@@ -280,16 +249,13 @@ update_thread_cb (GTask *task,
     return;
   }
 
-  g_autofree char *bundle_file = build_tarball_filename (self);
-  g_autofree char *checksum_file = build_checksum_filename (self);
-  if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
+  if (!eam_utils_verify_checksum (priv->bundle_file, priv->checksum_file)) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "The checksum for the application bundle is invalid");
     return;
   }
 
-  g_autofree char *signature_file = build_signature_filename (self);
-  if (!eam_utils_verify_signature (bundle_file, signature_file)) {
+  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file)) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "The signature for the application bundle is invalid");
     return;
@@ -308,11 +274,11 @@ update_thread_cb (GTask *task,
 
   switch (priv->action) {
     case EAM_ACTION_FULL_UPDATE:
-      res = do_full_update (priv->appid, bundle_file, &error);
+      res = do_full_update (priv->appid, priv->bundle_file, &error);
       break;
 
     case EAM_ACTION_XDELTA_UPDATE:
-      res = do_xdelta_update (priv->appid, bundle_file, &error);
+      res = do_xdelta_update (priv->appid, priv->bundle_file, &error);
       break;
 
     default:
@@ -370,7 +336,7 @@ eam_update_run_async (EamTransaction *trans,
 
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  if (priv->bundle_location == NULL) {
+  if (priv->bundle_file == NULL) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "No bundle location set");
     g_object_unref (task);
@@ -391,13 +357,33 @@ eam_update_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 }
 
 void
-eam_update_set_bundle_location (EamUpdate *update,
-                                 const char *path)
+eam_update_set_bundle_file (EamUpdate *update,
+                            const char *path)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (update);
 
-  g_free (priv->bundle_location);
-  priv->bundle_location = g_strdup (path);
+  g_free (priv->bundle_file);
+  priv->bundle_file = g_strdup (path);
+}
+
+void
+eam_update_set_signature_file (EamUpdate *update,
+                               const char *path)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+
+  g_free (priv->signature_file);
+  priv->signature_file = g_strdup (path);
+}
+
+void
+eam_update_set_checksum_file (EamUpdate *update,
+                              const char *path)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+
+  g_free (priv->checksum_file);
+  priv->checksum_file = g_strdup (path);
 }
 
 const char *

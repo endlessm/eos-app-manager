@@ -652,9 +652,14 @@ handle_transaction_method_call (GDBusConnection *connection,
   eam_log_info_message ("Received method '%s' on transaction interface", method);
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
-    char *bundle_path;
+    const char *bundle_path, *signature_path, *checksum_path;
+    GVariantDict dict;
 
-    g_variant_get (params, "(s)", &bundle_path);
+    g_variant_dict_init (&dict, params);
+
+    g_variant_dict_lookup (&dict, "BundlePath", "&s", &bundle_path);
+    g_variant_dict_lookup (&dict, "SignaturePath", "&s", &signature_path);
+    g_variant_dict_lookup (&dict, "ChecksumPath", "&s", &checksum_path);
 
     if (bundle_path != NULL && *bundle_path != '\0') {
       eam_log_info_message ("Setting bundle path to '%s' for transaction '%s'",
@@ -663,16 +668,24 @@ handle_transaction_method_call (GDBusConnection *connection,
 
       if (EAM_IS_INSTALL (remote->transaction)) {
         EamInstall *install = EAM_INSTALL (remote->transaction);
-        eam_install_set_bundle_location (install, bundle_path);
-      } else if (EAM_IS_UPDATE (remote->transaction)) {
+
+        eam_install_set_bundle_file (install, bundle_path);
+        eam_install_set_signature_file (install, signature_path);
+        eam_install_set_checksum_file (install, checksum_path);
+      }
+      else if (EAM_IS_UPDATE (remote->transaction)) {
         EamUpdate *update = EAM_UPDATE (remote->transaction);
-        eam_update_set_bundle_location (update, bundle_path);
-      } else {
+
+        eam_update_set_bundle_file (update, bundle_path);
+        eam_update_set_signature_file (update, signature_path);
+        eam_update_set_checksum_file (update, checksum_path);
+      }
+      else {
         eam_log_error_message ("Completion of transaction is not update nor install type.");
       }
-
-      g_free (bundle_path);
     }
+
+    g_variant_dict_clear (&dict);
 
     /* we don't keep a reference here to avoid cycles */
     remote->invocation = invocation;

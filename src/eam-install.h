@@ -39,10 +39,16 @@ struct _EamInstallClass
 
 GType eam_install_get_type (void) G_GNUC_CONST;
 
-EamTransaction *   eam_install_new                 (const gchar *appid);
-void               eam_install_set_bundle_location (EamInstall  *install,
-                                                    const char  *path);
-const char *       eam_install_get_app_id          (EamInstall  *install);
+EamTransaction *        eam_install_new                 (const char *appid);
+
+void                    eam_install_set_bundle_file     (EamInstall *install,
+                                                         const char *path);
+void                    eam_install_set_signature_file  (EamInstall *install,
+                                                         const char *path);
+void                    eam_install_set_checksum_file   (EamInstall *install,
+                                                         const char *path);
+
+const char *            eam_install_get_app_id          (EamInstall *install);
 
 G_END_DECLS
 

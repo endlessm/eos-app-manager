@@ -20,9 +20,11 @@ typedef struct _EamInstallPrivate        EamInstallPrivate;
 
 struct _EamInstallPrivate
 {
-  gchar *appid;
-  gchar *from_version;
-  char *bundle_location;
+  char *appid;
+
+  char *bundle_file;
+  char *signature_file;
+  char *checksum_file;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -56,8 +58,10 @@ eam_install_finalize (GObject *obj)
   EamInstall *self = EAM_INSTALL (obj);
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->bundle_location, g_free);
+  g_free (priv->appid);
+  g_free (priv->bundle_file);
+  g_free (priv->signature_file);
+  g_free (priv->checksum_file);
 
   G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
 }
@@ -134,40 +138,6 @@ eam_install_new (const gchar *appid)
   return g_object_new (EAM_TYPE_INSTALL, "appid", appid, NULL);
 }
 
-static char *
-build_bundle_filename (const char *basedir,
-                       const char *basename,
-                       const char *extension)
-{
-  g_autofree char *filename = g_strconcat (basename, ".", extension, NULL);
-
-  return g_build_filename (basedir, filename, NULL);
-}
-
-static char *
-build_tarball_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_EXT);
-}
-
-static char *
-build_checksum_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_DIGEST_EXT);
-}
-
-static char *
-build_signature_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_SIGNATURE_EXT);
-}
-
 static void
 install_thread_cb (GTask *task,
                    gpointer source_obj,
@@ -189,16 +159,13 @@ install_thread_cb (GTask *task,
     return;
   }
 
-  g_autofree char *bundle_file = build_tarball_filename (self);
-  g_autofree char *checksum_file = build_checksum_filename (self);
-  if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
+  if (!eam_utils_verify_checksum (priv->bundle_file, priv->checksum_file)) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "The checksum for the application bundle is invalid");
     return;
   }
 
-  g_autofree char *signature_file = build_signature_filename (self);
-  if (!eam_utils_verify_signature (bundle_file, signature_file)) {
+  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file)) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "The signature for the application bundle is invalid");
     return;
@@ -206,7 +173,7 @@ install_thread_cb (GTask *task,
 
   /* Further operations require rollback */
 
-  if (!eam_utils_bundle_extract (bundle_file, eam_config_dldir (), priv->appid)) {
+  if (!eam_utils_bundle_extract (priv->bundle_file, eam_config_dldir (), priv->appid)) {
     eam_fs_prune_dir (eam_config_dldir (), priv->appid);
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
                              "Could not extract the bundle");
@@ -265,7 +232,7 @@ eam_install_run_async (EamTransaction *trans,
 
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  if (priv->bundle_location == NULL) {
+  if (priv->bundle_file == NULL) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "No bundle location set");
     g_object_unref (task);
@@ -286,13 +253,33 @@ eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 }
 
 void
-eam_install_set_bundle_location (EamInstall *install,
-                                 const char *path)
+eam_install_set_bundle_file (EamInstall *install,
+                             const char *path)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
 
-  g_free (priv->bundle_location);
-  priv->bundle_location = g_strdup (path);
+  g_free (priv->bundle_file);
+  priv->bundle_file = g_strdup (path);
+}
+
+void
+eam_install_set_signature_file (EamInstall *install,
+                                const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->signature_file);
+  priv->signature_file = g_strdup (path);
+}
+
+void
+eam_install_set_checksum_file (EamInstall *install,
+                               const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->checksum_file);
+  priv->checksum_file = g_strdup (path);
 }
 
 const char *
