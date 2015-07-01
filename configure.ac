@@ -91,6 +91,7 @@ AC_ARG_WITH([eam-user],
             [eam_user=app-manager])
 
 EAM_USER="$eam_user"
+AC_DEFINE_UNQUOTED([EAM_USER_NAME], ["$EAM_USER"], [System user for the app manager])
 AC_SUBST(EAM_USER)
 
 AC_ARG_WITH([eam-admin-group],
