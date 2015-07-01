@@ -5,6 +5,7 @@
 #include "eam-config.h"
 #include "eam-log.h"
 #include "eam-utils.h"
+#include "eam-error.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -13,7 +14,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <pwd.h>
 
 #include <gio/gio.h>
 #include <glib/gstdio.h>
@@ -52,19 +55,54 @@ eam_fs_get_bundle_system_dir (EamBundleDirectory dir)
 }
 
 static char *
-get_bundle_path (EamBundleDirectory dir)
+get_bundle_path (const char *prefix,
+                 EamBundleDirectory dir)
 {
-  return g_build_filename (ROOT_DIR, eam_config_appdir (), eam_fs_get_bundle_system_dir (dir), NULL);
+  return g_build_filename (ROOT_DIR, prefix, eam_fs_get_bundle_system_dir (dir), NULL);
+}
+
+gboolean
+eam_fs_init_bundle_dir (const char *prefix,
+                        EamBundleDirectory dir,
+                        GError **error)
+{
+  g_autofree char *path = get_bundle_path (prefix, dir);
+
+  if (g_mkdir_with_parents (path, 0777) != 0) {
+    g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Unable to create bundle directory '%s' in '%s'",
+                 eam_fs_get_bundle_system_dir (dir),
+                 prefix);
+    return FALSE;
+  }
+
+  struct passwd *pw = getpwnam (EAM_USER_NAME);
+  g_assert (pw != NULL);
+
+  int r;
+  do {
+    r = chown (path, pw->pw_uid, pw->pw_gid);
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
+    g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Unable to assign ownership of '%s' to the app manager user: %s",
+                 eam_fs_get_bundle_system_dir (dir),
+                 g_strerror (errno));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static gboolean
 applications_directory_create (void)
 {
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
-    g_autofree char *dir = get_bundle_path (i);
-
-    if (g_mkdir_with_parents (dir, 0755) != 0) {
-      eam_log_error_message ("Unable to create '%s': %s", dir, g_strerror (errno));
+    g_autoptr(GError) error = NULL;
+    eam_fs_init_bundle_dir (eam_config_appdir (), i, &error);
+    if (error != NULL) {
+      eam_log_error_message ("%s", error->message);
       return FALSE;
     }
   }
