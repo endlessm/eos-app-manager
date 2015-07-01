@@ -8,6 +8,8 @@
 #include <archive_entry.h>
 #include <errno.h>
 #include <ftw.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include <libsoup/soup.h>
 #include <gio/gio.h>
@@ -703,4 +705,63 @@ eam_utils_find_program_in_path (const char *program,
   }
 
   return NULL;
+}
+
+gboolean
+eam_utils_check_unix_permissions (uid_t user)
+{
+  if (user == G_MAXUINT)
+    return FALSE;
+
+  struct passwd *pw = getpwuid (user);
+  if (pw == NULL)
+    return FALSE;
+
+  /* Are we root? */
+  if (pw->pw_uid == 0 && pw->pw_gid == 0)
+    return TRUE;
+
+  /* Are we the app manager user? */
+  if (g_strcmp0 (pw->pw_name, EAM_USER_NAME) == 0)
+    return TRUE;
+
+  /* Are we in the admin group? */
+  int n_groups = 10;
+  gid_t *groups = g_new0 (gid_t, n_groups);
+
+  while (1)
+    {
+      int max_n_groups = n_groups;
+      int ret = getgrouplist (pw->pw_name, pw->pw_gid, groups, &max_n_groups);
+
+      if (ret >= 0)
+        {
+          n_groups = max_n_groups;
+          break;
+        }
+
+      /* some systems fail to update n_groups so we just grow it by approximation */
+      if (n_groups == max_n_groups)
+        n_groups = 2 * max_n_groups;
+      else
+        n_groups = max_n_groups;
+
+      groups = g_renew (gid_t, groups, n_groups);
+    }
+
+  gboolean retval = FALSE;
+  for (int i = 0; i < n_groups; i++)
+    {
+      struct group *gr = getgrgid (groups[i]);
+
+      if (gr != NULL && g_strcmp0 (gr->gr_name, EAM_ADMIN_GROUP_NAME) == 0)
+        {
+          retval = TRUE;
+          break;
+        }
+    }
+
+  g_free (groups);
+
+  return retval;
 }

@@ -16,6 +16,7 @@
 #include "eam-dbus-utils.h"
 #include "eam-log.h"
 #include "eam-resources.h"
+#include "eam-utils.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -397,61 +398,6 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static gboolean
-user_is_in_admin_group (uid_t user, const char *admin_group)
-{
-  if (user == G_MAXUINT)
-    return FALSE;
-
-  struct passwd *pw = getpwuid (user);
-  if (pw == NULL)
-    return FALSE;
-
-  int n_groups = 10;
-  gid_t *groups = g_new0 (gid_t, n_groups);
-
-  while (1)
-    {
-      int max_n_groups = n_groups;
-      int ret = getgrouplist (pw->pw_name, pw->pw_gid, groups, &max_n_groups);
-
-      if (ret >= 0)
-        {
-          n_groups = max_n_groups;
-          break;
-        }
-
-      /* some systems fail to update n_groups so we just grow it by approximation */
-      if (n_groups == max_n_groups)
-        n_groups = 2 * max_n_groups;
-      else
-        n_groups = max_n_groups;
-
-      groups = g_renew (gid_t, groups, n_groups);
-    }
-
-  gboolean retval = FALSE;
-  int i = 0;
-
-  for (i = 0; i < n_groups; i++)
-    {
-      struct group *gr = getgrgid (groups[i]);
-
-      if (gr != NULL && strcmp (gr->gr_name, admin_group) == 0)
-        {
-          retval = TRUE;
-          break;
-        }
-    }
-
-  g_free (groups);
-
-  if (!retval)
-    eam_log_error_message("Matching admin group not found in invocation");
-
-  return retval;
-}
-
-static gboolean
 eam_service_check_auth_by_method (EamService *service, PolkitSubject *subject,
   EamServiceMethod method)
 {
@@ -495,16 +441,17 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
   gboolean can_uninstall = FALSE;
 
   /* XXX: we want to have a separate configuration to decide the capabilities
-   * for each user, but for the time being we can use the 'wheel' group to
-   * decide if a user has the capabilities to install/update/remove apps.
+   * for each user, but for the time being we can use the EAM_ADMIN_GROUP_NAME
+   * group to decide if a user has the capabilities to install/update/remove
+   * apps.
    */
-  if (user_is_in_admin_group (user, EAM_ADMIN_GROUP_NAME)) {
+  if (eam_utils_check_unix_permissions (user)) {
     can_install = TRUE;
     can_uninstall = TRUE;
     goto out;
   }
 
-  /* if the user is not in the ADMIN_GROUP_NAME then we go through
+  /* if the user is not in the EAM_ADMIN_GROUP_NAME then we go through
    * a polkit check
    */
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
