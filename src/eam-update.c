@@ -42,10 +42,16 @@ struct _EamUpdatePrivate
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
-static void eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data);
-static gboolean eam_update_finish (EamTransaction *trans, GAsyncResult *res,
-  GError **error);
+static gboolean eam_update_run_sync (EamTransaction *trans,
+                                     GCancellable *cancellable,
+                                     GError **error);
+static void eam_update_run_async (EamTransaction *trans,
+                                  GCancellable *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer data);
+static gboolean eam_update_finish (EamTransaction *trans,
+                                   GAsyncResult *res,
+                                   GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
@@ -60,6 +66,7 @@ enum
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
+  iface->run_sync = eam_update_run_sync;
   iface->run_async = eam_update_run_async;
   iface->finish = eam_update_finish;
 }
@@ -228,57 +235,56 @@ do_full_update (const char *appid,
   return TRUE;
 }
 
-static void
-update_thread_cb (GTask *task,
-                  gpointer source_obj,
-                  gpointer task_data,
-                  GCancellable *cancellable)
+static gboolean
+eam_update_run_sync (EamTransaction *trans,
+                     GCancellable *cancellable,
+                     GError **error)
 {
   if (!eam_fs_sanity_check ()) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to access applications directory");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Unable to access applications directory");
+    return FALSE;
   }
 
-  EamUpdate *self = source_obj;
+  EamUpdate *self = (EamUpdate *) trans;
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Application is not installed");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Application is not installed");
+    return FALSE;
   }
 
   if (!eam_utils_verify_checksum (priv->bundle_file, priv->checksum_file)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "The checksum for the application bundle is invalid");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "The checksum for the application bundle is invalid");
+    return FALSE;
   }
 
   if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "The signature for the application bundle is invalid");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "The signature for the application bundle is invalid");
+    return FALSE;
   }
 
   /* Keep a copy of the old app around, in case the update fails */
   g_autofree char *backupdir = NULL;
   if (!eam_fs_backup_app (eam_config_appdir (), priv->appid, &backupdir)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not keep a copy of the app");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not keep a copy of the app");
+    return FALSE;
   }
 
-  GError *error = NULL;
+  GError *internal_error = NULL;
   gboolean res;
 
   switch (priv->action) {
     case EAM_ACTION_FULL_UPDATE:
-      res = do_full_update (priv->appid, priv->bundle_file, &error);
+      res = do_full_update (priv->appid, priv->bundle_file, &internal_error);
       break;
 
     case EAM_ACTION_XDELTA_UPDATE:
-      res = do_xdelta_update (priv->appid, priv->bundle_file, &error);
+      res = do_xdelta_update (priv->appid, priv->bundle_file, &internal_error);
       break;
 
     default:
@@ -290,8 +296,8 @@ update_thread_cb (GTask *task,
     if (backupdir)
       eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
 
-    g_task_return_error (task, error);
-    return;
+    g_propagate_error (error, internal_error);
+    return FALSE;
   }
 
   /* If the symbolic link creation fails, we restore from backup */
@@ -300,9 +306,9 @@ update_thread_cb (GTask *task,
     if (backupdir)
       eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
 
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not create symbolic links");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not create symbolic links");
+    return FALSE;
   }
 
   /* These two errors are non-fatal */
@@ -317,6 +323,21 @@ update_thread_cb (GTask *task,
   /* The update was successful; we can delete the back up directory */
   if (backupdir)
     eam_fs_rmdir_recursive (backupdir);
+
+  return TRUE;
+}
+
+static void
+update_thread_cb (GTask *task,
+                  gpointer source_obj,
+                  gpointer task_data,
+                  GCancellable *cancellable)
+{
+  GError *error = NULL;
+  if (!eam_update_run_sync (source_obj, cancellable, &error)) {
+    g_task_return_error (task, error);
+    return;
+  }
 
   g_task_return_boolean (task, TRUE);
 }
