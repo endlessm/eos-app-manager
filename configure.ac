@@ -63,6 +63,10 @@ PKG_CHECK_MODULES([DEPENDENCIES],
 GLIB_COMPILE_RESOURCES=`$PKG_CONFIG --variable=glib_compile_resources gio-2.0`
 AC_SUBST(GLIB_COMPILE_RESOURCES)
 
+# GDBus code generator
+GDBUS_CODEGEN=`$PKG_CONFIG --variable gdbus_codegen gio-2.0`
+AC_SUBST(GDBUS_CODEGEN)
+
 # systemd
 AC_ARG_WITH([systemd-systemunitdir],
             [AS_HELP_STRING([--with-systemd-systemunitdir], [Path to the system directory for systemd units])],
