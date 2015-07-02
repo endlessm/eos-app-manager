@@ -22,6 +22,7 @@ struct _EamInstallPrivate
 {
   char *appid;
 
+  char *prefix;
   char *bundle_file;
   char *signature_file;
   char *checksum_file;
@@ -66,6 +67,7 @@ eam_install_finalize (GObject *obj)
   g_free (priv->bundle_file);
   g_free (priv->signature_file);
   g_free (priv->checksum_file);
+  g_free (priv->prefix);
 
   G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
 }
@@ -157,7 +159,7 @@ eam_install_run_sync (EamTransaction *trans,
   EamInstall *self = (EamInstall *) trans;
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  if (eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
+  if (eam_utils_app_is_installed (priv->prefix, priv->appid)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Application already installed");
     return FALSE;
@@ -193,7 +195,7 @@ eam_install_run_sync (EamTransaction *trans,
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), priv->appid)) {
+  if (!eam_fs_deploy_app (eam_config_dldir (), priv->prefix, priv->appid)) {
     eam_fs_prune_dir (eam_config_dldir (), priv->appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
@@ -201,20 +203,20 @@ eam_install_run_sync (EamTransaction *trans,
   }
 
   /* Build the symlink farm for files to appear in the OS locations */
-  if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
-    eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
-    eam_fs_prune_dir (eam_config_appdir (), priv->appid);
+  if (!eam_fs_create_symlinks (priv->prefix, priv->appid)) {
+    eam_fs_prune_symlinks (priv->prefix, priv->appid);
+    eam_fs_prune_dir (priv->prefix, priv->appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not create all the symbolic links");
     return FALSE;
   }
 
   /* These two errors are non-fatal */
-  if (!eam_utils_compile_python (eam_config_appdir (), priv->appid)) {
+  if (!eam_utils_compile_python (priv->prefix, priv->appid)) {
     eam_log_error_message ("Python libraries compilation failed");
   }
 
-  if (!eam_utils_update_desktop (eam_config_appdir ())) {
+  if (!eam_utils_update_desktop (priv->prefix)) {
     eam_log_error_message ("Could not update the desktop's metadata");
   }
 
@@ -300,6 +302,20 @@ eam_install_set_checksum_file (EamInstall *install,
 
   g_free (priv->checksum_file);
   priv->checksum_file = g_strdup (path);
+}
+
+void
+eam_install_set_prefix (EamInstall *install,
+                        const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->prefix);
+
+  if (path == NULL || *path == '\0')
+    priv->prefix = g_strdup (eam_config_appdir ());
+  else
+    priv->prefix = g_strdup (path);
 }
 
 const char *

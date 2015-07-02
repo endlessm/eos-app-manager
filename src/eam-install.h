@@ -41,6 +41,8 @@ GType eam_install_get_type (void) G_GNUC_CONST;
 
 EamTransaction *        eam_install_new                 (const char *appid);
 
+void                    eam_install_set_prefix          (EamInstall *install,
+                                                         const char *path);
 void                    eam_install_set_bundle_file     (EamInstall *install,
                                                          const char *path);
 void                    eam_install_set_signature_file  (EamInstall *install,
