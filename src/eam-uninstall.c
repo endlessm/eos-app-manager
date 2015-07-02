@@ -28,26 +28,24 @@ enum
   PROP_APPID = 1
 };
 
-
-static void
-uninstall_thread_cb (GTask *task,
-                     gpointer source_obj,
-                     gpointer task_data,
-                     GCancellable *cancellable)
+static gboolean
+eam_uninstall_run_sync (EamTransaction *trans,
+                        GCancellable *cancellable,
+                        GError **error)
 {
   if (!eam_fs_sanity_check ()) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to access applications directory");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Unable to access applications directory");
+    return FALSE;
   }
 
-  EamUninstall *self = source_obj;
+  EamUninstall *self = (EamUninstall *) trans;
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
 
   if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Application is not installed");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Application is not installed");
+    return FALSE;
   }
 
   /* Remove the symbolic links first, so even if any later operation
@@ -61,16 +59,30 @@ uninstall_thread_cb (GTask *task,
   eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
 
   if (!eam_fs_prune_dir (eam_config_appdir (), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to remove the bundle files");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Unable to remove the bundle files");
+    return FALSE;
   }
 
   /* This is not fatal */
   if (!eam_utils_update_desktop (eam_config_appdir ()))
     eam_log_error_message ("Could not update the desktop's metadata");
 
-  g_task_return_boolean (task, TRUE);
+  return TRUE;
+}
+
+static void
+uninstall_thread_cb (GTask *task,
+                     gpointer source_obj,
+                     gpointer task_data,
+                     GCancellable *cancellable)
+{
+  GError *error = NULL;
+
+  if (!eam_uninstall_run_sync (source_obj, cancellable, &error))
+    g_task_return_error (task, error);
+  else
+    g_task_return_boolean (task, TRUE);
 }
 
 /**
@@ -122,6 +134,7 @@ eam_uninstall_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
+  iface->run_sync = eam_uninstall_run_sync;
   iface->run_async = eam_uninstall_run_async;
   iface->finish = eam_uninstall_finish;
 }
