@@ -46,17 +46,30 @@ eam_command_update (int argc, char *argv[])
 
   g_option_context_free (context);
 
-  if (opt_appid == NULL || g_strv_length (opt_appid) != 2) {
+  if (opt_appid == NULL || g_strv_length (opt_appid) > 2) {
     g_printerr ("Usage: %s update [-s SIGNATURE] [-c CHECKSUM] [-d] APPID BUNDLE\n", eam_argv0);
     return EXIT_FAILURE;
   }
 
   const char *appid = opt_appid[0];
-  const char *bundle_file = opt_appid[1];
-
-  if (bundle_file == NULL) {
-    g_printerr ("Usage: %s update [-s SIGNATURE] [-c CHECKSUM] [-d] APPID BUNDLE\n", eam_argv0);
+  if (appid == NULL) {
+    g_printerr ("Usage: %s update [-S SIGNATURE] [-c CHECKSUM] [-d] APPID BUNDLE\n", eam_argv0);
     return EXIT_FAILURE;
+  }
+
+  const char *bundle_file = opt_appid[1];
+  if (bundle_file == NULL) {
+    g_autofree char *filename = g_strconcat (appid,
+                                             opt_delta_update ? ".xdelta" : ".bundle",
+                                             NULL);
+    bundle_file = g_build_filename (g_get_current_dir (), filename, NULL);
+
+    if (!g_file_test (bundle_file, G_FILE_TEST_EXISTS)) {
+      g_printerr ("No bundle file found in the current directory for app '%s'\n."
+                  "Specify the bundle file path.\n"
+                  "  Usage: %s update APPID BUNDLEFILE\n", appid, eam_argv0);
+      return EXIT_FAILURE;
+    }
   }
 
   if (opt_asc_file == NULL) {
