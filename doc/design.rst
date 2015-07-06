@@ -15,12 +15,12 @@ Where does an Application live?
 ###############################
 
 Each application has an ‘app_id’ and lives in a pre-defined, designated place
-for applications, which is in `/endless/{app_id}`
+for applications, which is in `/endless/{app_id}`.
 
-Crucially, this location is outside of OSTree’s control, since we want the
-update process for the apps to be separate from that of the general OS. The
-`/endless` directory will really be a link to `/var/endless` much like `/home`
-links to `/var/home` in OSTree.
+The `/endless` directory is typically setup as an overlayfs of `/var/endless`
+and `/var/endless-extra`. This allows the apps to reside outside of OSTree's
+control and provides a transparent mapping between two storage locations if
+`/var/endless-extra` is a mount of a secondary filesystem.
 
 There are several metadata files related to applications, which need to live
 in a common directory so that the OS can find them. So we will also have the
