@@ -12,11 +12,6 @@
 #include "eam-utils.h"
 #include "eam-fs-sanity.h"
 
-#define UPDATE_SCRIPTDIR "update/full"
-#define UPDATE_ROLLBACKDIR "update/rollback"
-#define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
-#define XDELTA_UPDATE_ROLLBACKDIR "update/rollback"
-
 #define XDELTA_BUNDLE_EXT               "xdelta"
 #define INSTALL_BUNDLE_EXT              "bundle"
 #define INSTALL_BUNDLE_DIGEST_EXT       "sha256"
@@ -362,6 +357,31 @@ eam_update_run_async (EamTransaction *trans,
                              "No bundle location set");
     g_object_unref (task);
     return;
+  }
+
+  if (!g_file_test (priv->bundle_file, G_FILE_TEST_EXISTS)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "No bundle file found");
+    g_object_unref (task);
+    return;
+  }
+
+  /* If we don't have an explicit checksum file, we're going to look for one
+   * in the same directory as the bundle, using the appid as the basename
+   */
+  if (priv->checksum_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_DIGEST_EXT, NULL);
+
+    priv->checksum_file = g_build_filename (dirname, filename, NULL);
+  }
+
+  /* Same as above, for the signature file */
+  if (priv->signature_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
+
+    priv->signature_file = g_build_filename (dirname, filename, NULL);
   }
 
   g_task_run_in_thread (task, update_thread_cb);
