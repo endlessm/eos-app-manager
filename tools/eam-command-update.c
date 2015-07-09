@@ -22,10 +22,8 @@
 static char *opt_asc_file;
 static char *opt_sha_file;
 static char **opt_appid;
-static gboolean opt_delta_update;
 
 static const GOptionEntry install_entries[] = {
- { "delta-update", 'd', 0, G_OPTION_ARG_NONE, &opt_delta_update, "Is a delta update", NULL },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
  { "checksum-file", 'c', 0, G_OPTION_ARG_FILENAME, &opt_sha_file, "Path to the SHA file", "FILE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
@@ -58,12 +56,16 @@ eam_command_update (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  const char *bundle_file = opt_appid[1];
+  g_autofree char *bundle_file = g_strdup (opt_appid[1]);
   if (bundle_file == NULL) {
-    g_autofree char *filename = g_strconcat (appid,
-                                             opt_delta_update ? ".xdelta" : ".bundle",
-                                             NULL);
+    g_autofree char *filename = g_strconcat (appid, ".bundle", NULL);
     bundle_file = g_build_filename (g_get_current_dir (), filename, NULL);
+
+    if (!g_file_test (bundle_file, G_FILE_TEST_EXISTS)) {
+      g_autofree char *delta_filename = g_strconcat (appid, ".xdelta", NULL);
+      g_free (bundle_file);
+      bundle_file = g_build_filename (g_get_current_dir (), delta_filename, NULL);
+    }
 
     if (!g_file_test (bundle_file, G_FILE_TEST_EXISTS)) {
       g_printerr ("No bundle file found in the current directory for app '%s'\n."
@@ -99,7 +101,7 @@ eam_command_update (int argc, char *argv[])
    * daemon entirely, because we have enough privileges.
    */
   if (eam_utils_check_unix_permissions (geteuid ())) {
-    g_autoptr(EamUpdate) update = (EamUpdate *) eam_update_new (appid, opt_delta_update);
+    g_autoptr(EamUpdate) update = (EamUpdate *) eam_update_new (appid);
 
     eam_update_set_bundle_file (update, bundle_file);
     eam_update_set_signature_file (update, opt_asc_file);
@@ -152,7 +154,7 @@ eam_command_update (int argc, char *argv[])
   }
 
   g_autofree char *transaction_path = NULL;
-  eos_app_manager_call_update_sync (proxy, appid, opt_delta_update,
+  eos_app_manager_call_update_sync (proxy, appid,
                                     &transaction_path,
                                     NULL,
                                     &error);

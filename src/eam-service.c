@@ -335,14 +335,12 @@ eam_service_update (EamService *service, GDBusMethodInvocation *invocation,
   eam_service_reset_timer (service);
 
   const char *appid = NULL;
-  gboolean allow_deltas = FALSE;
 
-  g_variant_get (params, "(&sb)", &appid, &allow_deltas);
+  g_variant_get (params, "(&s)", &appid);
 
-  eam_log_info_message ("Update service called (appid: %s, deltas: %s)", appid,
-                        allow_deltas ? "True" : "False");
+  eam_log_info_message ("Update service called (appid: %s)", appid);
 
-  EamTransaction *trans = eam_update_new (appid, allow_deltas);
+  EamTransaction *trans = eam_update_new (appid);
   GError *error = NULL;
   EamRemoteTransaction *remote_transaction =
     start_dbus_transaction (service, trans, invocation, &error);
