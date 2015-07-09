@@ -9,10 +9,6 @@
 
 G_BEGIN_DECLS
 
-char *   eam_utils_build_tarball_filename    (const char *bundle_location,
-                                              const char *appid,
-                                              const char *extension);
-
 gboolean        eam_utils_verify_checksum       (const char *source_file,
                                                  const char *checksum_file);
 gboolean        eam_utils_verify_signature      (const char *source_file,

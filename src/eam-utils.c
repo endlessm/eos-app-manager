@@ -26,19 +26,6 @@
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose)
 
-char *
-eam_utils_build_tarball_filename (const char *bundle_location,
-                                  const char *appid,
-                                  const char *extension)
-{
-  if (bundle_location != NULL)
-    return g_strdup (bundle_location);
-
-  g_autofree char *fname = g_strconcat (appid, extension, NULL);
-
-  return g_build_filename (eam_config_dldir (), fname, NULL);
-}
-
 #define BLOCKSIZE 32768
 
 static gboolean
