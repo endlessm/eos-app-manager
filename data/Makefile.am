@@ -47,6 +47,8 @@ dist_polkit_policy_DATA = com.endlessm.app-installer.policy
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 tmpfiles_DATA = eos-app-manager.conf
 
+man_MANS = eamd.8
+
 EXTRA_DIST = \
 	$(RESOURCE_FILES) \
 	eam.gresource.xml \
