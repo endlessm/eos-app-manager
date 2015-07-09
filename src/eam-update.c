@@ -7,7 +7,6 @@
 #include "eam-log.h"
 #include "eam-error.h"
 #include "eam-update.h"
-#include "eam-spawner.h"
 #include "eam-config.h"
 #include "eam-utils.h"
 #include "eam-fs-sanity.h"

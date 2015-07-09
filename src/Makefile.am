@@ -10,7 +10,6 @@ source_c = \
 	eam-dbus-utils.c \
 	eam-service.c \
 	eam-config.c \
-	eam-spawner.c \
 	eam-transaction.c \
 	eam-install.c \
 	eam-update.c \
@@ -26,7 +25,6 @@ source_h = \
 	eam-dbus-utils.h \
 	eam-service.h \
 	eam-config.h \
-	eam-spawner.h \
 	eam-transaction.h \
 	eam-install.h \
 	eam-update.h \

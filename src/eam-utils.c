@@ -20,7 +20,6 @@
 #include "eam-error.h"
 #include "eam-fs-sanity.h"
 #include "eam-log.h"
-#include "eam-spawner.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"
 #define BUNDLE_HASH_EXT ".sha256"
@@ -38,34 +37,6 @@ eam_utils_build_tarball_filename (const char *bundle_location,
   g_autofree char *fname = g_strconcat (appid, extension, NULL);
 
   return g_build_filename (eam_config_dldir (), fname, NULL);
-}
-
-void
-eam_utils_run_bundle_scripts (const gchar *appid,
-                              const gchar *filename,
-                              const gchar *scriptdir,
-                              GCancellable *cancellable,
-                              GAsyncReadyCallback callback,
-                              GTask *task)
-{
-  /* scripts directory path */
-  g_autofree char *dir = g_build_filename (eam_config_scriptdir (), scriptdir, NULL);
-
-  /* scripts parameters */
-  g_auto(GStrv) params = g_new (gchar *, 3);
-  params[0] = g_strdup (appid);
-  params[1] = g_strdup (filename);
-  params[2] = NULL;
-
-  /* prefix environment */
-  g_autoptr(GHashTable) env = g_hash_table_new (g_str_hash, g_str_equal);
-  g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
-  g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
-  g_hash_table_insert (env, (gpointer) "EAM_GPGKEYRING", (gpointer) eam_config_gpgkeyring ());
-
-  EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
-  eam_spawner_run_async (spawner, cancellable, callback, task);
-  g_object_unref (spawner);
 }
 
 #define BLOCKSIZE 32768
