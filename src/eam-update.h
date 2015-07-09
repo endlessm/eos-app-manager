@@ -50,7 +50,6 @@ void                    eam_update_set_checksum_file    (EamUpdate      *update,
                                                          const char     *path);
 
 const char *            eam_update_get_app_id           (EamUpdate  *update);
-const gboolean          eam_update_is_delta_update      (EamUpdate  *update);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUpdate, g_object_unref)
 
