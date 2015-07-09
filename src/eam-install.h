@@ -52,6 +52,8 @@ void                    eam_install_set_checksum_file   (EamInstall *install,
 
 const char *            eam_install_get_app_id          (EamInstall *install);
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamInstall, g_object_unref)
+
 G_END_DECLS
 
 #endif /* EAM_INSTALL_H */

@@ -46,6 +46,8 @@ void            eam_uninstall_set_force         (EamUninstall *uninstall,
 void            eam_uninstall_set_prefix        (EamUninstall *uninstall,
                                                  const char   *prefix);
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUninstall, g_object_unref)
+
 G_END_DECLS
 
 #endif /* EAM_UNINSTALL_H */

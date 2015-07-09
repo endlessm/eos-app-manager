@@ -67,6 +67,8 @@ gboolean         eam_transaction_finish         (EamTransaction *trans,
                                                  GAsyncResult *res,
                                                  GError **error);
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamTransaction, g_object_unref)
+
 G_END_DECLS
 
 #endif /* EAM_TRANSACTION_H */
