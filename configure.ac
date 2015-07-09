@@ -1,5 +1,5 @@
 AC_INIT([EndlessOS Application Manager],
-        [0.1],
+        [0.2],
         [https://github.com/endlessm/eos-shell/issues],
         [eos-app-manager],
         [https://endlessm.com])
