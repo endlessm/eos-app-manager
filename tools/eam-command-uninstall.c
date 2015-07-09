@@ -33,7 +33,7 @@ static const GOptionEntry install_entries[] = {
 int
 eam_command_uninstall (int argc, char *argv[])
 {
-  GOptionContext *context = g_option_context_new (NULL);
+  g_autoptr(GOptionContext) context = g_option_context_new (NULL);
   g_option_context_set_help_enabled (context, FALSE);
   g_option_context_add_main_entries (context, install_entries, GETTEXT_PACKAGE);
 
@@ -41,8 +41,6 @@ eam_command_uninstall (int argc, char *argv[])
     g_printerr ("Usage: %s uninstall [-f] APPID\n", eam_argv0);
     return EXIT_FAILURE;
   }
-
-  g_option_context_free (context);
 
   if (opt_appid == NULL || g_strv_length (opt_appid) != 1) {
     g_printerr ("Usage: %s uninstall [-f] APPID\n", eam_argv0);
@@ -58,7 +56,7 @@ eam_command_uninstall (int argc, char *argv[])
    * daemon entirely, because we have enough privileges.
    */
   if (eam_utils_check_unix_permissions (geteuid ())) {
-    EamUninstall *uninstall = (EamUninstall *) eam_uninstall_new (appid);
+    g_autoptr(EamUninstall) uninstall = (EamUninstall *) eam_uninstall_new (appid);
 
     eam_uninstall_set_prefix (uninstall, opt_prefix);
     eam_uninstall_set_force (uninstall, opt_force);
@@ -70,7 +68,6 @@ eam_command_uninstall (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    g_object_unref (uninstall);
     return EXIT_SUCCESS;
   }
 

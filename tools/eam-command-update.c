@@ -35,7 +35,7 @@ static const GOptionEntry install_entries[] = {
 int
 eam_command_update (int argc, char *argv[])
 {
-  GOptionContext *context = g_option_context_new (NULL);
+  g_autoptr(GOptionContext) context = g_option_context_new (NULL);
   g_option_context_set_help_enabled (context, FALSE);
   g_option_context_add_main_entries (context, install_entries, GETTEXT_PACKAGE);
 
@@ -43,8 +43,6 @@ eam_command_update (int argc, char *argv[])
     g_printerr ("Usage: %s update [-s SIGNATURE] [-c CHECKSUM] [-d] APPID BUNDLE\n", eam_argv0);
     return EXIT_FAILURE;
   }
-
-  g_option_context_free (context);
 
   if (opt_appid == NULL || g_strv_length (opt_appid) > 2) {
     g_printerr ("Usage: %s update [-s SIGNATURE] [-c CHECKSUM] [-d] APPID BUNDLE\n", eam_argv0);
@@ -98,7 +96,7 @@ eam_command_update (int argc, char *argv[])
    * daemon entirely, because we have enough privileges.
    */
   if (eam_utils_check_unix_permissions (geteuid ())) {
-    EamUpdate *update = (EamUpdate *) eam_update_new (appid, opt_delta_update);
+    g_autoptr(EamUpdate) update = (EamUpdate *) eam_update_new (appid, opt_delta_update);
 
     eam_update_set_bundle_file (update, bundle_file);
     eam_update_set_signature_file (update, opt_asc_file);
@@ -111,7 +109,6 @@ eam_command_update (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    g_object_unref (update);
     return EXIT_SUCCESS;
   }
 

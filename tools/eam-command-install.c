@@ -35,7 +35,7 @@ static const GOptionEntry install_entries[] = {
 int
 eam_command_install (int argc, char *argv[])
 {
-  GOptionContext *context = g_option_context_new (NULL);
+  g_autoptr(GOptionContext) context = g_option_context_new (NULL);
   g_option_context_set_help_enabled (context, FALSE);
   g_option_context_add_main_entries (context, install_entries, GETTEXT_PACKAGE);
 
@@ -43,8 +43,6 @@ eam_command_install (int argc, char *argv[])
     g_printerr ("Usage: %s install [-s SIGNATURE] [-c CHECKSUM] APPID BUNDLE\n", eam_argv0);
     return EXIT_FAILURE;
   }
-
-  g_option_context_free (context);
 
   if (opt_appid == NULL || g_strv_length (opt_appid) > 2) {
     g_printerr ("Usage: %s install [-s SIGNATURE] [-c CHECKSUM] APPID BUNDLE\n", eam_argv0);
@@ -96,7 +94,7 @@ eam_command_install (int argc, char *argv[])
    * daemon entirely, because we have enough privileges.
    */
   if (eam_utils_check_unix_permissions (geteuid ())) {
-    EamInstall *install = (EamInstall *) eam_install_new (appid);
+    g_autoptr(EamInstall) install = (EamInstall *) eam_install_new (appid);
 
     /* If opt_prefix is unset, eam_config_appdir() is going to be the default */
     eam_install_set_prefix (install, opt_prefix);
@@ -112,7 +110,6 @@ eam_command_install (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    g_object_unref (install);
     return EXIT_SUCCESS;
   }
 
