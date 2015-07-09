@@ -59,6 +59,15 @@ const getServer = function(args) {
     return server;
 }
 
+const restartDaemon = function() {
+    let command = 'pkill eamd';
+    try {
+        GLib.spawn_command_line_sync(command);
+    } catch (e) {
+        logError(e, 'Error executing \'' + localizedExec + '\'');
+    }
+}
+
 let server = getServer(ARGV);
 
 if (server) {
@@ -77,4 +86,6 @@ if (server) {
     let configFileData = configKeyFile.to_data()[0];
     configFile.replace_contents(configFileData, null, true,
                                 Gio.FileCreateFlags.NONE, null);
+
+    restartDaemon();
 }
