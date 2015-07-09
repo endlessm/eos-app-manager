@@ -653,9 +653,11 @@ handle_transaction_method_call (GDBusConnection *connection,
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
     const char *bundle_path, *signature_path, *checksum_path;
+    GVariant *properties;
     GVariantDict dict;
 
-    g_variant_dict_init (&dict, params);
+    g_variant_get (params, "(@a{sv})", &properties);
+    g_variant_dict_init (&dict, properties);
 
     g_variant_dict_lookup (&dict, "BundlePath", "&s", &bundle_path);
     g_variant_dict_lookup (&dict, "SignaturePath", "&s", &signature_path);
