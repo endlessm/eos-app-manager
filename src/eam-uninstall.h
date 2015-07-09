@@ -39,7 +39,14 @@ struct _EamUninstallClass
 
 GType eam_uninstall_get_type (void) G_GNUC_CONST;
 
-EamTransaction *eam_uninstall_new       (const gchar *appid);
+EamTransaction *eam_uninstall_new               (const gchar *appid);
+
+void            eam_uninstall_set_force         (EamUninstall *uninstall,
+                                                 gboolean      force);
+void            eam_uninstall_set_prefix        (EamUninstall *uninstall,
+                                                 const char   *prefix);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUninstall, g_object_unref)
 
 G_END_DECLS
 

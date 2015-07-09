@@ -39,14 +39,20 @@ struct _EamUpdateClass
 
 GType eam_update_get_type (void) G_GNUC_CONST;
 
-EamTransaction *   eam_update_new                 (const gchar *appid,
-                                                   const gboolean allow_deltas);
+EamTransaction *        eam_update_new                  (const gchar    *appid,
+                                                         const gboolean  allow_deltas);
 
-void               eam_update_set_bundle_location (EamUpdate  *update,
-                                                    const char  *path);
+void                    eam_update_set_bundle_file      (EamUpdate      *update,
+                                                         const char     *path);
+void                    eam_update_set_signature_file   (EamUpdate      *update,
+                                                         const char     *path);
+void                    eam_update_set_checksum_file    (EamUpdate      *update,
+                                                         const char     *path);
 
-const char *       eam_update_get_app_id          (EamUpdate  *update);
-const gboolean     eam_update_is_delta_update     (EamUpdate  *update);
+const char *            eam_update_get_app_id           (EamUpdate  *update);
+const gboolean          eam_update_is_delta_update      (EamUpdate  *update);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUpdate, g_object_unref)
 
 G_END_DECLS
 

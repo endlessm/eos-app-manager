@@ -7,7 +7,6 @@
 #include "eam-log.h"
 #include "eam-error.h"
 #include "eam-install.h"
-#include "eam-spawner.h"
 #include "eam-config.h"
 #include "eam-utils.h"
 #include "eam-fs-sanity.h"
@@ -20,12 +19,18 @@ typedef struct _EamInstallPrivate        EamInstallPrivate;
 
 struct _EamInstallPrivate
 {
-  gchar *appid;
-  gchar *from_version;
-  char *bundle_location;
+  char *appid;
+
+  char *prefix;
+  char *bundle_file;
+  char *signature_file;
+  char *checksum_file;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
+static gboolean eam_install_run_sync (EamTransaction *trans,
+                                      GCancellable *cancellable,
+                                      GError **error);
 static void eam_install_run_async  (EamTransaction *trans,
                                     GCancellable *cancellable,
                                     GAsyncReadyCallback callback,
@@ -46,6 +51,7 @@ enum
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
+  iface->run_sync = eam_install_run_sync;
   iface->run_async = eam_install_run_async;
   iface->finish = eam_install_finish;
 }
@@ -56,8 +62,11 @@ eam_install_finalize (GObject *obj)
   EamInstall *self = EAM_INSTALL (obj);
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->bundle_location, g_free);
+  g_free (priv->appid);
+  g_free (priv->bundle_file);
+  g_free (priv->signature_file);
+  g_free (priv->checksum_file);
+  g_free (priv->prefix);
 
   G_OBJECT_CLASS (eam_install_parent_class)->finalize (obj);
 }
@@ -134,38 +143,83 @@ eam_install_new (const gchar *appid)
   return g_object_new (EAM_TYPE_INSTALL, "appid", appid, NULL);
 }
 
-static char *
-build_bundle_filename (const char *basedir,
-                       const char *basename,
-                       const char *extension)
+static gboolean
+eam_install_run_sync (EamTransaction *trans,
+                      GCancellable *cancellable,
+                      GError **error)
 {
-  g_autofree char *filename = g_strconcat (basename, ".", extension, NULL);
 
-  return g_build_filename (basedir, filename, NULL);
-}
+  if (!eam_fs_sanity_check ()) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Unable to access applications directory");
+    return FALSE;
+  }
 
-static char *
-build_tarball_filename (EamInstall *self)
-{
+  EamInstall *self = (EamInstall *) trans;
   EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_EXT);
-}
+  if (eam_utils_app_is_installed (priv->prefix, priv->appid)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Application already installed");
+    return FALSE;
+  }
 
-static char *
-build_checksum_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  if (!eam_utils_verify_checksum (priv->bundle_file, priv->checksum_file)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "The checksum for the application bundle is invalid");
+    return FALSE;
+  }
 
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_DIGEST_EXT);
-}
+  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "The signature for the application bundle is invalid");
+    return FALSE;
+  }
 
-static char *
-build_signature_filename (EamInstall *self)
-{
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+  /* Further operations require rollback */
 
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_SIGNATURE_EXT);
+  if (!eam_utils_bundle_extract (priv->bundle_file, eam_config_dldir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not extract the bundle");
+    return FALSE;
+  }
+
+  /* run 3rd party scripts */
+  if (!eam_utils_run_external_scripts (eam_config_dldir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not process the external script");
+    return FALSE;
+  }
+
+  /* Deploy the appdir from the extraction directory to the app directory */
+  if (!eam_fs_deploy_app (eam_config_dldir (), priv->prefix, priv->appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not deploy the bundle in the application directory");
+    return FALSE;
+  }
+
+  /* Build the symlink farm for files to appear in the OS locations */
+  if (!eam_fs_create_symlinks (priv->prefix, priv->appid)) {
+    eam_fs_prune_symlinks (priv->prefix, priv->appid);
+    eam_fs_prune_dir (priv->prefix, priv->appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not create all the symbolic links");
+    return FALSE;
+  }
+
+  /* These two errors are non-fatal */
+  if (!eam_utils_compile_python (priv->prefix, priv->appid)) {
+    eam_log_error_message ("Python libraries compilation failed");
+  }
+
+  if (!eam_utils_update_desktop (priv->prefix)) {
+    eam_log_error_message ("Could not update the desktop's metadata");
+  }
+
+  return TRUE;
 }
 
 static void
@@ -174,77 +228,11 @@ install_thread_cb (GTask *task,
                    gpointer task_data,
                    GCancellable *cancellable)
 {
-  if (!eam_fs_sanity_check ()) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to access applications directory");
+  GError *error = NULL;
+  eam_install_run_sync (source_obj, cancellable, &error);
+  if (error != NULL) {
+    g_task_return_error (task, error);
     return;
-  }
-
-  EamInstall *self = source_obj;
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
-  if (eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Application already installed");
-    return;
-  }
-
-  g_autofree char *bundle_file = build_tarball_filename (self);
-  g_autofree char *checksum_file = build_checksum_filename (self);
-  if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "The checksum for the application bundle is invalid");
-    return;
-  }
-
-  g_autofree char *signature_file = build_signature_filename (self);
-  if (!eam_utils_verify_signature (bundle_file, signature_file)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "The signature for the application bundle is invalid");
-    return;
-  }
-
-  /* Further operations require rollback */
-
-  if (!eam_utils_bundle_extract (bundle_file, eam_config_dldir (), priv->appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not extract the bundle");
-    return;
-  }
-
-  /* run 3rd party scripts */
-  if (!eam_utils_run_external_scripts (eam_config_dldir (), priv->appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not process the external script");
-    return;
-  }
-
-  /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), priv->appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not deploy the bundle in the application directory");
-    return;
-  }
-
-  /* Build the symlink farm for files to appear in the OS locations */
-  if (!eam_fs_create_symlinks (eam_config_appdir (), priv->appid)) {
-    eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
-    eam_fs_prune_dir (eam_config_appdir (), priv->appid);
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not create all the symbolic links");
-    return;
-  }
-
-  /* These two errors are non-fatal */
-  if (!eam_utils_compile_python (eam_config_appdir (), priv->appid)) {
-    eam_log_error_message ("Python libraries compilation failed");
-  }
-
-  if (!eam_utils_update_desktop (eam_config_appdir ())) {
-    eam_log_error_message ("Could not update the desktop's metadata");
   }
 
   g_task_return_boolean (task, TRUE);
@@ -265,11 +253,37 @@ eam_install_run_async (EamTransaction *trans,
 
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  if (priv->bundle_location == NULL) {
+  if (priv->bundle_file == NULL) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "No bundle location set");
     g_object_unref (task);
     return;
+  }
+
+  if (!g_file_test (priv->bundle_file, G_FILE_TEST_EXISTS)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "No bundle file found");
+    g_object_unref (task);
+    return;
+  }
+
+  /* If we don't have a checksum file specified, then we are going to
+   * look for one in the same directory as the bundle file, using the
+   * appid as the base name
+   */
+  if (priv->checksum_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_DIGEST_EXT, NULL);
+
+    priv->checksum_file = g_build_filename (dirname, filename, NULL);
+  }
+
+  /* We do the same as above for the signature file */
+  if (priv->signature_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
+
+    priv->signature_file = g_build_filename (dirname, filename, NULL);
   }
 
   g_task_run_in_thread (task, install_thread_cb);
@@ -286,13 +300,47 @@ eam_install_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 }
 
 void
-eam_install_set_bundle_location (EamInstall *install,
-                                 const char *path)
+eam_install_set_bundle_file (EamInstall *install,
+                             const char *path)
 {
   EamInstallPrivate *priv = eam_install_get_instance_private (install);
 
-  g_free (priv->bundle_location);
-  priv->bundle_location = g_strdup (path);
+  g_free (priv->bundle_file);
+  priv->bundle_file = g_strdup (path);
+}
+
+void
+eam_install_set_signature_file (EamInstall *install,
+                                const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->signature_file);
+  priv->signature_file = g_strdup (path);
+}
+
+void
+eam_install_set_checksum_file (EamInstall *install,
+                               const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->checksum_file);
+  priv->checksum_file = g_strdup (path);
+}
+
+void
+eam_install_set_prefix (EamInstall *install,
+                        const char *path)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+
+  g_free (priv->prefix);
+
+  if (path == NULL || *path == '\0')
+    priv->prefix = g_strdup (eam_config_appdir ());
+  else
+    priv->prefix = g_strdup (path);
 }
 
 const char *

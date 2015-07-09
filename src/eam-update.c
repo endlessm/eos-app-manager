@@ -7,15 +7,9 @@
 #include "eam-log.h"
 #include "eam-error.h"
 #include "eam-update.h"
-#include "eam-spawner.h"
 #include "eam-config.h"
 #include "eam-utils.h"
 #include "eam-fs-sanity.h"
-
-#define UPDATE_SCRIPTDIR "update/full"
-#define UPDATE_ROLLBACKDIR "update/rollback"
-#define XDELTA_UPDATE_SCRIPTDIR "update/xdelta"
-#define XDELTA_UPDATE_ROLLBACKDIR "update/rollback"
 
 #define XDELTA_BUNDLE_EXT               "xdelta"
 #define INSTALL_BUNDLE_EXT              "bundle"
@@ -33,15 +27,25 @@ struct _EamUpdatePrivate
 {
   gchar *appid;
   gboolean allow_deltas;
-  char *bundle_location;
+
+  char *bundle_file;
+  char *signature_file;
+  char *checksum_file;
+
   EamAction action;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
-static void eam_update_run_async (EamTransaction *trans, GCancellable *cancellable,
-  GAsyncReadyCallback callback, gpointer data);
-static gboolean eam_update_finish (EamTransaction *trans, GAsyncResult *res,
-  GError **error);
+static gboolean eam_update_run_sync (EamTransaction *trans,
+                                     GCancellable *cancellable,
+                                     GError **error);
+static void eam_update_run_async (EamTransaction *trans,
+                                  GCancellable *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer data);
+static gboolean eam_update_finish (EamTransaction *trans,
+                                   GAsyncResult *res,
+                                   GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (EamUpdate, eam_update, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
@@ -56,6 +60,7 @@ enum
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
+  iface->run_sync = eam_update_run_sync;
   iface->run_async = eam_update_run_async;
   iface->finish = eam_update_finish;
 }
@@ -66,8 +71,10 @@ eam_update_finalize (GObject *obj)
   EamUpdate *self = EAM_UPDATE (obj);
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
-  g_clear_pointer (&priv->appid, g_free);
-  g_clear_pointer (&priv->bundle_location, g_free);
+  g_free (priv->appid);
+  g_free (priv->bundle_file);
+  g_free (priv->signature_file);
+  g_free (priv->checksum_file);
 
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
@@ -175,43 +182,6 @@ eam_update_new (const gchar *appid,
                        NULL);
 }
 
-static char *
-build_bundle_filename (const char *basedir,
-                       const char *basename,
-                       const char *extension)
-{
-  g_autofree char *filename = g_strconcat (basename, ".", extension, NULL);
-
-  return g_build_filename (basedir, filename, NULL);
-}
-
-static char *
-build_tarball_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  if (priv->action == EAM_ACTION_XDELTA_UPDATE)
-    return build_bundle_filename (priv->bundle_location, priv->appid, XDELTA_BUNDLE_EXT);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_EXT);
-}
-
-static char *
-build_checksum_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_DIGEST_EXT);
-}
-
-static char *
-build_signature_filename (EamUpdate *self)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (self);
-
-  return build_bundle_filename (priv->bundle_location, priv->appid, INSTALL_BUNDLE_SIGNATURE_EXT);
-}
-
 static gboolean
 do_xdelta_update (const char *appid,
                   const char *delta_file,
@@ -259,60 +229,56 @@ do_full_update (const char *appid,
   return TRUE;
 }
 
-static void
-update_thread_cb (GTask *task,
-                  gpointer source_obj,
-                  gpointer task_data,
-                  GCancellable *cancellable)
+static gboolean
+eam_update_run_sync (EamTransaction *trans,
+                     GCancellable *cancellable,
+                     GError **error)
 {
   if (!eam_fs_sanity_check ()) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to access applications directory");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Unable to access applications directory");
+    return FALSE;
   }
 
-  EamUpdate *self = source_obj;
+  EamUpdate *self = (EamUpdate *) trans;
   EamUpdatePrivate *priv = eam_update_get_instance_private (self);
 
   if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Application is not installed");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Application is not installed");
+    return FALSE;
   }
 
-  g_autofree char *bundle_file = build_tarball_filename (self);
-  g_autofree char *checksum_file = build_checksum_filename (self);
-  if (!eam_utils_verify_checksum (bundle_file, checksum_file)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "The checksum for the application bundle is invalid");
-    return;
+  if (!eam_utils_verify_checksum (priv->bundle_file, priv->checksum_file)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "The checksum for the application bundle is invalid");
+    return FALSE;
   }
 
-  g_autofree char *signature_file = build_signature_filename (self);
-  if (!eam_utils_verify_signature (bundle_file, signature_file)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "The signature for the application bundle is invalid");
-    return;
+  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "The signature for the application bundle is invalid");
+    return FALSE;
   }
 
   /* Keep a copy of the old app around, in case the update fails */
   g_autofree char *backupdir = NULL;
   if (!eam_fs_backup_app (eam_config_appdir (), priv->appid, &backupdir)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not keep a copy of the app");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not keep a copy of the app");
+    return FALSE;
   }
 
-  GError *error = NULL;
+  GError *internal_error = NULL;
   gboolean res;
 
   switch (priv->action) {
     case EAM_ACTION_FULL_UPDATE:
-      res = do_full_update (priv->appid, bundle_file, &error);
+      res = do_full_update (priv->appid, priv->bundle_file, &internal_error);
       break;
 
     case EAM_ACTION_XDELTA_UPDATE:
-      res = do_xdelta_update (priv->appid, bundle_file, &error);
+      res = do_xdelta_update (priv->appid, priv->bundle_file, &internal_error);
       break;
 
     default:
@@ -324,8 +290,8 @@ update_thread_cb (GTask *task,
     if (backupdir)
       eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
 
-    g_task_return_error (task, error);
-    return;
+    g_propagate_error (error, internal_error);
+    return FALSE;
   }
 
   /* If the symbolic link creation fails, we restore from backup */
@@ -334,9 +300,9 @@ update_thread_cb (GTask *task,
     if (backupdir)
       eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
 
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Could not create symbolic links");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not create symbolic links");
+    return FALSE;
   }
 
   /* These two errors are non-fatal */
@@ -351,6 +317,21 @@ update_thread_cb (GTask *task,
   /* The update was successful; we can delete the back up directory */
   if (backupdir)
     eam_fs_rmdir_recursive (backupdir);
+
+  return TRUE;
+}
+
+static void
+update_thread_cb (GTask *task,
+                  gpointer source_obj,
+                  gpointer task_data,
+                  GCancellable *cancellable)
+{
+  GError *error = NULL;
+  if (!eam_update_run_sync (source_obj, cancellable, &error)) {
+    g_task_return_error (task, error);
+    return;
+  }
 
   g_task_return_boolean (task, TRUE);
 }
@@ -370,11 +351,36 @@ eam_update_run_async (EamTransaction *trans,
 
   GTask *task = g_task_new (self, cancellable, callback, data);
 
-  if (priv->bundle_location == NULL) {
+  if (priv->bundle_file == NULL) {
     g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
                              "No bundle location set");
     g_object_unref (task);
     return;
+  }
+
+  if (!g_file_test (priv->bundle_file, G_FILE_TEST_EXISTS)) {
+    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "No bundle file found");
+    g_object_unref (task);
+    return;
+  }
+
+  /* If we don't have an explicit checksum file, we're going to look for one
+   * in the same directory as the bundle, using the appid as the basename
+   */
+  if (priv->checksum_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_DIGEST_EXT, NULL);
+
+    priv->checksum_file = g_build_filename (dirname, filename, NULL);
+  }
+
+  /* Same as above, for the signature file */
+  if (priv->signature_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
+
+    priv->signature_file = g_build_filename (dirname, filename, NULL);
   }
 
   g_task_run_in_thread (task, update_thread_cb);
@@ -391,13 +397,33 @@ eam_update_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 }
 
 void
-eam_update_set_bundle_location (EamUpdate *update,
-                                 const char *path)
+eam_update_set_bundle_file (EamUpdate *update,
+                            const char *path)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (update);
 
-  g_free (priv->bundle_location);
-  priv->bundle_location = g_strdup (path);
+  g_free (priv->bundle_file);
+  priv->bundle_file = g_strdup (path);
+}
+
+void
+eam_update_set_signature_file (EamUpdate *update,
+                               const char *path)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+
+  g_free (priv->signature_file);
+  priv->signature_file = g_strdup (path);
+}
+
+void
+eam_update_set_checksum_file (EamUpdate *update,
+                              const char *path)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+
+  g_free (priv->checksum_file);
+  priv->checksum_file = g_strdup (path);
 }
 
 const char *

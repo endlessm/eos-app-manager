@@ -14,7 +14,11 @@ typedef struct _EamUninstallPrivate	EamUninstallPrivate;
 
 struct _EamUninstallPrivate
 {
-  gchar *appid;
+  char *appid;
+
+  char *prefix;
+
+  guint is_force : 1;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -23,31 +27,36 @@ G_DEFINE_TYPE_WITH_CODE (EamUninstall, eam_uninstall, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE (EAM_TYPE_TRANSACTION, transaction_iface_init)
   G_ADD_PRIVATE (EamUninstall))
 
-enum
-{
+enum {
   PROP_APPID = 1
 };
 
-
-static void
-uninstall_thread_cb (GTask *task,
-                     gpointer source_obj,
-                     gpointer task_data,
-                     GCancellable *cancellable)
+static gboolean
+eam_uninstall_run_sync (EamTransaction *trans,
+                        GCancellable *cancellable,
+                        GError **error)
 {
   if (!eam_fs_sanity_check ()) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to access applications directory");
-    return;
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Unable to access applications directory");
+    return FALSE;
   }
 
-  EamUninstall *self = source_obj;
+  EamUninstall *self = (EamUninstall *) trans;
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
 
-  if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Application is not installed");
-    return;
+  if (priv->prefix == NULL)
+    priv->prefix = g_strdup (eam_config_appdir ());
+
+  if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
+    if (!priv->is_force) {
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Application is not installed");
+      return FALSE;
+    }
+    else {
+      eam_log_error_message ("Application is not installed, but force is enabled");
+    } 
   }
 
   /* Remove the symbolic links first, so even if any later operation
@@ -58,19 +67,38 @@ uninstall_thread_cb (GTask *task,
    * or at shutdown, to remove uninstalled bundles that are still on
    * disk, and reclaim space.
    */
-  eam_fs_prune_symlinks (eam_config_appdir (), priv->appid);
+  eam_fs_prune_symlinks (priv->prefix, priv->appid);
 
-  if (!eam_fs_prune_dir (eam_config_appdir (), priv->appid)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_FAILED,
-                             "Unable to remove the bundle files");
-    return;
+  if (!eam_fs_prune_dir (priv->prefix, priv->appid)) {
+    if (!priv->is_force) {
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Unable to remove the bundle files");
+      return FALSE;
+    }
+    else {
+      eam_log_error_message ("Unable to remove all the bundle files, but force is enabled");
+    }
   }
 
   /* This is not fatal */
-  if (!eam_utils_update_desktop (eam_config_appdir ()))
+  if (!eam_utils_update_desktop (priv->prefix))
     eam_log_error_message ("Could not update the desktop's metadata");
 
-  g_task_return_boolean (task, TRUE);
+  return TRUE;
+}
+
+static void
+uninstall_thread_cb (GTask *task,
+                     gpointer source_obj,
+                     gpointer task_data,
+                     GCancellable *cancellable)
+{
+  GError *error = NULL;
+
+  if (!eam_uninstall_run_sync (source_obj, cancellable, &error))
+    g_task_return_error (task, error);
+  else
+    g_task_return_boolean (task, TRUE);
 }
 
 /**
@@ -84,8 +112,10 @@ uninstall_thread_cb (GTask *task,
  *
  */
 static void
-eam_uninstall_run_async (EamTransaction *trans, GCancellable *cancellable,
-                         GAsyncReadyCallback callback, gpointer data)
+eam_uninstall_run_async (EamTransaction *trans,
+                         GCancellable *cancellable,
+                         GAsyncReadyCallback callback,
+                         gpointer data)
 {
   g_return_if_fail (EAM_IS_UNINSTALL (trans));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
@@ -122,6 +152,7 @@ eam_uninstall_finish (EamTransaction *trans, GAsyncResult *res, GError **error)
 static void
 transaction_iface_init (EamTransactionInterface *iface)
 {
+  iface->run_sync = eam_uninstall_run_sync;
   iface->run_async = eam_uninstall_run_async;
   iface->finish = eam_uninstall_finish;
 }
@@ -131,7 +162,8 @@ eam_uninstall_finalize (GObject *obj)
 {
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (EAM_UNINSTALL (obj));
 
-  g_clear_pointer (&priv->appid, g_free);
+  g_free (priv->appid);
+  g_free (priv->prefix);
 
   G_OBJECT_CLASS (eam_uninstall_parent_class)->finalize (obj);
 }
@@ -204,4 +236,30 @@ eam_uninstall_new (const gchar *appid)
   return g_object_new (EAM_TYPE_UNINSTALL,
 		       "appid", appid,
 		       NULL);
+}
+
+void
+eam_uninstall_set_force (EamUninstall *uninstall,
+                         gboolean      force)
+{
+  EamUninstallPrivate *priv = eam_uninstall_get_instance_private (uninstall);
+
+  g_return_if_fail (EAM_IS_UNINSTALL (uninstall));
+
+  priv->is_force = !!force;
+}
+
+void
+eam_uninstall_set_prefix (EamUninstall *uninstall,
+                          const char   *prefix)
+{
+  EamUninstallPrivate *priv = eam_uninstall_get_instance_private (uninstall);
+
+  g_return_if_fail (EAM_IS_UNINSTALL (uninstall));
+
+  if (g_strcmp0 (priv->prefix, prefix) == 0)
+    return;
+
+  g_free (priv->prefix);
+  priv->prefix = g_strdup (priv->prefix);
 }

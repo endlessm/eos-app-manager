@@ -16,6 +16,7 @@
 #include "eam-dbus-utils.h"
 #include "eam-log.h"
 #include "eam-resources.h"
+#include "eam-utils.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -397,61 +398,6 @@ eam_service_uninstall (EamService *service, GDBusMethodInvocation *invocation,
 }
 
 static gboolean
-user_is_in_admin_group (uid_t user, const char *admin_group)
-{
-  if (user == G_MAXUINT)
-    return FALSE;
-
-  struct passwd *pw = getpwuid (user);
-  if (pw == NULL)
-    return FALSE;
-
-  int n_groups = 10;
-  gid_t *groups = g_new0 (gid_t, n_groups);
-
-  while (1)
-    {
-      int max_n_groups = n_groups;
-      int ret = getgrouplist (pw->pw_name, pw->pw_gid, groups, &max_n_groups);
-
-      if (ret >= 0)
-        {
-          n_groups = max_n_groups;
-          break;
-        }
-
-      /* some systems fail to update n_groups so we just grow it by approximation */
-      if (n_groups == max_n_groups)
-        n_groups = 2 * max_n_groups;
-      else
-        n_groups = max_n_groups;
-
-      groups = g_renew (gid_t, groups, n_groups);
-    }
-
-  gboolean retval = FALSE;
-  int i = 0;
-
-  for (i = 0; i < n_groups; i++)
-    {
-      struct group *gr = getgrgid (groups[i]);
-
-      if (gr != NULL && strcmp (gr->gr_name, admin_group) == 0)
-        {
-          retval = TRUE;
-          break;
-        }
-    }
-
-  g_free (groups);
-
-  if (!retval)
-    eam_log_error_message("Matching admin group not found in invocation");
-
-  return retval;
-}
-
-static gboolean
 eam_service_check_auth_by_method (EamService *service, PolkitSubject *subject,
   EamServiceMethod method)
 {
@@ -495,16 +441,17 @@ eam_service_get_user_caps (EamService *service, GDBusMethodInvocation *invocatio
   gboolean can_uninstall = FALSE;
 
   /* XXX: we want to have a separate configuration to decide the capabilities
-   * for each user, but for the time being we can use the 'wheel' group to
-   * decide if a user has the capabilities to install/update/remove apps.
+   * for each user, but for the time being we can use the EAM_ADMIN_GROUP_NAME
+   * group to decide if a user has the capabilities to install/update/remove
+   * apps.
    */
-  if (user_is_in_admin_group (user, EAM_ADMIN_GROUP_NAME)) {
+  if (eam_utils_check_unix_permissions (user)) {
     can_install = TRUE;
     can_uninstall = TRUE;
     goto out;
   }
 
-  /* if the user is not in the ADMIN_GROUP_NAME then we go through
+  /* if the user is not in the EAM_ADMIN_GROUP_NAME then we go through
    * a polkit check
    */
   PolkitSubject *subject = polkit_system_bus_name_new (sender);
@@ -705,9 +652,14 @@ handle_transaction_method_call (GDBusConnection *connection,
   eam_log_info_message ("Received method '%s' on transaction interface", method);
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
-    char *bundle_path;
+    const char *bundle_path, *signature_path, *checksum_path;
+    GVariantDict dict;
 
-    g_variant_get (params, "(s)", &bundle_path);
+    g_variant_dict_init (&dict, params);
+
+    g_variant_dict_lookup (&dict, "BundlePath", "&s", &bundle_path);
+    g_variant_dict_lookup (&dict, "SignaturePath", "&s", &signature_path);
+    g_variant_dict_lookup (&dict, "ChecksumPath", "&s", &checksum_path);
 
     if (bundle_path != NULL && *bundle_path != '\0') {
       eam_log_info_message ("Setting bundle path to '%s' for transaction '%s'",
@@ -716,16 +668,24 @@ handle_transaction_method_call (GDBusConnection *connection,
 
       if (EAM_IS_INSTALL (remote->transaction)) {
         EamInstall *install = EAM_INSTALL (remote->transaction);
-        eam_install_set_bundle_location (install, bundle_path);
-      } else if (EAM_IS_UPDATE (remote->transaction)) {
+
+        eam_install_set_bundle_file (install, bundle_path);
+        eam_install_set_signature_file (install, signature_path);
+        eam_install_set_checksum_file (install, checksum_path);
+      }
+      else if (EAM_IS_UPDATE (remote->transaction)) {
         EamUpdate *update = EAM_UPDATE (remote->transaction);
-        eam_update_set_bundle_location (update, bundle_path);
-      } else {
+
+        eam_update_set_bundle_file (update, bundle_path);
+        eam_update_set_signature_file (update, signature_path);
+        eam_update_set_checksum_file (update, checksum_path);
+      }
+      else {
         eam_log_error_message ("Completion of transaction is not update nor install type.");
       }
-
-      g_free (bundle_path);
     }
+
+    g_variant_dict_clear (&dict);
 
     /* we don't keep a reference here to avoid cycles */
     remote->invocation = invocation;

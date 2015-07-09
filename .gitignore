@@ -85,7 +85,7 @@ po/remove-potcdate.sed
 po/remove-potcdate.sin
 po/stamp-it
 po/stamp-po
-src/eam
+src/eamd
 src/eam-resources.[ch]
 stamp-h1
 tests/cfg
@@ -95,5 +95,7 @@ tests/scripts
 tests/spawner
 tests/updates
 tests/version
+tools/eos-app-manager-service.[ch]
+tools/eos-app-manager-transaction.[ch]
+tools/eamctl
 tools/eos-select-app-server
-tools/wclient

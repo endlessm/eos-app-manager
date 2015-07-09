@@ -8,6 +8,8 @@
 #include <archive_entry.h>
 #include <errno.h>
 #include <ftw.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include <libsoup/soup.h>
 #include <gio/gio.h>
@@ -18,53 +20,11 @@
 #include "eam-error.h"
 #include "eam-fs-sanity.h"
 #include "eam-log.h"
-#include "eam-spawner.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"
 #define BUNDLE_HASH_EXT ".sha256"
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose)
-
-char *
-eam_utils_build_tarball_filename (const char *bundle_location,
-                                  const char *appid,
-                                  const char *extension)
-{
-  if (bundle_location != NULL)
-    return g_strdup (bundle_location);
-
-  g_autofree char *fname = g_strconcat (appid, extension, NULL);
-
-  return g_build_filename (eam_config_dldir (), fname, NULL);
-}
-
-void
-eam_utils_run_bundle_scripts (const gchar *appid,
-                              const gchar *filename,
-                              const gchar *scriptdir,
-                              GCancellable *cancellable,
-                              GAsyncReadyCallback callback,
-                              GTask *task)
-{
-  /* scripts directory path */
-  g_autofree char *dir = g_build_filename (eam_config_scriptdir (), scriptdir, NULL);
-
-  /* scripts parameters */
-  g_auto(GStrv) params = g_new (gchar *, 3);
-  params[0] = g_strdup (appid);
-  params[1] = g_strdup (filename);
-  params[2] = NULL;
-
-  /* prefix environment */
-  g_autoptr(GHashTable) env = g_hash_table_new (g_str_hash, g_str_equal);
-  g_hash_table_insert (env, (gpointer) "EAM_PREFIX", (gpointer) eam_config_appdir ());
-  g_hash_table_insert (env, (gpointer) "EAM_TMP", (gpointer) eam_config_dldir ());
-  g_hash_table_insert (env, (gpointer) "EAM_GPGKEYRING", (gpointer) eam_config_gpgkeyring ());
-
-  EamSpawner *spawner = eam_spawner_new (dir, env, (const gchar * const *) params);
-  eam_spawner_run_async (spawner, cancellable, callback, task);
-  g_object_unref (spawner);
-}
 
 #define BLOCKSIZE 32768
 
@@ -159,6 +119,22 @@ eam_utils_verify_signature (const char *source_file,
   };
 
   return run_cmd ((const char * const *) argv);
+}
+
+GKeyFile *
+eam_utils_load_app_info (const char *prefix,
+                         const char *appid)
+{
+  g_autofree char *appdir = g_build_filename (prefix, appid, NULL);
+  g_autofree char *info_file = g_build_filename (appdir, ".info", NULL);
+
+  GKeyFile *keyfile = g_key_file_new ();
+  if (!g_key_file_load_from_file (keyfile, info_file, G_KEY_FILE_NONE, NULL)) {
+    g_key_file_unref (keyfile);
+    return NULL;
+  }
+
+  return keyfile;
 }
 
 gboolean
@@ -470,28 +446,25 @@ eam_utils_run_external_scripts (const char *prefix,
   if (g_mkdir_with_parents (dir, 0755) < 0)
     return FALSE;
 
-  g_autofree char *path = NULL;
-  if (!download_external_file (appid, url, dir, filename))
-    goto out;
+  if (!download_external_file (appid, url, dir, filename)) {
+    eam_fs_rmdir_recursive (dir);
+    return FALSE;
+  }
 
-  path = g_build_filename (dir, filename, NULL);
+  g_autofree char *path = g_build_filename (dir, filename, NULL);
+  if (!verify_checksum_hash (path, digest, -1, G_CHECKSUM_SHA256)) {
+    eam_fs_rmdir_recursive (dir);
+    return FALSE;
+  }
 
-  gboolean ok = verify_checksum_hash (path, digest, -1, G_CHECKSUM_SHA256);
-  gboolean ret = FALSE;
+  if (!run_external_script (prefix, appid)) {
+    eam_fs_rmdir_recursive (dir);
+    return FALSE;
+  }
 
-  if (!ok)
-    goto out;
+  eam_fs_rmdir_recursive (dir);
 
-  if (!run_external_script (prefix, appid))
-    goto out;
-
-  ret = TRUE;
-
-out:
-  if (!eam_fs_rmdir_recursive (dir))
-    eam_log_info_message ("Couldn't remove the directory: %s", dir);
-
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -690,4 +663,63 @@ eam_utils_find_program_in_path (const char *program,
   }
 
   return NULL;
+}
+
+gboolean
+eam_utils_check_unix_permissions (uid_t user)
+{
+  if (user == G_MAXUINT)
+    return FALSE;
+
+  struct passwd *pw = getpwuid (user);
+  if (pw == NULL)
+    return FALSE;
+
+  /* Are we root? */
+  if (pw->pw_uid == 0 && pw->pw_gid == 0)
+    return TRUE;
+
+  /* Are we the app manager user? */
+  if (g_strcmp0 (pw->pw_name, EAM_USER_NAME) == 0)
+    return TRUE;
+
+  /* Are we in the admin group? */
+  int n_groups = 10;
+  gid_t *groups = g_new0 (gid_t, n_groups);
+
+  while (1)
+    {
+      int max_n_groups = n_groups;
+      int ret = getgrouplist (pw->pw_name, pw->pw_gid, groups, &max_n_groups);
+
+      if (ret >= 0)
+        {
+          n_groups = max_n_groups;
+          break;
+        }
+
+      /* some systems fail to update n_groups so we just grow it by approximation */
+      if (n_groups == max_n_groups)
+        n_groups = 2 * max_n_groups;
+      else
+        n_groups = max_n_groups;
+
+      groups = g_renew (gid_t, groups, n_groups);
+    }
+
+  gboolean retval = FALSE;
+  for (int i = 0; i < n_groups; i++)
+    {
+      struct group *gr = getgrgid (groups[i]);
+
+      if (gr != NULL && g_strcmp0 (gr->gr_name, EAM_ADMIN_GROUP_NAME) == 0)
+        {
+          retval = TRUE;
+          break;
+        }
+    }
+
+  g_free (groups);
+
+  return retval;
 }

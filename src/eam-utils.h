@@ -3,21 +3,11 @@
 #ifndef EAM_UTILS_H
 #define EAM_UTILS_H
 
+#include <sys/types.h>
 #include <glib.h>
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
-
-void     eam_utils_run_bundle_scripts        (const gchar *appid,
-                                              const gchar *filename,
-                                              const gchar *scriptdir,
-                                              GCancellable *cancellable,
-                                              GAsyncReadyCallback callback,
-                                              GTask *task);
-
-char *   eam_utils_build_tarball_filename    (const char *bundle_location,
-                                              const char *appid,
-                                              const char *extension);
 
 gboolean        eam_utils_verify_checksum       (const char *source_file,
                                                  const char *checksum_file);
@@ -45,6 +35,11 @@ gboolean        eam_utils_apply_xdelta          (const char *prefix,
 
 char *          eam_utils_find_program_in_path  (const char *program,
                                                  const char *path);
+
+GKeyFile *      eam_utils_load_app_info         (const char *prefix,
+                                                 const char *appid);
+
+gboolean        eam_utils_check_unix_permissions        (uid_t user);
 
 G_END_DECLS
 

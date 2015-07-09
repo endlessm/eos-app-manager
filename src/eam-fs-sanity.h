@@ -7,8 +7,29 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+  EAM_BUNDLE_DIRECTORY_BIN,
+  EAM_BUNDLE_DIRECTORY_DESKTOP,
+  EAM_BUNDLE_DIRECTORY_ICONS,
+  EAM_BUNDLE_DIRECTORY_DBUS_SERVICES,
+  EAM_BUNDLE_DIRECTORY_GSETTINGS_SCHEMAS,
+  EAM_BUNDLE_DIRECTORY_GNOME_HELP,
+  EAM_BUNDLE_DIRECTORY_KDE_HELP,
+  EAM_BUNDLE_DIRECTORY_EKN_DATA,
+  EAM_BUNDLE_DIRECTORY_SHELL_SEARCH,
+  EAM_BUNDLE_DIRECTORY_KDE4,
+  EAM_BUNDLE_DIRECTORY_XDG_AUTOSTART,
+  EAM_BUNDLE_DIRECTORY_GAMES,
+
+  /*< private >*/
+  EAM_BUNDLE_DIRECTORY_MAX
+} EamBundleDirectory;
+
 gboolean        eam_fs_sanity_check     (void);
-gboolean        eam_fs_sanity_delete    (const gchar *path);
+
+gboolean        eam_fs_init_bundle_dir  (const char *prefix,
+                                         EamBundleDirectory dir,
+                                         GError **error);
 
 gboolean        eam_fs_rmdir_recursive  (const char *path);
 gboolean        eam_fs_cpdir_recursive  (const char *src,
@@ -31,23 +52,7 @@ gboolean        eam_fs_restore_app      (const char *prefix,
                                          const char *appid,
                                          const char *backup_dir);
 
-typedef enum {
-  EAM_BUNDLE_DIRECTORY_BIN,
-  EAM_BUNDLE_DIRECTORY_DESKTOP,
-  EAM_BUNDLE_DIRECTORY_ICONS,
-  EAM_BUNDLE_DIRECTORY_DBUS_SERVICES,
-  EAM_BUNDLE_DIRECTORY_GSETTINGS_SCHEMAS,
-  EAM_BUNDLE_DIRECTORY_GNOME_HELP,
-  EAM_BUNDLE_DIRECTORY_KDE_HELP,
-  EAM_BUNDLE_DIRECTORY_EKN_DATA,
-  EAM_BUNDLE_DIRECTORY_SHELL_SEARCH,
-  EAM_BUNDLE_DIRECTORY_KDE4,
-  EAM_BUNDLE_DIRECTORY_XDG_AUTOSTART,
-  EAM_BUNDLE_DIRECTORY_GAMES,
-
-  /*< private >*/
-  EAM_BUNDLE_DIRECTORY_MAX
-} EamBundleDirectory;
+gboolean        eam_fs_is_app_dir       (const char *path);
 
 const char *    eam_fs_get_bundle_system_dir    (EamBundleDirectory dir);
 

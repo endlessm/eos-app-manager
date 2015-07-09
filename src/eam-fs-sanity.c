@@ -5,6 +5,7 @@
 #include "eam-config.h"
 #include "eam-log.h"
 #include "eam-utils.h"
+#include "eam-error.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -13,7 +14,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <unistd.h>
+#include <pwd.h>
 
 #include <gio/gio.h>
 #include <glib/gstdio.h>
@@ -52,19 +55,54 @@ eam_fs_get_bundle_system_dir (EamBundleDirectory dir)
 }
 
 static char *
-get_bundle_path (EamBundleDirectory dir)
+get_bundle_path (const char *prefix,
+                 EamBundleDirectory dir)
 {
-  return g_build_filename (ROOT_DIR, eam_config_appdir (), eam_fs_get_bundle_system_dir (dir), NULL);
+  return g_build_filename (ROOT_DIR, prefix, eam_fs_get_bundle_system_dir (dir), NULL);
+}
+
+gboolean
+eam_fs_init_bundle_dir (const char *prefix,
+                        EamBundleDirectory dir,
+                        GError **error)
+{
+  g_autofree char *path = get_bundle_path (prefix, dir);
+
+  if (g_mkdir_with_parents (path, 0777) != 0) {
+    g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Unable to create bundle directory '%s' in '%s'",
+                 eam_fs_get_bundle_system_dir (dir),
+                 prefix);
+    return FALSE;
+  }
+
+  struct passwd *pw = getpwnam (EAM_USER_NAME);
+  g_assert (pw != NULL);
+
+  int r;
+  do {
+    r = chown (path, pw->pw_uid, pw->pw_gid);
+  } while (r != 0 && errno == EINTR);
+
+  if (r != 0) {
+    g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Unable to assign ownership of '%s' to the app manager user: %s",
+                 eam_fs_get_bundle_system_dir (dir),
+                 g_strerror (errno));
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static gboolean
 applications_directory_create (void)
 {
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
-    g_autofree char *dir = get_bundle_path (i);
-
-    if (g_mkdir_with_parents (dir, 0755) != 0) {
-      eam_log_error_message ("Unable to create '%s': %s", dir, g_strerror (errno));
+    g_autoptr(GError) error = NULL;
+    eam_fs_init_bundle_dir (eam_config_appdir (), i, &error);
+    if (error != NULL) {
+      eam_log_error_message ("%s", error->message);
       return FALSE;
     }
   }
@@ -112,8 +150,8 @@ applications_directory_symlink_create (void)
   return TRUE;
 }
 
-static gboolean
-is_application_dir (const char *path)
+gboolean
+eam_fs_is_app_dir (const char *path)
 {
   g_assert (path);
 
@@ -311,7 +349,7 @@ eam_fs_sanity_check (void)
     g_object_unref (child_info);
     g_object_unref (dir);
 
-    if (is_application_dir (path))
+    if (eam_fs_is_app_dir (path))
       fix_application_permissions_if_needed (path);
 
     g_free (path);
@@ -335,98 +373,6 @@ eam_fs_sanity_check (void)
   g_object_unref (children);
   g_object_unref (file);
 
-  return retval;
-}
-
-/**
- * eam_fs_sanity_delete:
- * @path: absolute path to the file to be removed
- *
- * Deletes a file. If the file is a directory, deletes the directory and its
- * contents recursively.
- *
- * Returns: TRUE if the file was successfully removed, FALSE otherwise.
- **/
-gboolean
-eam_fs_sanity_delete (const gchar *path)
-{
-  GError *error = NULL;
-  GFileInfo *child_info;
-  gboolean retval = TRUE;
-
-  g_assert (path);
-
-  GFile *file = g_file_new_for_path (path);
-
-  /* Check for symlinks first, to make an early decision if possible */
-  GFileInfo *file_info = g_file_query_info (file, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
-      				      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, &error);
-  if (error) {
-    eam_log_error_message ("Failure querying information for file '%s': %s\n", path, error->message);
-    g_clear_error (&error);
-    goto bail;
-  }
-
-  gboolean file_is_symlink = g_file_info_get_is_symlink (file_info);
-  g_object_unref (file_info);
-  if (file_is_symlink)
-    goto delete;
-
-  /* Now we can iterate over the children with NO_FOLLOW_LINKS safely */
-  GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
-                                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                         NULL, &error);
-
-  if (error) {
-    int code = error->code;
-    g_clear_error (&error);
-
-    if (code == G_IO_ERROR_NOT_FOUND) {
-      eam_log_error_message ("Trying to delete an unexistent file '%s'", path);
-      retval = FALSE;
-      goto bail;
-    }
-    else if (code == G_IO_ERROR_NOT_DIRECTORY) {
-      /* The file is a regular file, not a directory */
-      goto delete;
-    }
-    else {
-      eam_log_error_message ("Failed to get the children of '%s': %s", path, error->message);
-      g_clear_error (&error);
-      retval = FALSE;
-      goto bail;
-    }
-  }
-
-  while ((child_info = g_file_enumerator_next_file (children, NULL, &error))) {
-    GFile *child = g_file_get_child (file, g_file_info_get_name (child_info));
-    gchar *child_path = g_file_get_path (child);
-    g_object_unref (child_info);
-    g_object_unref (child);
-
-    eam_fs_sanity_delete (child_path);
-    g_free (child_path);
-  }
-
-  g_object_unref (children);
-
-  if (error) {
-    eam_log_error_message ("Failure while processing the children of '%s': %s", path, error->message);
-    g_clear_error (&error);
-    retval = FALSE;
-    goto bail;
-  }
-
-delete:
-  g_file_delete (file, NULL, &error);
-  if (error) {
-    eam_log_error_message ("Failed to delete file '%s': %s", path, error->message);
-    g_clear_error (&error);
-    retval = FALSE;
-  }
-
-bail:
-  g_object_unref (file);
   return retval;
 }
 

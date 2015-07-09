@@ -40,26 +40,34 @@ struct _EamTransactionInterface
 {
   GTypeInterface g_iface;
 
-  void           (* run_async)               (EamTransaction *trans,
-                                              GCancellable *cancellable,
-                                              GAsyncReadyCallback callback,
-                                              gpointer data);
+  gboolean       (* run_sync)   (EamTransaction *trans,
+                                 GCancellable *cancellable,
+                                 GError **error);
+  void           (* run_async)  (EamTransaction *trans,
+                                 GCancellable *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer data);
 
-  gboolean       (* finish)                  (EamTransaction *trans,
-                                              GAsyncResult *res,
-                                              GError **error);
+  gboolean       (* finish)     (EamTransaction *trans,
+                                 GAsyncResult *res,
+                                 GError **error);
 };
 
 GType            eam_transaction_get_type (void) G_GNUC_CONST;
 
-void             eam_transaction_run_async                          (EamTransaction *trans,
-                                                                     GCancellable *cancellable,
-                                                                     GAsyncReadyCallback callback,
-                                                                     gpointer data);
+gboolean         eam_transaction_run_sync       (EamTransaction *trans,
+                                                 GCancellable *cancellable,
+                                                 GError **error);
+void             eam_transaction_run_async      (EamTransaction *trans,
+                                                 GCancellable *cancellable,
+                                                 GAsyncReadyCallback callback,
+                                                 gpointer data);
 
-gboolean         eam_transaction_finish                             (EamTransaction *trans,
-                                                                     GAsyncResult *res,
-                                                                     GError **error);
+gboolean         eam_transaction_finish         (EamTransaction *trans,
+                                                 GAsyncResult *res,
+                                                 GError **error);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamTransaction, g_object_unref)
 
 G_END_DECLS
 
