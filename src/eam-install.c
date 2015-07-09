@@ -150,15 +150,46 @@ eam_install_run_sync (EamTransaction *trans,
                       GCancellable *cancellable,
                       GError **error)
 {
+  EamInstall *self = (EamInstall *) trans;
+
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  if (priv->bundle_file == NULL) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "No bundle location set");
+    return FALSE;
+  }
+
+  if (!g_file_test (priv->bundle_file, G_FILE_TEST_EXISTS)) {
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                         "No bundle file found");
+    return FALSE;
+  }
+
+  /* If we don't have a checksum file specified, then we are going to
+   * look for one in the same directory as the bundle file, using the
+   * appid as the base name
+   */
+  if (priv->checksum_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_DIGEST_EXT, NULL);
+
+    priv->checksum_file = g_build_filename (dirname, filename, NULL);
+  }
+
+  /* We do the same as above for the signature file */
+  if (priv->signature_file == NULL) {
+    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
+    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
+
+    priv->signature_file = g_build_filename (dirname, filename, NULL);
+  }
 
   if (!eam_fs_sanity_check ()) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Unable to access applications directory");
     return FALSE;
   }
-
-  EamInstall *self = (EamInstall *) trans;
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
 
   if (eam_utils_app_is_installed (priv->prefix, priv->appid)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
@@ -251,43 +282,7 @@ eam_install_run_async (EamTransaction *trans,
   g_return_if_fail (callback);
 
   EamInstall *self = EAM_INSTALL (trans);
-  EamInstallPrivate *priv = eam_install_get_instance_private (self);
-
   GTask *task = g_task_new (self, cancellable, callback, data);
-
-  if (priv->bundle_file == NULL) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "No bundle location set");
-    g_object_unref (task);
-    return;
-  }
-
-  if (!g_file_test (priv->bundle_file, G_FILE_TEST_EXISTS)) {
-    g_task_return_new_error (task, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                             "No bundle file found");
-    g_object_unref (task);
-    return;
-  }
-
-  /* If we don't have a checksum file specified, then we are going to
-   * look for one in the same directory as the bundle file, using the
-   * appid as the base name
-   */
-  if (priv->checksum_file == NULL) {
-    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
-    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_DIGEST_EXT, NULL);
-
-    priv->checksum_file = g_build_filename (dirname, filename, NULL);
-  }
-
-  /* We do the same as above for the signature file */
-  if (priv->signature_file == NULL) {
-    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
-    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
-
-    priv->signature_file = g_build_filename (dirname, filename, NULL);
-  }
-
   g_task_run_in_thread (task, install_thread_cb);
   g_object_unref (task);
 }
