@@ -60,6 +60,7 @@ EXTRA_DIST = \
 	$(polkit_rules_in_files) \
 	$(dist_polkit_policy_DATA) \
 	eos-app-manager.conf \
+	eamd.8 \
 	$(NULL)
 
 DISTCLEANFILES = \
