@@ -592,7 +592,7 @@ eam_utils_update_desktop (const char *prefix)
      * other from running, and we consider the update a success if
      * at least one succeeded.
      */
-    res |= (run_cmd (cmd[i]) == 0);
+    res |= run_cmd (cmd[i]);
   }
 
   return res;
