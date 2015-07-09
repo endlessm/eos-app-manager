@@ -30,6 +30,9 @@ static const GOptionEntry install_entries[] = {
  { NULL },
 };
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EosAppManager, g_object_unref)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EosAppManagerTransaction, g_object_unref)
+
 int
 eam_command_uninstall (int argc, char *argv[])
 {
@@ -72,7 +75,7 @@ eam_command_uninstall (int argc, char *argv[])
   }
 
   g_autoptr(GError) error = NULL;
-  EosAppManager *proxy =
+  g_autoptr(EosAppManager) proxy =
     eos_app_manager_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
                                             G_DBUS_PROXY_FLAGS_NONE,
                                             "com.endlessm.AppManager",
@@ -94,8 +97,6 @@ eam_command_uninstall (int argc, char *argv[])
 
   if (error != NULL) {
     g_printerr ("Unable to retrieve user capabilities: %s", error->message);
-    g_object_unref (proxy);
-
     return EXIT_FAILURE;
   }
 
@@ -103,8 +104,6 @@ eam_command_uninstall (int argc, char *argv[])
   g_variant_lookup (capabilities, "CanUninstall", "b", &can_uninstall);
   if (!can_uninstall) {
     g_printerr ("You cannot uninstall applications.\n");
-    g_object_unref (proxy);
-
     return EXIT_FAILURE;
   }
 
@@ -112,12 +111,8 @@ eam_command_uninstall (int argc, char *argv[])
   eos_app_manager_call_uninstall_sync (proxy, appid, &retval, NULL, &error);
   if (error != NULL) {
     g_printerr ("Unable to uninstall '%s': %s\n", appid, error->message);
-    g_object_unref (proxy);
-
     return EXIT_FAILURE;
   }
-
-  g_object_unref (proxy);
 
   return EXIT_SUCCESS;
 }

@@ -32,6 +32,9 @@ static const GOptionEntry install_entries[] = {
  { NULL },
 };
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EosAppManager, g_object_unref)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EosAppManagerTransaction, g_object_unref)
+
 int
 eam_command_install (int argc, char *argv[])
 {
@@ -114,7 +117,7 @@ eam_command_install (int argc, char *argv[])
   }
 
   g_autoptr(GError) error = NULL;
-  EosAppManager *proxy =
+  g_autoptr(EosAppManager) proxy =
     eos_app_manager_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
                                             G_DBUS_PROXY_FLAGS_NONE,
                                             "com.endlessm.AppManager",
@@ -137,7 +140,6 @@ eam_command_install (int argc, char *argv[])
   if (error != NULL) {
     g_printerr ("Unable to retrieve user capabilities: %s",
                 error->message);
-    g_object_unref (proxy);
     return EXIT_FAILURE;
   }
 
@@ -145,7 +147,6 @@ eam_command_install (int argc, char *argv[])
   g_variant_lookup (capabilities, "CanInstall", "b", &can_install);
   if (!can_install) {
     g_printerr ("You cannot install applications.\n");
-    g_object_unref (proxy);
     return EXIT_FAILURE;
   }
 
@@ -161,7 +162,7 @@ eam_command_install (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  EosAppManagerTransaction *transaction =
+  g_autoptr(EosAppManagerTransaction) transaction =
     eos_app_manager_transaction_proxy_new_sync (g_dbus_proxy_get_connection (G_DBUS_PROXY (proxy)),
                                                 G_DBUS_PROXY_FLAGS_NONE,
                                                 "com.endlessm.AppManager",
@@ -170,7 +171,6 @@ eam_command_install (int argc, char *argv[])
                                                 &error);
   if (error != NULL) {
     g_printerr ("Unable to handle the transaction: %s\n", error->message);
-    g_object_unref (proxy);
     return EXIT_FAILURE;
   }
 
@@ -195,14 +195,8 @@ eam_command_install (int argc, char *argv[])
 
     /* Cancel the transaction */
     eos_app_manager_transaction_call_cancel_transaction_sync (transaction, NULL, NULL);
-
-    g_object_unref (transaction);
-    g_object_unref (proxy);
     return EXIT_FAILURE;
   }
-
-  g_object_unref (transaction);
-  g_object_unref (proxy);
 
   return EXIT_SUCCESS;
 }
