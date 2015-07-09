@@ -1,0 +1,38 @@
+Source: eos-app-manager
+Maintainer: Endless Mobile <maintainers@endlessm.com>
+Section: non-free/admin
+Priority: standard
+Standards-Version: 3.9.4
+Build-Depends: debhelper (>= 9),
+               desktop-file-utils,
+               dh-autoreconf (>= 7),
+               dh-systemd,
+               libarchive13,
+               libarchive-dev,
+               libglib2.0-dev (>= 2.40),
+               libglib2.0-bin,
+               libgtk2.0-bin,
+               libpolkit-gobject-1-dev (>= 0.110),
+               libsoup2.4-dev (>= 2.44),
+               libsystemd-journal-dev,
+               pkg-config (>= 0.24),
+               policykit-1,
+               shared-mime-info,
+               systemd
+Homepage: http://www.endlessm.com
+
+Package: eos-app-manager
+Section: non-free/admin
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, gpgv, xdelta3-dir-patcher, wget
+Description: Endless Application Manager
+ DBus service for installing, removing and upgrading Endless applications.
+
+Package: eos-app-manager-dbg
+Section: debug
+Architecture: any
+Depends: ${misc:Depends}, eos-app-manager (= ${binary:Version})
+Description: Endless Application Manager debugging symbols
+ DBus service for installing, removing and upgrading Endless applications.
+ .
+ This package contains the debugging symbols for eos-app-manager.

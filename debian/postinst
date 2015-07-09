@@ -1,0 +1,25 @@
+#!/bin/sh
+
+set -eu
+
+# creating app-manager user if it isn't already there
+if ! getent passwd app-manager >/dev/null; then
+        adduser --system --force-badname --quiet \
+            --no-create-home \
+            --home /var/endless \
+            --shell /usr/sbin/nologin \
+            --group \
+            app-manager
+fi
+
+# create /var/endless or update ownership existing directory
+if [ -d /var/endless ]; then
+	chown -R app-manager:app-manager /var/endless
+else
+	install -d -m0755 -o app-manager -g app-manager /var/endless
+fi
+
+#DEBHELPER#
+
+exit 0
+

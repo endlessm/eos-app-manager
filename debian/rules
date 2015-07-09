@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+%:
+	dh $@ --with autoreconf,systemd
+
+# Debug package setup. See https://wiki.debian.org/DebugPackage.
+override_dh_strip:
+	dh_strip --dbg-package=eos-app-manager-dbg
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/eos-app-manager
+override_dh_installdocs:
+	dh_installdocs --link-doc=eos-app-manager
