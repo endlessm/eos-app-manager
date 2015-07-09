@@ -51,6 +51,7 @@ void
 eam_log_debug_message (const char *fmt,
                        ...)
 {
+#ifdef EAM_ENABLE_DEBUG
   va_list args;
 
   va_start (args, fmt);
@@ -58,6 +59,7 @@ eam_log_debug_message (const char *fmt,
   eam_log_messagev (LOG_DEBUG, fmt, args);
 
   va_end (args);
+#endif
 }
 
 void
