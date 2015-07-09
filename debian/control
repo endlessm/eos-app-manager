@@ -24,7 +24,7 @@ Homepage: http://www.endlessm.com
 Package: eos-app-manager
 Section: non-free/admin
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, gpgv, xdelta3-dir-patcher, wget
+Depends: ${shlibs:Depends}, ${misc:Depends}, gpgv, xdelta3-dir-patcher
 Description: Endless Application Manager
  DBus service for installing, removing and upgrading Endless applications.
 
