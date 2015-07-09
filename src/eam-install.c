@@ -129,6 +129,8 @@ eam_install_class_init (EamInstallClass *klass)
 static void
 eam_install_init (EamInstall *self)
 {
+  /* initialize prefix to the default */
+  eam_install_set_prefix (self, NULL);
 }
 
 /**

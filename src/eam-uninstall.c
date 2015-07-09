@@ -222,6 +222,8 @@ eam_uninstall_class_init (EamUninstallClass *klass)
 static void
 eam_uninstall_init (EamUninstall *self)
 {
+  /* initialize prefix to the default */
+  eam_uninstall_set_prefix (self, NULL);
 }
 
 /**
