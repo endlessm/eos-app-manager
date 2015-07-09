@@ -303,7 +303,7 @@ has_external_script (const char  *prefix,
 
   g_autoptr(GError) err = NULL;
   if (!g_key_file_load_from_file (kf, info, G_KEY_FILE_NONE, &err)) {
-    eam_log_error_message ("Could not load bundle info for app '%s': %s.", appid, err->message);
+    eam_log_error_message ("Could not load bundle info %s for app '%s': %s.", info, appid, err->message);
     return -1;
   }
 
