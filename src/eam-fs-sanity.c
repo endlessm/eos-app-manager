@@ -836,7 +836,7 @@ do_binaries_symlinks (const char *appid)
   const gchar* path = g_getenv ("PATH");
 
   g_autofree char *safe_path = remove_dir_from_path (path, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN));
-  g_autofree char *full_exec = eam_utils_find_program_in_path (safe_path, exec);
+  g_autofree char *full_exec = eam_utils_find_program_in_path (exec, safe_path);
   if (full_exec != NULL)
     return TRUE;
 
