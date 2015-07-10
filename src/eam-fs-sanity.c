@@ -892,8 +892,10 @@ rmsymlinks_recursive (const char *appid,
       if (!rmsymlinks_recursive (appid, path))
         return FALSE;
 
-      if (rmdir (path) != 0)
-        return FALSE;
+      /* Try to cleanup empty directories that had links.
+       * We intentionally ignore errors.
+       */
+      rmdir (path);
     }
   }
 
