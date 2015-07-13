@@ -29,8 +29,6 @@
 #define G_SCHEMAS_SUBDIR "share/glib-2.0/schemas"
 #define XDG_AUTOSTART_SUBDIR "xdg/autostart"
 
-#define ROOT_DIR "/var"
-
 static const char *fs_layout[] = {
   [EAM_BUNDLE_DIRECTORY_BIN] = "bin",
   [EAM_BUNDLE_DIRECTORY_DESKTOP] = "share/applications",
@@ -58,7 +56,7 @@ static char *
 get_bundle_path (const char *prefix,
                  EamBundleDirectory dir)
 {
-  return g_build_filename (ROOT_DIR, prefix, eam_fs_get_bundle_system_dir (dir), NULL);
+  return g_build_filename (prefix, eam_fs_get_bundle_system_dir (dir), NULL);
 }
 
 gboolean
@@ -105,46 +103,6 @@ applications_directory_create (void)
       eam_log_error_message ("%s", error->message);
       return FALSE;
     }
-  }
-
-  return TRUE;
-}
-
-static gboolean
-applications_directory_symlink_exists (void)
-{
-  const gchar *appdir = eam_config_appdir ();
-  g_assert (appdir);
-
-  return g_file_test (appdir, G_FILE_TEST_EXISTS);
-}
-
-static gboolean
-applications_directory_symlink_clear (void)
-{
-  const gchar *appdir = eam_config_appdir ();
-  g_assert (appdir);
-
-  return (g_remove (appdir) == 0);
-}
-
-static gboolean
-applications_directory_symlink_create (void)
-{
-  const char *appdir = eam_config_appdir ();
-
-  g_autoptr(GError) error = NULL;
-  g_autoptr(GFile) sym_link = g_file_new_for_path (appdir);
-  g_autofree char *dir = g_build_filename (ROOT_DIR, appdir, NULL);
-
-  g_file_make_symbolic_link (sym_link, dir, NULL, &error);
-  if (error) {
-    eam_log_error_message ("Unable to create symbolic link from '%s' to '%s'", appdir, dir);
-
-    if (applications_directory_symlink_exists () && !applications_directory_symlink_clear ())
-      eam_log_error_message ("Unable to clear a failed symlink creation");
-
-    return FALSE;
   }
 
   return TRUE;
@@ -279,11 +237,7 @@ eam_fs_sanity_check (void)
 
   /* Ensure the applications installation directory exists */
   if (!applications_directory_create ()) {
-    eam_log_error_message ("Failed to create the applications directory '%s%s'", ROOT_DIR, appdir);
-    return FALSE;
-  }
-  if (!applications_directory_symlink_exists () && !applications_directory_symlink_create ()) {
-    eam_log_error_message ("Failed to create the symbolic link '%s' to the applications directory", appdir);
+    eam_log_error_message ("Failed to create the applications directory '%s'", appdir);
     return FALSE;
   }
 
