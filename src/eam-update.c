@@ -142,12 +142,13 @@ eam_update_new (const gchar *appid)
 
 static gboolean
 do_xdelta_update (const char *appid,
+                  const char *source_dir,
                   const char *delta_file,
                   GError **error)
 {
-  eam_utils_cleanup_python (eam_config_appdir (), appid);
+  eam_utils_cleanup_python (source_dir, appid);
 
-  if (!eam_utils_apply_xdelta (eam_config_appdir (), appid, delta_file)) {
+  if (!eam_utils_apply_xdelta (source_dir, appid, delta_file)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not update the application via xdelta");
     return FALSE;
@@ -263,7 +264,7 @@ eam_update_run_sync (EamTransaction *trans,
   if (g_str_has_suffix (priv->bundle_file, INSTALL_BUNDLE_EXT))
     res = do_full_update (priv->appid, priv->bundle_file, &internal_error);
   else if (g_str_has_suffix (priv->bundle_file, XDELTA_BUNDLE_EXT))
-    res = do_xdelta_update (priv->appid, priv->bundle_file, &internal_error);
+    res = do_xdelta_update (priv->appid, backupdir, priv->bundle_file, &internal_error);
   else
     g_assert_not_reached ();
 
