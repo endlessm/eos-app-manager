@@ -7,44 +7,23 @@
 
 G_BEGIN_DECLS
 
-typedef struct _EamConfig EamConfig;
+const char *    eam_config_get_applications_dir         (void);
+const char *    eam_config_get_download_dir             (void);
+const char *    eam_config_get_server_address           (void);
+const char *    eam_config_get_protocol_version         (void);
+const char *    eam_config_get_script_dir               (void);
+const char *    eam_config_get_gpg_keyring              (void);
+guint           eam_config_get_inactivity_timeout       (void);
+gboolean        eam_config_get_delta_updates_enabled    (void);
 
-EamConfig      *eam_config_get                  (void);
-
-void            eam_config_free                 (EamConfig *cfg);
-
-void            eam_config_destroy              (EamConfig *cfg);
-
-gboolean        eam_config_load                 (EamConfig *cfg,
-                                                 GKeyFile *keyfile);
-
-void            eam_config_set                  (EamConfig *cfg,
-                                                 gchar *appdir,
-                                                 gchar *dldir,
-                                                 gchar *saddr,
-                                                 gchar *protver,
-                                                 gchar *scriptdir,
-                                                 gchar *gpgkeyring,
-                                                 guint timeout,
-                                                 gboolean deltaupdates);
-
-void            eam_config_dump                 (EamConfig *cfg);
-
-guint           eam_config_timeout              (void);
-
-gboolean        eam_config_deltaupdates         (void);
-
-#define PARAMS_LIST(V) \
-  V(appdir) \
-  V(dldir)  \
-  V(saddr)  \
-  V(protver) \
-  V(scriptdir) \
-  V(gpgkeyring)
-
-#define GETTERS(p) const gchar *eam_config_##p (void);
-PARAMS_LIST(GETTERS)
-#undef GETTERS
+#define eam_config_appdir       eam_config_get_applications_dir
+#define eam_config_dldir        eam_config_get_download_dir
+#define eam_config_saddr        eam_config_get_server_address
+#define eam_config_protver      eam_config_get_protocol_version
+#define eam_config_scriptdir    eam_config_get_script_dir
+#define eam_config_gpgkeyring   eam_config_get_gpg_keyring
+#define eam_config_timeout      eam_config_get_inactivity_timeout
+#define eam_config_deltaupdates eam_config_get_delta_updates_enabled
 
 G_END_DECLS
 
