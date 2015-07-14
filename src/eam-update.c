@@ -146,7 +146,7 @@ do_xdelta_update (const char *appid,
                   const char *delta_file,
                   GError **error)
 {
-  eam_utils_cleanup_python (source_dir, appid);
+  eam_utils_cleanup_python (source_dir);
 
   if (!eam_utils_apply_xdelta (source_dir, appid, delta_file)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,

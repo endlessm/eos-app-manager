@@ -555,10 +555,9 @@ rm_python_artifacts (const char *full_path,
 }
 
 gboolean
-eam_utils_cleanup_python (const char *prefix,
-                          const char *appid)
+eam_utils_cleanup_python (const char *appdir)
 {
-  g_autofree char *dir = g_build_filename (prefix, appid, "lib", NULL);
+  g_autofree char *dir = g_build_filename (appdir, "lib", NULL);
 
   if (!g_file_test (dir, G_FILE_TEST_IS_DIR))
     return TRUE;

@@ -25,8 +25,7 @@ gboolean        eam_utils_run_external_scripts  (const char *prefix,
 
 gboolean        eam_utils_compile_python        (const char *prefix,
                                                  const char *appdir);
-gboolean        eam_utils_cleanup_python        (const char *prefix,
-                                                 const char *appdir);
+gboolean        eam_utils_cleanup_python        (const char *appdir);
 gboolean        eam_utils_update_desktop        (const char *prefix);
 
 gboolean        eam_utils_apply_xdelta          (const char *prefix,
