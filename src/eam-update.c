@@ -154,6 +154,15 @@ do_xdelta_update (const char *appid,
     return FALSE;
   }
 
+  /* Deploy the appdir from the extraction directory to the app directory */
+  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), appid)) {
+    eam_fs_prune_dir (eam_config_dldir (), appid);
+    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                         "Could not deploy the bundle in the application directory");
+
+    return FALSE;
+  }
+
   return TRUE;
 }
 
