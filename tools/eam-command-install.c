@@ -23,11 +23,13 @@ static char *opt_prefix;
 static char *opt_asc_file;
 static char *opt_sha_file;
 static char **opt_appid;
+static char *opt_storage_type;
 
 static const GOptionEntry install_entries[] = {
  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Prefix to use when installing", "DIRECTORY" },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
  { "checksum-file", 'c', 0, G_OPTION_ARG_FILENAME, &opt_sha_file, "Path to the SHA file", "FILE" },
+ { "storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_storage_type, "Storage type ('primary' or 'secondary')", "TYPE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
  { NULL },
 };
@@ -52,6 +54,14 @@ eam_command_install (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  if (opt_storage_type != NULL &&
+      !(strcmp (opt_storage_type, "primary") == 0 ||
+        strcmp (opt_storage_type, "secondary") == 0)) {
+    g_printerr ("Invalid storage type '%s'; you can only use either 'primary' "
+                "or 'secondary'\n",
+                opt_storage_type);
+    return EXIT_FAILURE;
+  }
   const char *appid = opt_appid[0];
   if (appid == NULL) {
     g_printerr ("Usage: %s install [-s SIGNATURE] [-c CHECKSUM] APPID BUNDLE\n", eam_argv0);
@@ -99,8 +109,21 @@ eam_command_install (int argc, char *argv[])
   if (eam_utils_check_unix_permissions (geteuid ())) {
     g_autoptr(EamInstall) install = (EamInstall *) eam_install_new (appid);
 
-    /* If opt_prefix is unset, eam_config_appdir() is going to be the default */
-    eam_install_set_prefix (install, opt_prefix);
+    /* An explicit prefix takes precedence */
+    if (opt_prefix != NULL) {
+      eam_install_set_prefix (install, opt_prefix);
+    }
+    else if (opt_storage_type != NULL) {
+      if (strcmp (opt_storage_type, "primary") == 0)
+        eam_install_set_prefix (install, eam_config_get_primary_storage ());
+      else if (strcmp (opt_storage_type, "secondary") == 0)
+        eam_install_set_prefix (install, eam_config_get_secondary_storage ());
+      else
+        g_assert_not_reached ();
+    }
+    else {
+      eam_install_set_prefix (install, NULL);
+    }
 
     eam_install_set_bundle_file (install, bundle_file);
     eam_install_set_signature_file (install, opt_asc_file);
@@ -179,6 +202,7 @@ eam_command_install (int argc, char *argv[])
   GVariantBuilder opts;
   g_variant_builder_init (&opts, G_VARIANT_TYPE ("(a{sv})"));
   g_variant_builder_open (&opts, G_VARIANT_TYPE ("a{sv}"));
+  g_variant_builder_add (&opts, "{sv}", "StorageType", g_variant_new_string (opt_storage_type));
   g_variant_builder_add (&opts, "{sv}", "BundlePath", g_variant_new_string (bundle_file));
   g_variant_builder_add (&opts, "{sv}", "SignaturePath", g_variant_new_string (opt_asc_file));
   g_variant_builder_add (&opts, "{sv}", "ChecksumPath", g_variant_new_string (opt_sha_file));
