@@ -129,8 +129,9 @@ eam_install_class_init (EamInstallClass *klass)
 static void
 eam_install_init (EamInstall *self)
 {
-  /* initialize prefix to the default */
-  eam_install_set_prefix (self, NULL);
+  EamInstallPrivate *priv = eam_install_get_instance_private (self);
+
+  priv->prefix = g_strdup (eam_config_get_primary_storage ());
 }
 
 /**
@@ -335,7 +336,7 @@ eam_install_set_prefix (EamInstall *install,
   g_free (priv->prefix);
 
   if (path == NULL || *path == '\0')
-    priv->prefix = g_strdup (eam_config_appdir ());
+    priv->prefix = g_strdup (eam_config_get_primary_storage ());
   else
     priv->prefix = g_strdup (path);
 }
