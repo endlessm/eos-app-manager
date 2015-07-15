@@ -34,7 +34,7 @@ eam_command_init_fs (int argc, char *argv[])
   g_option_context_free (context);
 
   if (opt_prefix == NULL)
-    opt_prefix = g_strdup (eam_config_appdir ());
+    opt_prefix = g_strdup (eam_config_get_applications_dir ());
 
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
     if (opt_verbose)

@@ -17,12 +17,6 @@ const char *    eam_config_get_api_version              (void);
 gboolean        eam_config_get_enable_delta_updates     (void);
 guint           eam_config_get_inactivity_timeout       (void);
 
-/* Compatibility defines; FIXME: Remove them later */
-#define eam_config_appdir       eam_config_get_applications_dir
-#define eam_config_dldir        eam_config_get_cache_dir
-#define eam_config_gpgkeyring   eam_config_get_gpg_keyring
-#define eam_config_timeout      eam_config_get_inactivity_timeout
-
 G_END_DECLS
 
 #endif /* EAM_CONFIG_H */
