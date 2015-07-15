@@ -708,7 +708,8 @@ make_binary_symlink (const char *bin,
   if (!g_file_test (bin, G_FILE_TEST_EXISTS))
     return FALSE;
 
-  g_autofree char *path = g_build_filename (eam_config_appdir (),
+  /* We want to create the symlink in the /endless root */
+  g_autofree char *path = g_build_filename (eam_config_get_applications_dir (),
                                             eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
                                             exec,
                                             NULL);
@@ -787,11 +788,15 @@ ensure_desktop_file (const char *dir,
   return NULL;
 }
 
+/* Finds the executable from the desktop file and creates a symlink
+ * in the application directory root
+ */
 static gboolean
-do_binaries_symlinks (const char *appid)
+do_binaries_symlinks (const char *prefix,
+                      const char *appid)
 {
   g_autofree char *desktopfile = g_strdup_printf ("%s.desktop", appid);
-  g_autofree char *appdesktopdir = g_build_filename (eam_config_appdir (),
+  g_autofree char *appdesktopdir = g_build_filename (prefix,
                                                      appid,
                                                      eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_DESKTOP),
                                                      NULL);
@@ -800,32 +805,32 @@ do_binaries_symlinks (const char *appid)
   if (appdesktopfile == NULL)
     return FALSE;
 
-  g_autofree char *exec = app_info_get_executable (appdesktopfile);
+  g_autofree char *target = app_info_get_executable (appdesktopfile);
 
   /* 1. It is an absolute path, we don't do anything */
-  if (g_path_is_absolute (exec))
-    return g_file_test (exec, G_FILE_TEST_EXISTS);
+  if (g_path_is_absolute (target))
+    return g_file_test (target, G_FILE_TEST_EXISTS);
 
-  /* 2. Try in /endless/$appid/bin */
-  g_autofree char *bin =
-    g_build_filename (eam_config_appdir (),
-                      appid,
-                      eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
-                      exec,
-                      NULL);
+  /* 2. Try in /$prefix/$appid/bin */
+  g_autofree char *orig_path = NULL;
+  orig_path = g_build_filename (prefix,
+                                appid,
+                                eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
+                                target,
+                                NULL);
 
-  if (make_binary_symlink (bin, exec))
+  if (make_binary_symlink (orig_path, target))
     return TRUE;
 
-  /* 3. Try in /endless/$appid/games */
-  g_free (bin);
-  bin = g_build_filename (eam_config_appdir (),
-                          appid,
-                          eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES),
-                          exec,
-                          NULL);
+  /* 3. Try in /$prefix/$appid/games */
+  g_free (orig_path);
+  orig_path = g_build_filename (prefix,
+                                appid,
+                                eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES),
+                                target,
+                                NULL);
 
-  if (make_binary_symlink (bin, exec))
+  if (make_binary_symlink (orig_path, target))
     return TRUE;
 
   /* 4. Look if the command we are trying to link is already in $PATH
@@ -836,7 +841,7 @@ do_binaries_symlinks (const char *appid)
   const gchar* path = g_getenv ("PATH");
 
   g_autofree char *safe_path = remove_dir_from_path (path, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN));
-  g_autofree char *full_exec = eam_utils_find_program_in_path (exec, safe_path);
+  g_autofree char *full_exec = eam_utils_find_program_in_path (target, safe_path);
   if (full_exec != NULL)
     return TRUE;
 
@@ -906,12 +911,17 @@ gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  if (!do_binaries_symlinks (appid))
+  if (!do_binaries_symlinks (prefix, appid))
     return FALSE;
 
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
+    /* We take the file under $prefix… */
     g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (i), NULL);
-    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+
+    /* … and put it into /endless */
+    g_autofree char *tdir = g_build_filename (eam_config_get_applications_dir (),
+                                              eam_fs_get_bundle_system_dir (i),
+                                              NULL);
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = i == EAM_BUNDLE_DIRECTORY_EKN_DATA;
