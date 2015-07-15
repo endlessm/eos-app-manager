@@ -868,12 +868,14 @@ eam_fs_create_symlinks (const char *prefix,
   if (!do_binaries_symlinks (prefix, appid))
     return FALSE;
 
-  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
-    g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (i), NULL);
-    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+  for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
+    const char *sysdir = eam_fs_get_bundle_system_dir (index);
+
+    g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
+    g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
 
     /* shallow symlinks to EKN data */
-    gboolean is_shallow = i == EAM_BUNDLE_DIRECTORY_EKN_DATA;
+    gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
     if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
       return FALSE;
     }
