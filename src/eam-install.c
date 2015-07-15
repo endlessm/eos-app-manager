@@ -212,24 +212,24 @@ eam_install_run_sync (EamTransaction *trans,
 
   /* Further operations require rollback */
 
-  if (!eam_utils_bundle_extract (priv->bundle_file, eam_config_dldir (), priv->appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+  if (!eam_utils_bundle_extract (priv->bundle_file, eam_config_get_cache_dir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), priv->appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not extract the bundle");
     return FALSE;
   }
 
   /* run 3rd party scripts */
-  if (!eam_utils_run_external_scripts (eam_config_dldir (), priv->appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+  if (!eam_utils_run_external_scripts (eam_config_get_cache_dir (), priv->appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), priv->appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not process the external script");
     return FALSE;
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_dldir (), priv->prefix, priv->appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), priv->appid);
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), priv->prefix, priv->appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), priv->appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
     return FALSE;

@@ -155,8 +155,8 @@ do_xdelta_update (const char *appid,
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), appid);
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), eam_config_get_applications_dir (), appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
 
@@ -171,24 +171,24 @@ do_full_update (const char *appid,
                 const char *bundle_file,
                 GError **error)
 {
-  if (!eam_utils_bundle_extract (bundle_file, eam_config_dldir (), appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), appid);
+  if (!eam_utils_bundle_extract (bundle_file, eam_config_get_cache_dir (), appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not extract the bundle");
     return FALSE;
   }
 
   /* run 3rd party scripts */
-  if (!eam_utils_run_external_scripts (eam_config_dldir (), appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), appid);
+  if (!eam_utils_run_external_scripts (eam_config_get_cache_dir (), appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not process the external script");
     return FALSE;
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_dldir (), eam_config_appdir (), appid)) {
-    eam_fs_prune_dir (eam_config_dldir (), appid);
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), eam_config_get_applications_dir (), appid)) {
+    eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
     return FALSE;
@@ -241,7 +241,7 @@ eam_update_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  if (!eam_utils_app_is_installed (eam_config_appdir(), priv->appid)) {
+  if (!eam_utils_app_is_installed (eam_config_get_applications_dir (), priv->appid)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Application is not installed");
     return FALSE;
@@ -261,7 +261,7 @@ eam_update_run_sync (EamTransaction *trans,
 
   /* Keep a copy of the old app around, in case the update fails */
   g_autofree char *backupdir = NULL;
-  if (!eam_fs_backup_app (eam_config_appdir (), priv->appid, &backupdir)) {
+  if (!eam_fs_backup_app (eam_config_get_applications_dir (), priv->appid, &backupdir)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not keep a copy of the app");
     return FALSE;
@@ -280,17 +280,17 @@ eam_update_run_sync (EamTransaction *trans,
   /* If the update failed, restore from backup and bail out */
   if (!res) {
     if (backupdir)
-      eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
+      eam_fs_restore_app (eam_config_get_applications_dir (), priv->appid, backupdir);
 
     g_propagate_error (error, internal_error);
     return FALSE;
   }
 
   /* If the symbolic link creation fails, we restore from backup */
-  res = eam_fs_create_symlinks (eam_config_appdir (), priv->appid);
+  res = eam_fs_create_symlinks (eam_config_get_applications_dir (), priv->appid);
   if (!res) {
     if (backupdir)
-      eam_fs_restore_app (eam_config_appdir (), priv->appid, backupdir);
+      eam_fs_restore_app (eam_config_get_applications_dir (), priv->appid, backupdir);
 
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not create symbolic links");
@@ -298,11 +298,11 @@ eam_update_run_sync (EamTransaction *trans,
   }
 
   /* These two errors are non-fatal */
-  if (!eam_utils_compile_python (eam_config_appdir (), priv->appid)) {
+  if (!eam_utils_compile_python (eam_config_get_applications_dir (), priv->appid)) {
     eam_log_error_message ("Python libraries compilation failed");
   }
 
-  if (!eam_utils_update_desktop (eam_config_appdir ())) {
+  if (!eam_utils_update_desktop (eam_config_get_applications_dir ())) {
     eam_log_error_message ("Could not update the desktop's metadata");
   }
 

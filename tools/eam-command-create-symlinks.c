@@ -40,7 +40,7 @@ eam_command_create_symlinks (int argc, char *argv[])
   }
 
   if (opt_prefix == NULL)
-    opt_prefix = g_strdup (eam_config_appdir ());
+    opt_prefix = g_strdup (eam_config_get_applications_dir ());
 
   const char *appid = opt_appid[0];
 

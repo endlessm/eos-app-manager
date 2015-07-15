@@ -104,7 +104,7 @@ gboolean
 eam_utils_verify_signature (const char *source_file,
                             const char *signature_file)
 {
-  const char *gpgdir = eam_config_gpgkeyring ();
+  const char *gpgdir = eam_config_get_gpg_keyring ();
 
   char *argv[9] = {
     "gpgv",
@@ -602,7 +602,7 @@ eam_utils_apply_xdelta (const char *source_dir,
                         const char *appid,
                         const char *delta_bundle)
 {
-  g_autofree char *target_dir = g_build_filename (eam_config_dldir (), appid,
+  g_autofree char *target_dir = g_build_filename (eam_config_get_cache_dir (), appid,
                                                   NULL);
 
   if (!eam_fs_rmdir_recursive (target_dir))

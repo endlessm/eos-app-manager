@@ -60,7 +60,7 @@ timeout_cb (gpointer data)
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (EAM_DBUS_SERVER (data));
   guint idle = eam_service_get_idle (priv->service);
 
-  if (idle > eam_config_timeout ()) {
+  if (idle > eam_config_get_inactivity_timeout ()) {
     eam_dbus_server_quit (EAM_DBUS_SERVER (data));
     return FALSE;
   }
@@ -123,7 +123,7 @@ eam_dbus_server_init (EamDbusServer *server)
   priv->mainloop = g_main_loop_new (NULL, FALSE);
   priv->service = eam_service_new ();
 
-  if (eam_config_timeout () > 0) {
+  if (eam_config_get_inactivity_timeout () > 0) {
     /* check every minute if the service is idle, but terminate it only
      * if the configured time has elapsed
      */
