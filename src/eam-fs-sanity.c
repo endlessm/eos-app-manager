@@ -656,13 +656,14 @@ remove_dir_from_path (const char *path,
 }
 
 static gboolean
-make_binary_symlink (const char *bin,
+make_binary_symlink (const char *prefix,
+                     const char *bin,
                      const char *exec)
 {
   if (!g_file_test (bin, G_FILE_TEST_EXISTS))
     return FALSE;
 
-  g_autofree char *path = g_build_filename (eam_config_appdir (),
+  g_autofree char *path = g_build_filename (prefix,
                                             eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
                                             exec,
                                             NULL);
@@ -742,10 +743,10 @@ ensure_desktop_file (const char *dir,
 }
 
 static gboolean
-do_binaries_symlinks (const char *appid)
+do_binaries_symlinks (const char *prefix, const char *appid)
 {
   g_autofree char *desktopfile = g_strdup_printf ("%s.desktop", appid);
-  g_autofree char *appdesktopdir = g_build_filename (eam_config_appdir (),
+  g_autofree char *appdesktopdir = g_build_filename (prefix,
                                                      appid,
                                                      eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_DESKTOP),
                                                      NULL);
@@ -762,24 +763,24 @@ do_binaries_symlinks (const char *appid)
 
   /* 2. Try in /endless/$appid/bin */
   g_autofree char *bin =
-    g_build_filename (eam_config_appdir (),
+    g_build_filename (prefix,
                       appid,
                       eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
                       exec,
                       NULL);
 
-  if (make_binary_symlink (bin, exec))
+  if (make_binary_symlink (prefix, bin, exec))
     return TRUE;
 
   /* 3. Try in /endless/$appid/games */
   g_free (bin);
-  bin = g_build_filename (eam_config_appdir (),
+  bin = g_build_filename (prefix,
                           appid,
                           eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES),
                           exec,
                           NULL);
 
-  if (make_binary_symlink (bin, exec))
+  if (make_binary_symlink (prefix, bin, exec))
     return TRUE;
 
   /* 4. Look if the command we are trying to link is already in $PATH
@@ -789,7 +790,11 @@ do_binaries_symlinks (const char *appid)
    */
   const gchar* path = g_getenv ("PATH");
 
-  g_autofree char *safe_path = remove_dir_from_path (path, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN));
+  g_autofree char *bindir =
+    g_build_filename (prefix,
+                      eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
+                      NULL);
+  g_autofree char *safe_path = remove_dir_from_path (path, bindir);
   g_autofree char *full_exec = eam_utils_find_program_in_path (exec, safe_path);
   if (full_exec != NULL)
     return TRUE;
@@ -860,7 +865,7 @@ gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  if (!do_binaries_symlinks (appid))
+  if (!do_binaries_symlinks (prefix, appid))
     return FALSE;
 
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
