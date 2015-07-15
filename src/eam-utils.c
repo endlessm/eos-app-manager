@@ -555,10 +555,9 @@ rm_python_artifacts (const char *full_path,
 }
 
 gboolean
-eam_utils_cleanup_python (const char *prefix,
-                          const char *appid)
+eam_utils_cleanup_python (const char *appdir)
 {
-  g_autofree char *dir = g_build_filename (prefix, appid, "lib", NULL);
+  g_autofree char *dir = g_build_filename (appdir, "lib", NULL);
 
   if (!g_file_test (dir, G_FILE_TEST_IS_DIR))
     return TRUE;
@@ -599,33 +598,31 @@ eam_utils_update_desktop (const char *prefix)
 }
 
 gboolean
-eam_utils_apply_xdelta (const char *prefix,
+eam_utils_apply_xdelta (const char *source_dir,
                         const char *appid,
                         const char *delta_bundle)
 {
-  g_autofree char *dir = g_build_filename (eam_config_dldir (), appid, NULL);
+  g_autofree char *target_dir = g_build_filename (eam_config_dldir (), appid,
+                                                  NULL);
 
-  if (!eam_fs_rmdir_recursive (dir))
+  if (!eam_fs_rmdir_recursive (target_dir))
     return FALSE;
 
-  if (g_mkdir (dir, 0755) < 0)
+  if (g_mkdir (target_dir, 0755) < 0)
     return FALSE;
-
-  g_autofree char *targetdir = g_build_filename (prefix, appid, NULL);
 
   const char *cmd[] = {
     "xdelta3-dir-patcher", "apply",
     "--ignore-euid",
     "-d",
     appid,
-    targetdir,
+    source_dir,
     delta_bundle,
-    dir,
+    target_dir,
     NULL,
   };
 
   gboolean res = run_cmd (cmd);
-  eam_fs_rmdir_recursive (dir);
 
   return res;
 }
