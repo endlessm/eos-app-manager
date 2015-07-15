@@ -17,6 +17,7 @@
 #include "eam-log.h"
 #include "eam-resources.h"
 #include "eam-utils.h"
+#include "eam-config.h"
 
 typedef struct _EamServicePrivate EamServicePrivate;
 
@@ -650,13 +651,15 @@ handle_transaction_method_call (GDBusConnection *connection,
   eam_log_info_message ("Received method '%s' on transaction interface", method);
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
-    const char *bundle_path, *signature_path, *checksum_path;
+    const char *bundle_path = NULL, *signature_path = NULL, *checksum_path = NULL;
+    const char *storage_type = NULL;
     GVariant *properties;
     GVariantDict dict;
 
     g_variant_get (params, "(@a{sv})", &properties);
     g_variant_dict_init (&dict, properties);
 
+    g_variant_dict_lookup (&dict, "StorageType", "&s", &storage_type);
     g_variant_dict_lookup (&dict, "BundlePath", "&s", &bundle_path);
     g_variant_dict_lookup (&dict, "SignaturePath", "&s", &signature_path);
     g_variant_dict_lookup (&dict, "ChecksumPath", "&s", &checksum_path);
@@ -666,8 +669,20 @@ handle_transaction_method_call (GDBusConnection *connection,
                             bundle_path,
                             remote->obj_path);
 
+      /* If the prefix is empty, we default to the primary storage */
+      const char *prefix = NULL;
+
+      if (storage_type != NULL) {
+        if (strcmp (storage_type, "primary") == 0)
+          prefix = eam_config_get_primary_storage ();
+        else if (strcmp (storage_type, "secondary") == 0)
+          prefix = eam_config_get_secondary_storage ();
+      }
+
       if (EAM_IS_INSTALL (remote->transaction)) {
         EamInstall *install = EAM_INSTALL (remote->transaction);
+
+        eam_install_set_prefix (install, prefix);
 
         eam_install_set_bundle_file (install, bundle_path);
         eam_install_set_signature_file (install, signature_path);

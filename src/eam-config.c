@@ -1,229 +1,240 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 
-#include <gio/gio.h>
-#include "eam-config.h"
+#include <string.h>
+#include <glib-object.h>
 
-struct _EamConfig
-{
-#define GETTERS(p) gchar *p;
-  PARAMS_LIST(GETTERS)
-#undef GETTERS
-  guint timeout;
-  gboolean deltaupdates;
+#include "eam-config.h"
+#include "eam-log.h"
+
+#define EAM_CONFIG_DIRECTORIES  "Directories"
+#define EAM_CONFIG_DAEMON       "Daemon"
+#define EAM_CONFIG_REPOSITORY   "Repository"
+
+typedef struct {
+  /* Directories */
+  char *apps_root;
+  char *cache_dir;
+  char *primary_storage;
+  char *secondary_storage;
+  char *gpgkeyring;
+
+  /* Repository */
+  char *server_url;
+  char *api_version;
+  gboolean enable_delta_updates;
+
+  /* Daemon */
+  guint inactivity_timeout;
+} EamConfig;
+
+typedef struct {
+  const char *key_name;
+  const char *key_group;
+  gsize key_field;
+  GType key_type;
+  union {
+    int int_val;
+    const char *str_val;
+    gboolean bool_val;
+  } key_default;
+} EamConfigKey;
+
+static const EamConfigKey eam_config_keys[] = {
+  {
+    .key_name = "ApplicationsDir",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, apps_root),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = "/endless",
+  },
+  {
+    .key_name = "CacheDir",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, cache_dir),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = LOCALSTATEDIR "/cache/eos-app-manager",
+  },
+  {
+    .key_name = "PrimaryStorage",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, primary_storage),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = LOCALSTATEDIR "/endless",
+  },
+  {
+    .key_name = "SecondaryStorage",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, secondary_storage),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = LOCALSTATEDIR "/endless-extra",
+  },
+  {
+    .key_name = "GpgKeyring",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, gpgkeyring),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = PKGDATADIR "/eos-keyring.gpg",
+  },
+  {
+    .key_name = "InactivityTimeout",
+    .key_group = EAM_CONFIG_DAEMON,
+    .key_field = G_STRUCT_OFFSET (EamConfig, inactivity_timeout),
+    .key_type = G_TYPE_INT,
+    .key_default.int_val = 300,
+  },
+  {
+    .key_name = "ServerUrl",
+    .key_group = EAM_CONFIG_REPOSITORY,
+    .key_field = G_STRUCT_OFFSET (EamConfig, server_url),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = "http://appupdates.endlessm.com",
+  },
+  {
+    .key_name = "ApiVersion",
+    .key_group = EAM_CONFIG_REPOSITORY,
+    .key_field = G_STRUCT_OFFSET (EamConfig, api_version),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = "v1",
+  },
+  {
+    .key_name = "EnableDeltaUpdates",
+    .key_group = EAM_CONFIG_REPOSITORY,
+    .key_field = G_STRUCT_OFFSET (EamConfig, enable_delta_updates),
+    .key_type = G_TYPE_BOOLEAN,
+    .key_default.bool_val = TRUE,
+  },
 };
 
-static gpointer
-eam_config_init (gpointer data)
+static inline void
+eam_config_set_key (const EamConfigKey *key,
+                    EamConfig          *config,
+                    GKeyFile           *keyfile)
 {
-  EamConfig *cfg = g_slice_new0 (EamConfig);
-  eam_config_load (cfg, NULL);
-  return cfg;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *str_value = NULL;
+  int int_value = 0;
+  gboolean bool_value = FALSE;
+  gpointer field_p = G_STRUCT_MEMBER_P (config, key->key_field);
+
+  switch (key->key_type) {
+    case G_TYPE_STRING:
+      str_value = g_key_file_get_string (keyfile, key->key_group, key->key_name, &error);
+      if (error == NULL)
+        (* (gpointer *) field_p) = str_value;
+      else
+        (* (gpointer *) field_p) = g_strdup (key->key_default.str_val);
+      break;
+
+    case G_TYPE_BOOLEAN:
+      int_value = g_key_file_get_integer (keyfile, key->key_group, key->key_name, &error);
+      if (error == NULL)
+        (* (guint *) field_p) = int_value;
+      else
+        (* (guint *) field_p) = key->key_default.int_val;
+      break;
+
+    case G_TYPE_INT:
+      bool_value = g_key_file_get_boolean (keyfile, key->key_group, key->key_name, &error);
+      if (error == NULL)
+        (* (gboolean *) field_p) = bool_value;
+      else
+        (* (gboolean *) field_p) = key->key_default.bool_val;
+      break;
+
+    default:
+      g_assert_not_reached ();
+  }
+
+  if (error != NULL) {
+    eam_log_error_message ("Unable to read configuration key '%s': %s",
+                           key->key_name,
+                           error->message);
+  }
 }
 
-/**
- * eam_config_get:
- *
- * Returns: the #EamConfig singleton.
- **/
-EamConfig *
+static EamConfig *
 eam_config_get (void)
 {
-  static GOnce once_init = G_ONCE_INIT;
-  return g_once (&once_init, eam_config_init, NULL);
-}
+  static volatile gpointer eam_config;
 
-/**
- * eam_config_set:
- * @cfg: a #EamConfig of %NULL for singleton
- * @appdir: the new appdir or %NULL
- * @dldir: the new dldir or %NULL
- * @saddr: the new saddr or %NULL
- * @protver: the new protver or %NULL
- * @scriptdir: the new scriptdir or %NULL
- * @gpgkeyring: the new keyring or %NULL
- * @timeout: the new timeout or %0
- * @deltaupdates: %TRUE to enable delta updates or %FALSE otherwise
- *
- * Updates the values of the configurations if they are not %NULL or %0
- **/
-void
-eam_config_set (EamConfig *cfg, gchar *appdir, gchar *dldir, gchar *saddr,
-  gchar *protver, gchar *scriptdir, gchar *gpgkeyring, guint timeout, gboolean deltaupdates)
-{
-  if (!cfg)
-    cfg = eam_config_get ();
+  if (g_once_init_enter (&eam_config)) {
+    const char *config_env = g_getenv ("EAM_CONFIG_FILE");
+    if (config_env == NULL)
+      config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
 
-  if (!cfg)
-    return;
+    EamConfig *config = g_new (EamConfig, 1);
 
-#define SETTERS(p) if (p) { g_free (cfg->p); cfg->p=p; }
-  PARAMS_LIST(SETTERS)
-#undef SETTERS
+    g_autoptr(GKeyFile) keyfile = g_key_file_new ();
+    g_autoptr(GError) error = NULL;
+    g_key_file_load_from_file (keyfile, config_env, 0, &error);
+    if (error != NULL) {
+      eam_log_error_message ("Unable to load configuration from '%s': %s",
+                             config_env,
+                             error->message);
+    }
 
-  if (timeout > 0)
-    cfg->timeout = timeout;
+    for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
+      const EamConfigKey *key = &eam_config_keys[i];
 
-  cfg->deltaupdates = deltaupdates;
-}
+      eam_config_set_key (key, config, keyfile);
+    }
 
-/**
- * eam_config_free:
- * @cfg: a #EamConfig of %NULL for singleton
- *
- * Frees all the memory allocated by each configuration string.
- **/
-void
-eam_config_free (EamConfig *cfg)
-{
-  if (!cfg)
-    cfg = eam_config_get ();
-
-  if (!cfg)
-    return;
-
-#define CLEARERS(p) g_clear_pointer (&cfg->p, g_free);
-  PARAMS_LIST(CLEARERS)
-#undef CLEARERS
-}
-
-/**
- * eam_config_destroy:
- * @cfg: a #EamConfig of %NULL for singleton
- *
- * Frees all the memory allocated by each configuration string and the
- * memory used by the configuration structure.
- **/
-void
-eam_config_destroy (EamConfig *cfg)
-{
-  if (!cfg)
-    cfg = eam_config_get ();
-
-  if (!cfg)
-    return;
-
-  eam_config_free (cfg);
-  g_slice_free (EamConfig, cfg);
-}
-
-static inline gchar *
-get_str (GKeyFile *keyfile, gchar *grp, gchar *key)
-{
-  GError *err = NULL;
-  gchar *value = g_key_file_get_string (keyfile, grp, key, &err);
-  if (err) {
-    g_free (value);
-    g_error_free (err);
-    return NULL;
+    g_once_init_leave (&eam_config, config);
   }
 
-  return g_strstrip (value);
+  return eam_config;
 }
 
-static GKeyFile *
-load_default (void)
+const char *
+eam_config_get_applications_dir (void)
 {
-  GKeyFile *keyfile = g_key_file_new ();
-  gboolean loaded = g_key_file_load_from_file (keyfile,
-     SYSCONFDIR "/eos-app-manager/eam-default.cfg",
-     G_KEY_FILE_NONE, NULL);
-
-  if (!loaded) {
-    g_key_file_unref (keyfile);
-    return NULL;
-  }
-
-  g_debug ("Loaded configuration from %s\n", SYSCONFDIR "/eos-app-manager/eam-default.cfg");
-
-  return keyfile;
+  return eam_config_get ()->apps_root;
 }
 
-/**
- * eam_config_load:
- * @cfg: a #EamConfig of %NULL for singleton
- * @keyfile: a #GKeyFile
- *
- * Parses a configuration @keyfile and sets the @cfg structure.
- *
- * Returns: %TRUE if the @keyfile was parsed correctly.
- **/
-gboolean
-eam_config_load (EamConfig *cfg, GKeyFile *keyfile)
+const char *
+eam_config_get_cache_dir (void)
 {
-  g_return_val_if_fail (cfg, FALSE);
-
-  gboolean ret = FALSE;
-  gboolean own = FALSE;
-  gchar *grp, *appdir, *saddr, *dldir, *protver, *scriptdir, *gpgkeyring;
-  guint timeout;
-  gboolean deltaupdates;
-
-  if (!keyfile) {
-    if (!(keyfile = load_default ()))
-      return FALSE;
-    own = TRUE;
-  }
-
-  grp = g_key_file_get_start_group (keyfile);
-  appdir = get_str (keyfile, grp, "appdir");
-  saddr = get_str (keyfile, grp, "serveraddress");
-  dldir = get_str (keyfile, grp, "downloaddir");
-  protver = get_str (keyfile, grp, "protocolversion");
-  scriptdir = get_str (keyfile, grp, "scriptdir");
-  gpgkeyring = get_str (keyfile, grp, "gpgkeyring");
-  timeout = g_key_file_get_integer (keyfile, grp, "timeout", NULL);
-  deltaupdates = g_key_file_get_boolean (keyfile, grp, "deltaupdates", NULL);
-
-  eam_config_set (cfg, appdir, dldir, saddr, protver,
-    scriptdir, gpgkeyring, timeout, deltaupdates);
-
-  ret = TRUE;
-
-  g_free (grp);
-
-  if (own)
-    g_key_file_unref (keyfile);
-
-  return ret;
+  return eam_config_get ()->cache_dir;
 }
 
-/**
- * eam_config_dump:
- * @cfg: a #EamConfig of %NULL for singleton
- *
- * Dumps to stdout the value of the configuration parameters.
- **/
-void
-eam_config_dump (EamConfig *cfg)
+const char *
+eam_config_get_gpg_keyring (void)
 {
-  if (!cfg)
-    cfg = eam_config_get ();
+  return eam_config_get ()->gpgkeyring;
+}
 
-  g_print ("EAM Configuration:\n\n"
-    "\tAppDir = %s\n"
-    "\tServerAddress = %s\n"
-    "\tDownloadDir = %s\n"
-    "\tProtocolVersion = %s\n"
-    "\tScriptDir = %s\n"
-    "\tTimeOut = %d\n"
-    "\tDeltaUpdates = %d\n",
-    cfg->appdir, cfg->saddr, cfg->dldir, cfg->protver, cfg->scriptdir,
-    cfg->timeout, cfg->deltaupdates);
+const char *
+eam_config_get_primary_storage (void)
+{
+  return eam_config_get ()->primary_storage;
+}
+
+const char *
+eam_config_get_secondary_storage (void)
+{
+  return eam_config_get ()->secondary_storage;
 }
 
 guint
-eam_config_timeout ()
+eam_config_get_inactivity_timeout (void)
 {
-  return eam_config_get ()->timeout;
+  return eam_config_get ()->inactivity_timeout;
+}
+
+const char *
+eam_config_get_server_url (void)
+{
+  return eam_config_get ()->server_url;
+}
+
+const char *
+eam_config_get_api_version (void)
+{
+  return eam_config_get ()->api_version;
 }
 
 gboolean
-eam_config_deltaupdates ()
+eam_config_get_enable_delta_updates (void)
 {
-  return eam_config_get ()->deltaupdates;
+  return eam_config_get ()->enable_delta_updates;
 }
-
-#define GETTERS(p) \
-  const gchar *eam_config_##p () { return eam_config_get ()->p; }
-PARAMS_LIST(GETTERS)
-#undef GETTERS

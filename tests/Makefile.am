@@ -14,5 +14,4 @@ dist_test_data = \
 	$(NULL)
 
 test_programs = \
-	cfg \
 	$(NULL)
