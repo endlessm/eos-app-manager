@@ -138,7 +138,6 @@ eam_dbus_server_init (EamDbusServer *server)
 #endif
 }
 
-#ifdef EAM_ENABLE_DEBUG
 static void
 print_peer_credentials (GDBusConnection *connection)
 {
@@ -157,7 +156,6 @@ print_peer_credentials (GDBusConnection *connection)
       ? "yes"
       : "no");
 }
-#endif
 
 static void
 on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
@@ -165,10 +163,8 @@ on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer data)
   EamDbusServer *server = EAM_DBUS_SERVER (data);
   EamDbusServerPrivate *priv = eam_dbus_server_get_instance_private (server);
 
-#ifdef EAM_ENABLE_DEBUG
   eam_log_debug_message ("bus acquired: %s", name);
   print_peer_credentials (connection);
-#endif
 
   eam_service_dbus_register (priv->service, connection);
 }
