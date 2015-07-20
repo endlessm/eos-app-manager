@@ -166,11 +166,11 @@ eam_config_get (void)
     g_autoptr(GKeyFile) keyfile = g_key_file_new ();
     g_autoptr(GError) error = NULL;
     g_key_file_load_from_file (keyfile, config_env, 0, &error);
-    if (error != NULL) {
+
+    if (error != NULL)
       eam_log_error_message ("Unable to load configuration from '%s': %s",
                              config_env,
                              error->message);
-    }
 
     for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
       const EamConfigKey *key = &eam_config_keys[i];
