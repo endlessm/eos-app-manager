@@ -9,7 +9,7 @@ DISTCLEANFILES =
 EXTRA_DIST =
 
 completiondir = $(datadir)/bash-completion/completions
-completion_DATA = completion/eam
+completion_DATA = completion/eamctl
 EXTRA_DIST += $(completion_DATA)
 
 do_subst = sed \
