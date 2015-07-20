@@ -11,7 +11,7 @@ __eamctl_app() {
     2)
       case "${COMP_WORDS[1]}" in
         config)
-          COMPREPLY=($(compgen -W "`eam config list`" -- "${COMP_WORDS[2]}"))
+          COMPREPLY=($(compgen -W "`eamctl config list`" -- "${COMP_WORDS[2]}"))
           return 0
           ;;
 
@@ -30,12 +30,12 @@ __eamctl_app() {
 
   case "${COMP_WORDS[1]}" in
     app-info)
-      COMPREPLY=($(compgen -W "`eam list-apps`" -- "${COMP_WORDS[2]}"))
+      COMPREPLY=($(compgen -W "`eamctl list-apps`" -- "${COMP_WORDS[2]}"))
       return 0
       ;;
 
     config)
-      COMPREPLY=($(compgen -W "`eam config list`" -- "${COMP_WORDS[2]}"))
+      COMPREPLY=($(compgen -W "`eamctl config list`" -- "${COMP_WORDS[2]}"))
       return 0
       ;;
 
@@ -45,7 +45,7 @@ __eamctl_app() {
       ;;
 
     uninstall)
-      COMPREPLY=($(compgen -W "`eam list-apps`" -- "${COMP_WORDS[2]}"))
+      COMPREPLY=($(compgen -W "`eamctl list-apps`" -- "${COMP_WORDS[2]}"))
       return 0
       ;;
 
@@ -62,4 +62,4 @@ __eamctl_app() {
 
 ###
 
-complete -F __app eam
+complete -F __eamctl_app eamctl
