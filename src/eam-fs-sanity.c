@@ -98,7 +98,7 @@ applications_directory_create (void)
 {
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
     g_autoptr(GError) error = NULL;
-    eam_fs_init_bundle_dir (eam_config_appdir (), i, &error);
+    eam_fs_init_bundle_dir (eam_config_get_applications_dir (), i, &error);
     if (error != NULL) {
       eam_log_error_message ("%s", error->message);
       return FALSE;
@@ -232,7 +232,7 @@ eam_fs_sanity_check (void)
 {
   gboolean retval = TRUE;
 
-  const gchar *appdir = eam_config_appdir ();
+  const gchar *appdir = eam_config_get_applications_dir ();
   g_assert (appdir);
 
   /* Ensure the applications installation directory exists */

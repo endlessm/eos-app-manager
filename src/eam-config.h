@@ -7,44 +7,15 @@
 
 G_BEGIN_DECLS
 
-typedef struct _EamConfig EamConfig;
-
-EamConfig      *eam_config_get                  (void);
-
-void            eam_config_free                 (EamConfig *cfg);
-
-void            eam_config_destroy              (EamConfig *cfg);
-
-gboolean        eam_config_load                 (EamConfig *cfg,
-                                                 GKeyFile *keyfile);
-
-void            eam_config_set                  (EamConfig *cfg,
-                                                 gchar *appdir,
-                                                 gchar *dldir,
-                                                 gchar *saddr,
-                                                 gchar *protver,
-                                                 gchar *scriptdir,
-                                                 gchar *gpgkeyring,
-                                                 guint timeout,
-                                                 gboolean deltaupdates);
-
-void            eam_config_dump                 (EamConfig *cfg);
-
-guint           eam_config_timeout              (void);
-
-gboolean        eam_config_deltaupdates         (void);
-
-#define PARAMS_LIST(V) \
-  V(appdir) \
-  V(dldir)  \
-  V(saddr)  \
-  V(protver) \
-  V(scriptdir) \
-  V(gpgkeyring)
-
-#define GETTERS(p) const gchar *eam_config_##p (void);
-PARAMS_LIST(GETTERS)
-#undef GETTERS
+const char *    eam_config_get_applications_dir         (void);
+const char *    eam_config_get_cache_dir                (void);
+const char *    eam_config_get_primary_storage          (void);
+const char *    eam_config_get_secondary_storage        (void);
+const char *    eam_config_get_gpg_keyring              (void);
+const char *    eam_config_get_server_url               (void);
+const char *    eam_config_get_api_version              (void);
+gboolean        eam_config_get_enable_delta_updates     (void);
+guint           eam_config_get_inactivity_timeout       (void);
 
 G_END_DECLS
 

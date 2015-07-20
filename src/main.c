@@ -36,36 +36,6 @@ parse_options (int *argc, gchar ***argv)
  return TRUE;
 }
 
-static gboolean
-load_config (void)
-{
-  GKeyFile *keyfile = NULL;
-  gboolean ret = TRUE;
-
-  if (!opt_cfgfile)
-    goto bail;
-
-  GError *err = NULL;
-  keyfile = g_key_file_new ();
-  if (!g_key_file_load_from_file (keyfile, opt_cfgfile, G_KEY_FILE_NONE, &err)) {
-    eam_log_error_message ("Error parsing configuration file: %s", err->message);
-    g_key_file_unref (keyfile);
-    g_error_free (err);
-    keyfile = NULL;
-  }
-
-bail:
-  if (!eam_config_load (eam_config_get (), keyfile)) {
-    eam_log_error_message ("Cannot load configuration parameters");
-    ret = FALSE;
-  }
-
-  if (keyfile)
-    g_key_file_unref (keyfile);
-
-  return ret;
-}
-
 int
 main (int argc, gchar **argv)
 {
@@ -81,14 +51,6 @@ main (int argc, gchar **argv)
   if (!parse_options (&argc, &argv))
     return EXIT_FAILURE;
 
-  if (!load_config ())
-    return EXIT_FAILURE;
-
-  if (opt_dumpcfg) {
-    eam_config_dump (NULL);
-    return EXIT_SUCCESS;
-  }
-
   if (!eam_fs_sanity_check ())
     return EXIT_FAILURE;
 
@@ -98,7 +60,6 @@ main (int argc, gchar **argv)
     ret = EXIT_SUCCESS;
 
   g_object_unref (server);
-  eam_config_destroy (NULL);
 
   return ret;
 }

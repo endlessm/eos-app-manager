@@ -33,7 +33,7 @@ eam_command_list_apps (int argc, char *argv[])
 
   g_option_context_free (context);
 
-  const char *appdir = eam_config_appdir ();
+  const char *appdir = eam_config_get_applications_dir ();
   g_assert (appdir != NULL);
 
   g_autoptr(GError) error = NULL;

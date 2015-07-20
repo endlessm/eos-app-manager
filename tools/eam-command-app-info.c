@@ -20,7 +20,7 @@ eam_command_app_info (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  const char *appdir = eam_config_appdir ();
+  const char *appdir = eam_config_get_applications_dir ();
   g_assert (appdir != NULL);
 
   g_autofree char *child_path = g_build_filename (appdir, argv[1], NULL);

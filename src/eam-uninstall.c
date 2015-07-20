@@ -46,7 +46,7 @@ eam_uninstall_run_sync (EamTransaction *trans,
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
 
   if (priv->prefix == NULL)
-    priv->prefix = g_strdup (eam_config_appdir ());
+    priv->prefix = g_strdup (eam_config_get_applications_dir ());
 
   if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
     if (!priv->is_force) {

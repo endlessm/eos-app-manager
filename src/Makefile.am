@@ -3,6 +3,9 @@ bin_PROGRAMS = eamd
 AM_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"Eam\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DLOCALSTATEDIR=\"$(localstatedir)\" \
+	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\" \
+	-DPKGDATADIR=\"$(pkgdatadir)\" \
 	$(NULL)
 
 source_c = \
