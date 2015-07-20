@@ -79,7 +79,7 @@ if (server) {
                                  GLib.KeyFileFlags.KEEP_COMMENTS |
                                  GLib.KeyFileFlags.KEEP_TRANSLATIONS);
 
-    configKeyFile.set_string("eam", "serveraddress", server);
+    configKeyFile.set_string("eam", "ServerUrl", server);
 
     // Write out new config file
     let configFile = Gio.File.new_for_path(configFilePath);

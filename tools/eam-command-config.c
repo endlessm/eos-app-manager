@@ -10,22 +10,24 @@
 static void
 print_all (void)
 {
-  g_print ("eam─┬─appdir───%s\n"
-           "    ├─downloaddir───%s\n"
-           "    ├─serveraddress───%s\n"
-           "    ├─protocolversion───%s\n"
-           "    ├─scriptdir───%s\n"
-           "    ├─timeout───%u\n"
-           "    ├─deltaupdates───%s\n"
-           "    └─gpgkeyring───%s\n",
-           eam_config_appdir (),
-           eam_config_dldir (),
-           eam_config_saddr (),
-           eam_config_protver (),
-           eam_config_scriptdir (),
-           eam_config_timeout (),
-           eam_config_deltaupdates () ? "true" : "false",
-           eam_config_gpgkeyring ());
+  g_print ("eam─┬─directories─┬─apps root───%s\n"
+           "    │             ├─cache dir───%s\n"
+           "    │             ├─primary storage───%s\n"
+           "    │             ├─secondary storage───%s\n"
+           "    │             └─gpg keyring───%s\n"
+           "    ├─repository─┬─server url───%s\n"
+           "    │            ├─api version───%s\n"
+           "    │            └─delta updates───%s\n"
+           "    └─daemon───inactivity timeout───%u\n",
+           eam_config_get_applications_dir (),
+           eam_config_get_cache_dir (),
+           eam_config_get_primary_storage (),
+           eam_config_get_secondary_storage (),
+           eam_config_get_gpg_keyring (),
+           eam_config_get_server_url (),
+           eam_config_get_api_version (),
+           eam_config_get_enable_delta_updates () ? "true" : "false",
+           eam_config_get_inactivity_timeout ());
 }
 
 int
@@ -37,54 +39,45 @@ eam_command_config (int argc, char *argv[])
   }
 
   if (strcmp (argv[1], "list") == 0) {
-    g_print ("appdir\n"
-             "downloaddir\n"
-             "serveraddress\n"
-             "protocolversion\n"
-             "scriptdir\n"
-             "gpgpkeyring\n"
-             "timeout\n"
-             "deltaupdates\n");
+    g_print ("ApplicationsDir\n"
+             "CacheDir\n"
+             "PrimaryStorage\n"
+             "SecondaryStorage\n"
+             "GpgKeyring\n"
+             "ServerURL\n"
+             "ProtocolVersion\n"
+             "DeltaUpdates\n"
+             "InactivityTimeout\n");
     return EXIT_SUCCESS;
   }
 
-  if (strcmp (argv[1], "appdir") == 0) {
-    g_print ("%s\n", eam_config_appdir ());
+  if (strcmp (argv[1], "ApplicationsDir") == 0) {
+    g_print ("%s\n", eam_config_get_applications_dir ());
     return EXIT_SUCCESS;
   }
 
-  if (strcmp (argv[1], "downloaddir") == 0) {
-    g_print ("%s\n", eam_config_dldir ());
+  if (strcmp (argv[1], "CacheDir") == 0) {
+    g_print ("%s\n", eam_config_get_cache_dir ());
     return EXIT_SUCCESS;
   }
 
-  if (strcmp (argv[1], "serveraddress") == 0) {
-    g_print ("%s\n", eam_config_saddr ());
+  if (strcmp (argv[1], "PrimaryStorage") == 0) {
+    g_print ("%s\n", eam_config_get_primary_storage ());
     return EXIT_SUCCESS;
   }
 
-  if (strcmp (argv[1], "protocolversion") == 0) {
-    g_print ("%s\n", eam_config_protver ());
+  if (strcmp (argv[1], "SecondaryStorage") == 0) {
+    g_print ("%s\n", eam_config_get_secondary_storage ());
     return EXIT_SUCCESS;
   }
 
-  if (strcmp (argv[1], "scriptdir") == 0) {
-    g_print ("%s\n", eam_config_scriptdir ());
+  if (strcmp (argv[1], "GpgKeyring") == 0) {
+    g_print ("%s\n", eam_config_get_gpg_keyring ());
     return EXIT_SUCCESS;
   }
 
-  if (strcmp (argv[1], "gpgkeyring") == 0) {
-    g_print ("%s\n", eam_config_gpgkeyring ());
-    return EXIT_SUCCESS;
-  }
-
-  if (strcmp (argv[1], "timeout") == 0) {
-    g_print ("%u\n", eam_config_timeout ());
-    return EXIT_SUCCESS;
-  }
-
-  if (strcmp (argv[1], "deltaupdates") == 0) {
-    g_print ("%s\n", eam_config_deltaupdates () ? "true" : "false");
+  if (strcmp (argv[1], "InactivityTimeout") == 0) {
+    g_print ("%u\n", eam_config_get_inactivity_timeout ());
     return EXIT_SUCCESS;
   }
 

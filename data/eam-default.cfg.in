@@ -1,9 +1,14 @@
-[eam]
-appdir = /endless
-downloaddir = @localstatedir@/cache/eos-app-manager
-serveraddress = http://appupdates.endlessm.com
-protocolversion = v1
-scriptdir = @pkglibexecdir@
-gpgkeyring = @pkgdatadir@/eos-keyring.gpg
-timeout = 300
-deltaupdates = true
+[Directories]
+ApplicationsDir = /endless
+CacheDir = @localstatedir@/cache/eos-app-manager
+PrimaryStorage = @localstatedir@/endless
+SecondaryStorage = @localstatedir@/endless-extra
+GpgKeyring = @pkgdatadir@/eos-keyring.gpg
+
+[Repository]
+ServerUrl = http://appupdates.endlessm.com
+ApiVersion = v1
+EnableDeltaUpdates = true
+
+[Daemon]
+InactivityTimeout = 300
