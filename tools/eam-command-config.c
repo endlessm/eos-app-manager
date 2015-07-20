@@ -76,6 +76,21 @@ eam_command_config (int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
+  if (strcmp (argv[1], "ServerURL") == 0) {
+    g_print ("%s\n", eam_config_get_server_url ());
+    return EXIT_SUCCESS;
+  }
+
+  if (strcmp (argv[1], "ProtocolVersion") == 0) {
+    g_print ("%s\n", eam_config_get_api_version ());
+    return EXIT_SUCCESS;
+  }
+
+  if (strcmp (argv[1], "DeltaUpdates") == 0) {
+    eam_config_get_enable_delta_updates () ? "true" : "false";
+    return EXIT_SUCCESS;
+  }
+
   if (strcmp (argv[1], "InactivityTimeout") == 0) {
     g_print ("%u\n", eam_config_get_inactivity_timeout ());
     return EXIT_SUCCESS;
