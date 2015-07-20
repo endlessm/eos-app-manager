@@ -87,7 +87,7 @@ eam_command_config (int argc, char *argv[])
   }
 
   if (strcmp (argv[1], "DeltaUpdates") == 0) {
-    eam_config_get_enable_delta_updates () ? "true" : "false";
+    g_print ("%s\n", eam_config_get_enable_delta_updates () ? "true" : "false");
     return EXIT_SUCCESS;
   }
 
