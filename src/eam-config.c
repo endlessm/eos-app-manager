@@ -6,80 +6,103 @@
 #include "eam-config.h"
 #include "eam-log.h"
 
-#define EAM_CONFIG_GROUP        "eam"
+#define EAM_CONFIG_DIRECTORIES  "Directories"
+#define EAM_CONFIG_DAEMON       "Daemon"
+#define EAM_CONFIG_REPOSITORY   "Repository"
 
 typedef struct {
-  char *appdir;
-  char *dldir;
-  char *saddr;
-  char *protver;
-  char *scriptdir;
+  /* Directories */
+  char *apps_root;
+  char *cache_dir;
+  char *primary_storage;
+  char *secondary_storage;
   char *gpgkeyring;
 
-  guint timeout;
+  /* Repository */
+  char *server_url;
+  char *api_version;
+  gboolean enable_delta_updates;
 
-  gboolean deltaupdates;
+  /* Daemon */
+  guint inactivity_timeout;
 } EamConfig;
-
-/* The defaults we fall back to */
-static const EamConfig eam_config_default = {
-  .appdir = "/endless",
-  .dldir = LOCALSTATEDIR "/endless",
-  .saddr = "http://appupdates.endlessm.com",
-  .protver = "v1",
-  .scriptdir = PKGLIBEXECDIR,
-  .gpgkeyring = PKGDATADIR "/eos-keyring.gpg",
-  .timeout = 300,
-  .deltaupdates = FALSE,
-};
 
 typedef struct {
   const char *key_name;
+  const char *key_group;
   gsize key_field;
   GType key_type;
+  union {
+    int int_val;
+    const char *str_val;
+    gboolean bool_val;
+  } key_default;
 } EamConfigKey;
 
 static const EamConfigKey eam_config_keys[] = {
   {
-    .key_name = "appdir",
-    .key_field = G_STRUCT_OFFSET (EamConfig, appdir),
+    .key_name = "ApplicationsDir",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, apps_root),
     .key_type = G_TYPE_STRING,
+    .key_default.str_val = "/endless",
   },
   {
-    .key_name = "downloadir",
-    .key_field = G_STRUCT_OFFSET (EamConfig, dldir),
+    .key_name = "CacheDir",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, cache_dir),
     .key_type = G_TYPE_STRING,
+    .key_default.str_val = LOCALSTATEDIR "/cache/eos-app-manager",
   },
   {
-    .key_name = "serveraddress",
-    .key_field = G_STRUCT_OFFSET (EamConfig, saddr),
+    .key_name = "PrimaryStorage",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, primary_storage),
     .key_type = G_TYPE_STRING,
+    .key_default.str_val = LOCALSTATEDIR "/endless",
   },
   {
-    .key_name = "protocolversion",
-    .key_field = G_STRUCT_OFFSET (EamConfig, protver),
+    .key_name = "SecondaryStorage",
+    .key_group = EAM_CONFIG_DIRECTORIES,
+    .key_field = G_STRUCT_OFFSET (EamConfig, secondary_storage),
     .key_type = G_TYPE_STRING,
+    .key_default.str_val = LOCALSTATEDIR "/endless-extra",
   },
   {
-    .key_name = "scriptdir",
-    .key_field = G_STRUCT_OFFSET (EamConfig, scriptdir),
-    .key_type = G_TYPE_STRING,
-  },
-  {
-    .key_name = "gpgkeyring",
+    .key_name = "GpgKeyring",
+    .key_group = EAM_CONFIG_DIRECTORIES,
     .key_field = G_STRUCT_OFFSET (EamConfig, gpgkeyring),
     .key_type = G_TYPE_STRING,
+    .key_default.str_val = PKGDATADIR "/eos-keyring.gpg",
   },
   {
-    .key_name = "timeout",
-    .key_field = G_STRUCT_OFFSET (EamConfig, timeout),
+    .key_name = "InactivityTimeout",
+    .key_group = EAM_CONFIG_DAEMON,
+    .key_field = G_STRUCT_OFFSET (EamConfig, inactivity_timeout),
     .key_type = G_TYPE_INT,
+    .key_default.int_val = 300,
   },
   {
-    .key_name = "deltaupdates",
-    .key_field = G_STRUCT_OFFSET (EamConfig, deltaupdates),
+    .key_name = "ServerUrl",
+    .key_group = EAM_CONFIG_REPOSITORY,
+    .key_field = G_STRUCT_OFFSET (EamConfig, server_url),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = "http://appupdates.endlessm.com",
+  },
+  {
+    .key_name = "ApiVersion",
+    .key_group = EAM_CONFIG_REPOSITORY,
+    .key_field = G_STRUCT_OFFSET (EamConfig, api_version),
+    .key_type = G_TYPE_STRING,
+    .key_default.str_val = "v1",
+  },
+  {
+    .key_name = "EnableDeltaUpdates",
+    .key_group = EAM_CONFIG_REPOSITORY,
+    .key_field = G_STRUCT_OFFSET (EamConfig, enable_delta_updates),
     .key_type = G_TYPE_BOOLEAN,
-  }
+    .key_default.bool_val = TRUE,
+  },
 };
 
 static inline void
@@ -95,38 +118,37 @@ eam_config_set_key (const EamConfigKey *key,
 
   switch (key->key_type) {
     case G_TYPE_STRING:
-      str_value = g_key_file_get_string (keyfile, EAM_CONFIG_GROUP, key->key_name, &error);
+      str_value = g_key_file_get_string (keyfile, key->key_group, key->key_name, &error);
       if (error == NULL)
         (* (gpointer *) field_p) = str_value;
       else
-        (* (gpointer *) field_p) = G_STRUCT_MEMBER (char *, &eam_config_default, key->key_field);
-      break;
-
-    case G_TYPE_BOOLEAN:
-      int_value = g_key_file_get_integer (keyfile, EAM_CONFIG_GROUP, key->key_name, &error);
-      if (error == NULL)
-        (* (guint *) field_p) = int_value;
-      else
-        (* (guint *) field_p) = G_STRUCT_MEMBER (guint, &eam_config_default, key->key_field);
+        (* (gpointer *) field_p) = g_strdup (key->key_default.str_val);
       break;
 
     case G_TYPE_INT:
-      bool_value = g_key_file_get_boolean (keyfile, EAM_CONFIG_GROUP, key->key_name, &error);
+      int_value = g_key_file_get_integer (keyfile, key->key_group, key->key_name, &error);
+      if (error == NULL)
+        (* (guint *) field_p) = int_value;
+      else
+        (* (guint *) field_p) = key->key_default.int_val;
+      break;
+
+    case G_TYPE_BOOLEAN:
+      bool_value = g_key_file_get_boolean (keyfile, key->key_group, key->key_name, &error);
       if (error == NULL)
         (* (gboolean *) field_p) = bool_value;
       else
-        (* (gboolean *) field_p) = G_STRUCT_MEMBER (gboolean, &eam_config_default, key->key_field);
+        (* (gboolean *) field_p) = key->key_default.bool_val;
       break;
 
     default:
       g_assert_not_reached ();
   }
 
-  if (error != NULL) {
+  if (error != NULL)
     eam_log_error_message ("Unable to read configuration key '%s': %s",
                            key->key_name,
                            error->message);
-  }
 }
 
 static EamConfig *
@@ -140,7 +162,6 @@ eam_config_get (void)
       config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
 
     EamConfig *config = g_new (EamConfig, 1);
-    memcpy (config, &eam_config_default, sizeof (EamConfig));
 
     g_autoptr(GKeyFile) keyfile = g_key_file_new ();
     g_autoptr(GError) error = NULL;
@@ -150,12 +171,11 @@ eam_config_get (void)
                              config_env,
                              error->message);
     }
-    else {
-      for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
-        const EamConfigKey *key = &eam_config_keys[i];
 
-        eam_config_set_key (key, config, keyfile);
-      }
+    for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
+      const EamConfigKey *key = &eam_config_keys[i];
+
+      eam_config_set_key (key, config, keyfile);
     }
 
     g_once_init_leave (&eam_config, config);
@@ -167,31 +187,13 @@ eam_config_get (void)
 const char *
 eam_config_get_applications_dir (void)
 {
-  return eam_config_get ()->appdir;
+  return eam_config_get ()->apps_root;
 }
 
 const char *
-eam_config_get_server_address (void)
+eam_config_get_cache_dir (void)
 {
-  return eam_config_get ()->saddr;
-}
-
-const char *
-eam_config_get_download_dir (void)
-{
-  return eam_config_get ()->dldir;
-}
-
-const char *
-eam_config_get_protocol_version (void)
-{
-  return eam_config_get ()->protver;
-}
-
-const char *
-eam_config_get_script_dir (void)
-{
-  return eam_config_get ()->scriptdir;
+  return eam_config_get ()->cache_dir;
 }
 
 const char *
@@ -200,14 +202,38 @@ eam_config_get_gpg_keyring (void)
   return eam_config_get ()->gpgkeyring;
 }
 
+const char *
+eam_config_get_primary_storage (void)
+{
+  return eam_config_get ()->primary_storage;
+}
+
+const char *
+eam_config_get_secondary_storage (void)
+{
+  return eam_config_get ()->secondary_storage;
+}
+
 guint
 eam_config_get_inactivity_timeout (void)
 {
-  return eam_config_get ()->timeout;
+  return eam_config_get ()->inactivity_timeout;
+}
+
+const char *
+eam_config_get_server_url (void)
+{
+  return eam_config_get ()->server_url;
+}
+
+const char *
+eam_config_get_api_version (void)
+{
+  return eam_config_get ()->api_version;
 }
 
 gboolean
-eam_config_get_delta_updates_enabled (void)
+eam_config_get_enable_delta_updates (void)
 {
-  return eam_config_get ()->deltaupdates;
+  return eam_config_get ()->enable_delta_updates;
 }
