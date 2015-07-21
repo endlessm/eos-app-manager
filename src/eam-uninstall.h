@@ -44,7 +44,7 @@ EamTransaction *eam_uninstall_new               (const gchar *appid);
 void            eam_uninstall_set_force         (EamUninstall *uninstall,
                                                  gboolean      force);
 void            eam_uninstall_set_prefix        (EamUninstall *uninstall,
-                                                 const char   *prefix);
+                                                 const char   *path);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUninstall, g_object_unref)
 

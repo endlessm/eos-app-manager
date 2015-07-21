@@ -45,9 +45,6 @@ eam_uninstall_run_sync (EamTransaction *trans,
   EamUninstall *self = (EamUninstall *) trans;
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
 
-  if (priv->prefix == NULL)
-    priv->prefix = g_strdup (eam_config_get_applications_dir ());
-
   if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
     if (!priv->is_force) {
       g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
@@ -253,15 +250,19 @@ eam_uninstall_set_force (EamUninstall *uninstall,
 
 void
 eam_uninstall_set_prefix (EamUninstall *uninstall,
-                          const char   *prefix)
+                          const char   *path)
 {
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (uninstall);
+  const char *prefix;
 
-  g_return_if_fail (EAM_IS_UNINSTALL (uninstall));
+  if (path == NULL || *path == '\0')
+    prefix = eam_config_get_applications_dir ();
+  else
+    prefix = path;
 
   if (g_strcmp0 (priv->prefix, prefix) == 0)
     return;
 
   g_free (priv->prefix);
-  priv->prefix = g_strdup (priv->prefix);
+  priv->prefix = g_strdup (prefix);
 }
