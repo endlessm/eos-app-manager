@@ -7,7 +7,6 @@
 
 #include "eam-config.h"
 #include "eam-dbus-server.h"
-#include "eam-fs-sanity.h"
 #include "eam-log.h"
 
 static const gchar *opt_cfgfile;
@@ -49,9 +48,6 @@ main (int argc, gchar **argv)
 #endif
 
   if (!parse_options (&argc, &argv))
-    return EXIT_FAILURE;
-
-  if (!eam_fs_sanity_check ())
     return EXIT_FAILURE;
 
   EamDbusServer *server = eam_dbus_server_new ();
