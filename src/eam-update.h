@@ -41,6 +41,8 @@ GType eam_update_get_type (void) G_GNUC_CONST;
 
 EamTransaction *        eam_update_new                  (const gchar    *appid);
 
+void                    eam_update_set_prefix           (EamUpdate      *update,
+                                                         const char     *path);
 void                    eam_update_set_bundle_file      (EamUpdate      *update,
                                                          const char     *path);
 void                    eam_update_set_signature_file   (EamUpdate      *update,
