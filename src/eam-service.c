@@ -691,6 +691,8 @@ handle_transaction_method_call (GDBusConnection *connection,
       else if (EAM_IS_UPDATE (remote->transaction)) {
         EamUpdate *update = EAM_UPDATE (remote->transaction);
 
+        eam_update_set_prefix (update, prefix);
+
         eam_update_set_bundle_file (update, bundle_path);
         eam_update_set_signature_file (update, signature_path);
         eam_update_set_checksum_file (update, checksum_path);
