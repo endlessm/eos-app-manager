@@ -107,13 +107,6 @@ EAM_ADMIN_GROUP="$eam_admin_group"
 AC_DEFINE_UNQUOTED([EAM_ADMIN_GROUP_NAME],["$EAM_ADMIN_GROUP"],[System group with administration permissions])
 AC_SUBST(EAM_ADMIN_GROUP)
 
-AC_ARG_ENABLE([debug],
-              [AS_HELP_STRING([--enable-debug], [Enable debug messages])],
-              [enable_debug=$enableval],
-              [enable_debug=yes])
-
-AS_IF([test "x$enable_debug" = xyes], [AC_DEFINE([EAM_ENABLE_DEBUG], [1], [Enable debug code])])
-
 EAM_CFLAGS="$DEPENDENCIES_CFLAGS"
 EAM_LIBS="$DEPENDENCIES_LIBS"
 AC_SUBST(EAM_CFLAGS)

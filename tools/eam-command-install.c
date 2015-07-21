@@ -121,9 +121,6 @@ eam_command_install (int argc, char *argv[])
       else
         g_assert_not_reached ();
     }
-    else {
-      eam_install_set_prefix (install, NULL);
-    }
 
     eam_install_set_bundle_file (install, bundle_file);
     eam_install_set_signature_file (install, opt_asc_file);

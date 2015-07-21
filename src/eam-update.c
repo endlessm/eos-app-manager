@@ -22,6 +22,7 @@ struct _EamUpdatePrivate
 {
   gchar *appid;
 
+  char *prefix;
   char *bundle_file;
   char *signature_file;
   char *checksum_file;
@@ -66,6 +67,7 @@ eam_update_finalize (GObject *obj)
   g_free (priv->bundle_file);
   g_free (priv->signature_file);
   g_free (priv->checksum_file);
+  g_free (priv->prefix);
 
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
@@ -124,6 +126,7 @@ eam_update_class_init (EamUpdateClass *klass)
 static void
 eam_update_init (EamUpdate *self)
 {
+  eam_update_set_prefix (self, NULL);
 }
 
 /**
@@ -235,13 +238,13 @@ eam_update_run_sync (EamTransaction *trans,
     priv->signature_file = g_build_filename (dirname, filename, NULL);
   }
 
-  if (!eam_fs_sanity_check ()) {
+  if (!eam_fs_sanity_check (priv->prefix)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Unable to access applications directory");
     return FALSE;
   }
 
-  if (!eam_utils_app_is_installed (eam_config_get_applications_dir (), priv->appid)) {
+  if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Application is not installed");
     return FALSE;
@@ -261,7 +264,7 @@ eam_update_run_sync (EamTransaction *trans,
 
   /* Keep a copy of the old app around, in case the update fails */
   g_autofree char *backupdir = NULL;
-  if (!eam_fs_backup_app (eam_config_get_applications_dir (), priv->appid, &backupdir)) {
+  if (!eam_fs_backup_app (priv->prefix, priv->appid, &backupdir)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not keep a copy of the app");
     return FALSE;
@@ -280,17 +283,17 @@ eam_update_run_sync (EamTransaction *trans,
   /* If the update failed, restore from backup and bail out */
   if (!res) {
     if (backupdir)
-      eam_fs_restore_app (eam_config_get_applications_dir (), priv->appid, backupdir);
+      eam_fs_restore_app (priv->prefix, priv->appid, backupdir);
 
     g_propagate_error (error, internal_error);
     return FALSE;
   }
 
   /* If the symbolic link creation fails, we restore from backup */
-  res = eam_fs_create_symlinks (eam_config_get_applications_dir (), priv->appid);
+  res = eam_fs_create_symlinks (priv->prefix, priv->appid);
   if (!res) {
     if (backupdir)
-      eam_fs_restore_app (eam_config_get_applications_dir (), priv->appid, backupdir);
+      eam_fs_restore_app (priv->prefix, priv->appid, backupdir);
 
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not create symbolic links");
@@ -298,11 +301,11 @@ eam_update_run_sync (EamTransaction *trans,
   }
 
   /* These two errors are non-fatal */
-  if (!eam_utils_compile_python (eam_config_get_applications_dir (), priv->appid)) {
+  if (!eam_utils_compile_python (priv->prefix, priv->appid)) {
     eam_log_error_message ("Python libraries compilation failed");
   }
 
-  if (!eam_utils_update_desktop (eam_config_get_applications_dir ())) {
+  if (!eam_utils_update_desktop (priv->prefix)) {
     eam_log_error_message ("Could not update the desktop's metadata");
   }
 
@@ -382,6 +385,25 @@ eam_update_set_checksum_file (EamUpdate *update,
 
   g_free (priv->checksum_file);
   priv->checksum_file = g_strdup (path);
+}
+
+void
+eam_update_set_prefix (EamUpdate *update,
+                       const char *path)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+  const char *prefix;
+
+  if (path == NULL || *path == '\0')
+    prefix = eam_config_get_applications_dir ();
+  else
+    prefix = path;
+
+  if (g_strcmp0 (priv->prefix, prefix) == 0)
+    return;
+
+  g_free (priv->prefix);
+  priv->prefix = g_strdup (prefix);
 }
 
 const char *
