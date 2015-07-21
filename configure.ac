@@ -16,7 +16,7 @@ ACLOCAL="$ACLOCAL $ACLOCAL_FLAGS"
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 
-AM_INIT_AUTOMAKE([1.11 no-define -Wno-portability subdir-objects foreign tar-ustar dist-xz no-dist-gzip])
+AM_INIT_AUTOMAKE([1.11.2 no-define -Wno-portability subdir-objects foreign tar-ustar dist-xz no-dist-gzip])
 AM_SILENT_RULES([yes])
 AM_MAINTAINER_MODE([enable])
 
