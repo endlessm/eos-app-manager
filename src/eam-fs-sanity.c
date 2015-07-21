@@ -94,11 +94,11 @@ eam_fs_init_bundle_dir (const char *prefix,
 }
 
 static gboolean
-applications_directory_create (void)
+applications_directory_create (const char *prefix)
 {
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
     g_autoptr(GError) error = NULL;
-    eam_fs_init_bundle_dir (eam_config_get_applications_dir (), i, &error);
+    eam_fs_init_bundle_dir (prefix, i, &error);
     if (error != NULL) {
       eam_log_error_message ("%s", error->message);
       return FALSE;
@@ -218,8 +218,10 @@ fix_application_permissions_if_needed (const gchar *path)
 
 /**
  * eam_fs_sanity_check:
+ * @prefix: the installation prefix
+ *
  * Guarantees the existance of the applications' root installation directory and the
- * subdirectories required by the Application Manager to work.
+ * subdirectories required by the Application Manager to work inside @prefix.
  *
  * If the applications' directory does not exist, it and its required subdirectories
  * are created. If the applications' directory is corrupted, FALSE is returned.
@@ -228,30 +230,29 @@ fix_application_permissions_if_needed (const gchar *path)
  * are successfully created, FALSE otherwise.
  **/
 gboolean
-eam_fs_sanity_check (void)
+eam_fs_sanity_check (const char *prefix)
 {
   gboolean retval = TRUE;
 
-  const gchar *appdir = eam_config_get_applications_dir ();
-  g_assert (appdir);
+  g_assert (prefix);
 
   /* Ensure the applications installation directory exists */
-  if (!applications_directory_create ()) {
-    eam_log_error_message ("Failed to create the applications directory '%s'", appdir);
+  if (!applications_directory_create (prefix)) {
+    eam_log_error_message ("Failed to create the applications directory '%s'", prefix);
     return FALSE;
   }
 
   /* Check if the existing applications directory structure is correct */
-  gchar *bin_dir = g_build_filename (appdir, BIN_SUBDIR, NULL);
-  gchar *desktop_files_dir = g_build_filename (appdir, DESKTOP_FILES_SUBDIR, NULL);
-  gchar *desktop_icons_dir = g_build_filename (appdir, DESKTOP_ICONS_SUBDIR, NULL);
-  gchar *dbus_services_dir = g_build_filename (appdir, DBUS_SERVICES_SUBDIR, NULL);
-  gchar *ekn_data_dir = g_build_filename (appdir, EKN_DATA_SUBDIR, NULL);
-  gchar *g_schemas_dir = g_build_filename (appdir, G_SCHEMAS_SUBDIR, NULL);
-  gchar *xdg_autostart_dir = g_build_filename (appdir, XDG_AUTOSTART_SUBDIR, NULL);
+  gchar *bin_dir = g_build_filename (prefix, BIN_SUBDIR, NULL);
+  gchar *desktop_files_dir = g_build_filename (prefix, DESKTOP_FILES_SUBDIR, NULL);
+  gchar *desktop_icons_dir = g_build_filename (prefix, DESKTOP_ICONS_SUBDIR, NULL);
+  gchar *dbus_services_dir = g_build_filename (prefix, DBUS_SERVICES_SUBDIR, NULL);
+  gchar *ekn_data_dir = g_build_filename (prefix, EKN_DATA_SUBDIR, NULL);
+  gchar *g_schemas_dir = g_build_filename (prefix, G_SCHEMAS_SUBDIR, NULL);
+  gchar *xdg_autostart_dir = g_build_filename (prefix, XDG_AUTOSTART_SUBDIR, NULL);
 
-  if (!g_file_test (appdir, G_FILE_TEST_IS_DIR)) {
-    eam_log_error_message ("Missing directory: '%s' does not exist", appdir);
+  if (!g_file_test (prefix, G_FILE_TEST_IS_DIR)) {
+    eam_log_error_message ("Missing directory: '%s' does not exist", prefix);
     retval = FALSE;
   }
   if (!g_file_test (bin_dir, G_FILE_TEST_IS_DIR)) {
@@ -285,12 +286,12 @@ eam_fs_sanity_check (void)
 
   /* Check if application directories have valid permissions, fixing them if needed */
   GError *error = NULL;
-  GFile *file = g_file_new_for_path (appdir);
+  GFile *file = g_file_new_for_path (prefix);
   GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
                                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                          NULL, &error);
   if (error) {
-    eam_log_error_message ("Failed to get the children of '%s': %s", appdir, error->message);
+    eam_log_error_message ("Failed to get the children of '%s': %s", prefix, error->message);
     g_clear_error (&error);
     retval = FALSE;
     goto bail;
@@ -310,7 +311,7 @@ eam_fs_sanity_check (void)
   }
 
   if (error) {
-    eam_log_error_message ("Failure while processing the children of '%s': %s", appdir, error->message);
+    eam_log_error_message ("Failure while processing the children of '%s': %s", prefix, error->message);
     g_clear_error (&error);
     retval = FALSE;
   }
