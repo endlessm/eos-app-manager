@@ -2,15 +2,16 @@
 
 #include "config.h"
 
+#include "eam-dbus-server.h"
+
+#include "eam-config.h"
+#include "eam-log-private.h"
+#include "eam-service.h"
+
 #include <gio/gio.h>
 #ifdef G_OS_UNIX
 #include <glib-unix.h>
 #endif
-
-#include "eam-dbus-server.h"
-#include "eam-service.h"
-#include "eam-config.h"
-#include "eam-log.h"
 
 typedef struct _EamDbusServerPrivate EamDbusServerPrivate;
 

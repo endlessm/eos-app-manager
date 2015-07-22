@@ -7,7 +7,7 @@
 
 #include "eam-config.h"
 #include "eam-dbus-server.h"
-#include "eam-log.h"
+#include "eam-log-private.h"
 
 static const gchar *opt_cfgfile;
 static gboolean opt_dumpcfg;

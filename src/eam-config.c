@@ -4,7 +4,7 @@
 #include <glib-object.h>
 
 #include "eam-config.h"
-#include "eam-log.h"
+#include "eam-log-private.h"
 
 #define EAM_CONFIG_DIRECTORIES  "Directories"
 #define EAM_CONFIG_DAEMON       "Daemon"

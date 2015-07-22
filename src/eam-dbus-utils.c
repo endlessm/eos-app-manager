@@ -2,7 +2,7 @@
 #include "config.h"
 
 #include "eam-dbus-utils.h"
-#include "eam-log.h"
+#include "eam-log-private.h"
 
 uid_t
 eam_dbus_get_uid_for_sender (GDBusConnection *connection,

@@ -4,7 +4,7 @@
 #include "eam-fs.h"
 
 #include "eam-config.h"
-#include "eam-log.h"
+#include "eam-log-private.h"
 #include "eam-utils.h"
 #include "eam-error.h"
 

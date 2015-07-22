@@ -7,7 +7,7 @@
 #include "eam-config.h"
 #include "eam-error.h"
 #include "eam-fs.h"
-#include "eam-log.h"
+#include "eam-log-private.h"
 #include "eam-utils.h"
 
 #include <glib/gi18n.h>
