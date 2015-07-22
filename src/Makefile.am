@@ -17,7 +17,7 @@ source_c = \
 	eam-install.c \
 	eam-update.c \
 	eam-uninstall.c \
-	eam-fs-sanity.c \
+	eam-fs.c \
 	eam-log.c \
 	eam-error.c \
 	eam-utils.c \
@@ -32,7 +32,7 @@ source_h = \
 	eam-install.h \
 	eam-update.h \
 	eam-uninstall.h \
-	eam-fs-sanity.h \
+	eam-fs.h \
 	eam-log.h \
 	eam-error.h \
 	eam-utils.h \

@@ -6,7 +6,7 @@
 
 #include "eam-config.h"
 #include "eam-error.h"
-#include "eam-fs-sanity.h"
+#include "eam-fs.h"
 #include "eam-log.h"
 #include "eam-utils.h"
 

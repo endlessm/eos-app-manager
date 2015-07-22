@@ -1,25 +1,24 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 #include "config.h"
 
+#include "eam-utils.h"
+
+#include "eam-config.h"
+#include "eam-error.h"
+#include "eam-fs.h"
+#include "eam-log.h"
+
 #include <string.h>
-#include <glib/gstdio.h>
-#include <glib/gi18n.h>
 #include <archive.h>
 #include <archive_entry.h>
 #include <errno.h>
 #include <ftw.h>
 #include <pwd.h>
 #include <grp.h>
-
+#include <glib/gstdio.h>
+#include <glib/gi18n.h>
 #include <libsoup/soup.h>
 #include <gio/gio.h>
-
-#include "eam-utils.h"
-
-#include "eam-config.h"
-#include "eam-error.h"
-#include "eam-fs-sanity.h"
-#include "eam-log.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"
 #define BUNDLE_HASH_EXT ".sha256"

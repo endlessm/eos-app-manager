@@ -1,7 +1,8 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 #include "config.h"
 
-#include "eam-fs-sanity.h"
+#include "eam-fs.h"
+
 #include "eam-config.h"
 #include "eam-log.h"
 #include "eam-utils.h"
