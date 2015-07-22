@@ -20,6 +20,11 @@ __eamctl_app() {
           return 0
           ;;
 
+        app-info|install|uninstall|update)
+          COMPREPLY=($(compgen -W "`eamctl list-apps`" -- "${COMP_WORDS[2]}"))
+          return 0
+          ;;
+
         *)
           COMPREPLY=()
           return 0
