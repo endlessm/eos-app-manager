@@ -144,7 +144,8 @@ eam_update_new (const gchar *appid)
 }
 
 static gboolean
-do_xdelta_update (const char *appid,
+do_xdelta_update (const char *prefix,
+                  const char *appid,
                   const char *source_dir,
                   const char *delta_file,
                   GError **error)
@@ -158,7 +159,7 @@ do_xdelta_update (const char *appid,
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), eam_config_get_applications_dir (), appid)) {
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), prefix, appid)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
@@ -170,7 +171,8 @@ do_xdelta_update (const char *appid,
 }
 
 static gboolean
-do_full_update (const char *appid,
+do_full_update (const char *prefix,
+                const char *appid,
                 const char *bundle_file,
                 GError **error)
 {
@@ -190,7 +192,7 @@ do_full_update (const char *appid,
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), eam_config_get_applications_dir (), appid)) {
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), prefix, appid)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");
@@ -274,9 +276,9 @@ eam_update_run_sync (EamTransaction *trans,
   gboolean res;
 
   if (g_str_has_suffix (priv->bundle_file, INSTALL_BUNDLE_EXT))
-    res = do_full_update (priv->appid, priv->bundle_file, &internal_error);
+    res = do_full_update (priv->prefix, priv->appid, priv->bundle_file, &internal_error);
   else if (g_str_has_suffix (priv->bundle_file, XDELTA_BUNDLE_EXT))
-    res = do_xdelta_update (priv->appid, backupdir, priv->bundle_file, &internal_error);
+    res = do_xdelta_update (priv->prefix, priv->appid, backupdir, priv->bundle_file, &internal_error);
   else
     g_assert_not_reached ();
 
