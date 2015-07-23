@@ -2,14 +2,15 @@
 
 #include "config.h"
 
-#include <glib/gi18n.h>
-
-#include "eam-log.h"
-#include "eam-error.h"
 #include "eam-update.h"
+
 #include "eam-config.h"
+#include "eam-error.h"
+#include "eam-fs.h"
+#include "eam-log-private.h"
 #include "eam-utils.h"
-#include "eam-fs-sanity.h"
+
+#include <glib/gi18n.h>
 
 #define XDELTA_BUNDLE_EXT               "xdelta"
 #define INSTALL_BUNDLE_EXT              "bundle"

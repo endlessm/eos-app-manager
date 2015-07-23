@@ -55,6 +55,7 @@ eamctl_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"eamctl\" \
 	-DLOCALEDIR=\"$(datadir)/locale\" \
 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DEAM_COMPILATION \
 	-I$(top_srcdir)/src \
 	-I$(top_builddir)/src \
 	-I$(top_srcdir)/tools \

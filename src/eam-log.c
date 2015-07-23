@@ -1,7 +1,7 @@
 /* Copyright 2014 Endless Mobile, Inc. */
 #include "config.h"
 
-#include "eam-log.h"
+#include "eam-log-private.h"
 
 #include <errno.h>
 #include <string.h>

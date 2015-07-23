@@ -116,6 +116,7 @@ AC_CONFIG_FILES([
         Makefile
         data/Makefile
         src/Makefile
+        src/eam.pc:src/eam.pc.in
         tools/Makefile
         tests/Makefile
         po/Makefile.in

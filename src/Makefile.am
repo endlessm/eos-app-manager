@@ -1,4 +1,8 @@
-bin_PROGRAMS = eamd
+bin_PROGRAMS =
+lib_LTLIBRARIES =
+
+EXTRA_DIST =
+CLEANFILES =
 
 AM_CPPFLAGS = \
 	-DG_LOG_DOMAIN=\"Eam\" \
@@ -6,46 +10,42 @@ AM_CPPFLAGS = \
 	-DLOCALSTATEDIR=\"$(localstatedir)\" \
 	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\" \
 	-DPKGDATADIR=\"$(pkgdatadir)\" \
-	$(NULL)
+	-DLOCALEDIR=\"$(datadir)/locale\" \
+	-DEAM_COMPILATION
 
-source_c = \
-	eam-dbus-server.c \
-	eam-dbus-utils.c \
-	eam-service.c \
-	eam-config.c \
-	eam-transaction.c \
-	eam-install.c \
-	eam-update.c \
-	eam-uninstall.c \
-	eam-fs-sanity.c \
-	eam-log.c \
-	eam-error.c \
-	eam-utils.c \
-	$(NULL)
-
-source_h = \
-	eam-dbus-server.h \
-	eam-dbus-utils.h \
-	eam-service.h \
+public_source_h = \
 	eam-config.h \
-	eam-transaction.h \
-	eam-install.h \
-	eam-update.h \
-	eam-uninstall.h \
-	eam-fs-sanity.h \
-	eam-log.h \
 	eam-error.h \
-	eam-utils.h \
-	$(NULL)
+	eam-fs.h \
+	eam-install.h \
+	eam-transaction.h \
+	eam-uninstall.h \
+	eam-update.h \
+	eam-utils.h
+
+lib_sources = \
+	eam-config.c \
+	eam-error.c \
+	eam-fs.c \
+	eam-install.c \
+	eam-log-private.h eam-log.c \
+	eam-transaction.c \
+	eam-uninstall.c \
+	eam-update.c \
+	eam-utils.c
+
+daemon_sources = \
+	eam-dbus-server.h eam-dbus-server.c \
+	eam-dbus-utils.h eam-dbus-utils.c \
+	eam-service.h eam-service.c
 
 eam_built_sources = \
-	eam-resources.h \
-	eam-resources.c \
+	eam-resources.h eam-resources.c \
 	$(NULL)
 
 gresource_file = $(top_srcdir)/data/eam.gresource.xml
 resource_files = $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies --sourcedir=$(top_srcdir)/data $(gresource_file))
-eam-resources.c: $(gresource_file) $(resource_files)
+eam-resources.c: $(gresource_file) $(resource_files) eam-resources.h
 	$(AM_V_GEN) $(GLIB_COMPILE_RESOURCES) \
 		--sourcedir=$(top_builddir)/data \
 		--target=$@ \
@@ -59,15 +59,23 @@ eam-resources.h: $(gresource_file) $(resource_files)
 	$<
 
 BUILT_SOURCES = $(eam_built_sources)
+CLEANFILES += $(eam_built_sources)
 
-noinst_LTLIBRARIES = libeam.la
+lib_LTLIBRARIES += libeam.la
 libeam_la_CFLAGS = $(EAM_CFLAGS)
 libeam_la_LIBADD = $(EAM_LIBS)
-libeam_la_SOURCES = $(source_c) $(source_h) $(BUILT_SOURCES)
-nodist_libeam_la_SOURCES = $(eam_built_sources) 
+libeam_la_SOURCES = $(lib_sources)
 
-eamd_CPPFLAGS = -DLOCALEDIR=\"$(datadir)/locale\" $(AM_CPPFLAGS)
+eam_includedir = $(includedir)/eos-app-manager
+eam_include_HEADERS = $(public_source_h) eam.h
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = eam.pc
+EXTRA_DIST += eam.pc.in
+
+bin_PROGRAMS += eamd
 eamd_CFLAGS = $(EAM_CFLAGS)
 eamd_LDADD = $(EAM_LIBS) libeam.la
 eamd_LDFLAGS = -export-dynamic
-eamd_SOURCES = main.c
+eamd_SOURCES = $(daemon_sources) main.c
+nodist_eamd_SOURCES = $(eam_built_sources) 

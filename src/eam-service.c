@@ -12,7 +12,7 @@
 #include "eam-dbus-utils.h"
 #include "eam-error.h"
 #include "eam-install.h"
-#include "eam-log.h"
+#include "eam-log-private.h"
 #include "eam-resources.h"
 #include "eam-service.h"
 #include "eam-uninstall.h"

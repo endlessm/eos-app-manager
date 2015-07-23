@@ -2,9 +2,9 @@
 
 #include "eam-commands.h"
 
-#include "eam-fs-sanity.h"
-#include "eam-utils.h"
 #include "eam-config.h"
+#include "eam-fs.h"
+#include "eam-utils.h"
 
 #include <stdlib.h>
 #include <string.h>
