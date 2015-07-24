@@ -603,16 +603,7 @@ symlinkdirs_recursive (const char *source_dir,
     if (lstat (spath, &st) != 0)
       return FALSE;
 
-    if (S_ISLNK (st.st_mode)) {
-      /* If the file is a symlink, we create a new symlink to the source file */
-      g_autofree char *sfile = g_file_read_link (spath, NULL);
-      if (sfile == NULL)
-        continue;
-
-      if (!create_symlink (sfile, tpath))
-        return FALSE;
-    }
-    else if (S_ISREG (st.st_mode)) {
+    if (S_ISLNK (st.st_mode) || S_ISREG (st.st_mode)) {
       if (!create_symlink (spath, tpath))
         return FALSE;
     }
