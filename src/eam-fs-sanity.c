@@ -989,3 +989,42 @@ eam_fs_restore_app (const char *prefix,
 
   return FALSE;
 }
+
+static gboolean
+eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
+{
+  gboolean ret = TRUE;
+
+  g_autoptr(GDir) dir = g_dir_open (prefix, 0, NULL);
+  if (!dir)
+    return ret;
+
+  const char *fn;
+  const char *app_dir = eam_config_get_applications_dir ();
+
+  while ((fn = g_dir_read_name (dir)) != NULL) {
+    g_autofree char *epath = g_build_filename (prefix, fn, NULL);
+    g_autofree char *tpath = g_build_filename (app_dir, fn, NULL);
+
+    if (!eam_fs_is_app_dir (epath))
+      continue;
+
+    if (g_file_test (tpath, G_FILE_TEST_IS_SYMLINK))
+      continue;
+
+    ret = ret && eam_fs_create_symlinks (prefix, fn);
+  }
+
+  return ret;
+}
+
+gboolean
+eam_fs_ensure_symlink_farm (void)
+{
+  gboolean ret = TRUE;
+
+  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_primary_storage ());
+  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_secondary_storage ());
+
+  return ret;
+}

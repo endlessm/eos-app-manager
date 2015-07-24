@@ -67,6 +67,7 @@ eamctl_SOURCES = \
 	eam-command-app-info.c \
 	eam-command-config.c \
 	eam-command-create-symlinks.c \
+	eam-command-ensure-symlink-farm.c \
 	eam-command-help.c \
 	eam-command-init-fs.c \
 	eam-command-install.c \

@@ -29,6 +29,7 @@ enum {
   EAM_COMMAND_INSTALL,
   EAM_COMMAND_UPDATE,
   EAM_COMMAND_UNINSTALL,
+  EAM_COMMAND_ENSURE_SYMLINK_FARM,
 
   EAM_N_COMMANDS
 };
@@ -48,3 +49,4 @@ extern int eam_command_install (int argc, char *argv[]);
 extern int eam_command_migrate (int argc, char *argv[]);
 extern int eam_command_update (int argc, char *argv[]);
 extern int eam_command_uninstall (int argc, char *argv[]);
+extern int eam_command_ensure_symlink_farm (int argc, char *argv[]);
