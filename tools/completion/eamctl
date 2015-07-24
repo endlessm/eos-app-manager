@@ -1,10 +1,12 @@
 # Check for Bash
 [ -z "$BASH_VERSION" ] && return
 
+commands = "help version list-apps app-info config init-fs create-symlinks migrate install update uninstall ensure-symlink-farm"
+
 __eamctl_app() {
   case "${COMP_CWORD}" in
     1)
-      COMPREPLY=($(compgen -W "help version app-info config init-fs install list-apps uninstall update" -- "${COMP_WORDS[1]}"))
+      COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[1]}"))
       return 0
       ;;
 
@@ -16,7 +18,7 @@ __eamctl_app() {
           ;;
 
         help)
-          COMPREPLY=($(compgen -W "version app-info config init-fs install list-apps uninstall update" -- "${COMP_WORDS[2]}"))
+          COMPREPLY=($(compgen -W "$commands" -- "${COMP_WORDS[2]}"))
           return 0
           ;;
 
