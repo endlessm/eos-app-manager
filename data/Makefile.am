@@ -14,7 +14,7 @@ dbusconfdir = $(sysconfdir)/dbus-1/system.d
 dbusconf_in_files = com.endlessm.AppManager.conf.in
 dbusconf_DATA = $(dbusconf_in_files:.conf.in=.conf)
 
-systemdservice_in_files = eos-app-manager.service.in
+systemdservice_in_files = eos-app-manager.service.in eos-app-manager-migrate-bundles.service.in
 systemdservicedir = $(systemdsystemunitdir)
 systemdservice_DATA = $(systemdservice_in_files:.service.in=.service)
 

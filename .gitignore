@@ -59,6 +59,7 @@ data/com.endlessm.AppManager.service
 data/com.endlessm.app-installer.rules
 data/eam-default.cfg
 data/eos-app-manager.service
+data/eos-app-manager-migrate-bundles.service
 depcomp
 install-sh
 intltool.m4

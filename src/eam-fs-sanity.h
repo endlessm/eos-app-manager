@@ -56,6 +56,8 @@ gboolean        eam_fs_is_app_dir       (const char *path);
 
 const char *    eam_fs_get_bundle_system_dir    (EamBundleDirectory dir);
 
+gboolean        eam_fs_ensure_symlink_farm (void);
+
 G_END_DECLS
 
 #endif /* EAM_FS_SANITY_H */
