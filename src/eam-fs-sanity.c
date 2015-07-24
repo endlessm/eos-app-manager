@@ -663,14 +663,18 @@ make_binary_symlink (const char *prefix,
                                             exec,
                                             NULL);
 
-  if (symlink (bin, path) == 0)
-    return TRUE;
+  const char *app_dir = eam_config_get_applications_dir ();
+  g_autofree char *app_path = g_build_filename (app_dir,
+                                                eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
+                                                exec,
+                                                NULL);
 
-  /* The symlink already exists */
-  if (errno == EEXIST)
-    return TRUE;
+  if (symlink (bin, path) != 0 && errno != EEXIST)
+    return FALSE;
+  if (symlink (path, app_dir) != 0 && errno != EEXIST)
+    return FALSE;
 
-  return FALSE;
+  return TRUE;
 }
 
 static char *
@@ -859,15 +863,22 @@ eam_fs_create_symlinks (const char *prefix,
   if (!do_binaries_symlinks (prefix, appid))
     return FALSE;
 
+  const char *app_dir = eam_config_get_applications_dir ();
+
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
     g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
+    g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
     if (!symlinkdirs_recursive (sdir, tdir, appid, is_shallow)) {
+      return FALSE;
+    }
+
+    if (!symlinkdirs_recursive (tdir, adir, appid, is_shallow)) {
       return FALSE;
     }
   }
@@ -879,13 +890,17 @@ void
 eam_fs_prune_symlinks (const char *prefix,
                        const char *appid)
 {
+  const char *app_dir = eam_config_get_applications_dir ();
+
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
     g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
+    g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
 
     (void) rmsymlinks_recursive (sdir, tdir);
+    (void) rmsymlinks_recursive (tdir, adir);
   }
 }
 
