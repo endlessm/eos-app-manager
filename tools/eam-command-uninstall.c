@@ -52,9 +52,6 @@ eam_command_uninstall (int argc, char *argv[])
 
   const char *appid = opt_appid[0];
 
-  if (opt_prefix == NULL)
-    opt_prefix = g_strdup (eam_config_get_applications_dir ());
-
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
    */
