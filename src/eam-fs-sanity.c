@@ -216,21 +216,8 @@ fix_application_permissions_if_needed (const gchar *path)
     fix_permissions_for_application (path);
 }
 
-/**
- * eam_fs_sanity_check:
- * @prefix: the installation prefix
- *
- * Guarantees the existance of the applications' root installation directory and the
- * subdirectories required by the Application Manager to work inside @prefix.
- *
- * If the applications' directory does not exist, it and its required subdirectories
- * are created. If the applications' directory is corrupted, FALSE is returned.
- *
- * Returns: TRUE if the applications' directory and *all* its subdirectories exist or
- * are successfully created, FALSE otherwise.
- **/
-gboolean
-eam_fs_sanity_check (const char *prefix)
+static gboolean
+sanity_check_prefix (const char *prefix)
 {
   gboolean retval = TRUE;
 
@@ -329,6 +316,31 @@ eam_fs_sanity_check (const char *prefix)
   g_object_unref (file);
 
   return retval;
+}
+
+/**
+ * eam_fs_sanity_check:
+ * @prefix: the installation prefix
+ *
+ * Guarantees the existance of the applications' root installation directory and the
+ * subdirectories required by the Application Manager to work inside @prefix.
+ *
+ * If the applications' directory does not exist, it and its required subdirectories
+ * are created. If the applications' directory is corrupted, FALSE is returned.
+ *
+ * Returns: TRUE if the applications' directory and *all* its subdirectories exist or
+ * are successfully created, FALSE otherwise.
+ **/
+gboolean
+eam_fs_sanity_check (const char *prefix)
+{
+  if (!sanity_check_prefix (prefix))
+    return FALSE;
+
+  if (!sanity_check_prefix (eam_config_get_applications_dir ()))
+    return FALSE;
+
+  return TRUE;
 }
 
 gboolean
@@ -603,16 +615,7 @@ symlinkdirs_recursive (const char *source_dir,
     if (lstat (spath, &st) != 0)
       return FALSE;
 
-    if (S_ISLNK (st.st_mode)) {
-      /* If the file is a symlink, we create a new symlink to the source file */
-      g_autofree char *sfile = g_file_read_link (spath, NULL);
-      if (sfile == NULL)
-        continue;
-
-      if (!create_symlink (sfile, tpath))
-        return FALSE;
-    }
-    else if (S_ISREG (st.st_mode)) {
+    if (S_ISLNK (st.st_mode) || S_ISREG (st.st_mode)) {
       if (!create_symlink (spath, tpath))
         return FALSE;
     }
@@ -672,14 +675,18 @@ make_binary_symlink (const char *prefix,
                                             exec,
                                             NULL);
 
-  if (symlink (bin, path) == 0)
-    return TRUE;
+  const char *app_dir = eam_config_get_applications_dir ();
+  g_autofree char *app_path = g_build_filename (app_dir,
+                                                eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
+                                                exec,
+                                                NULL);
 
-  /* The symlink already exists */
-  if (errno == EEXIST)
-    return TRUE;
+  if (symlink (bin, path) != 0 && errno != EEXIST)
+    return FALSE;
+  if (symlink (path, app_dir) != 0 && errno != EEXIST)
+    return FALSE;
 
-  return FALSE;
+  return TRUE;
 }
 
 static char *
@@ -808,21 +815,22 @@ do_binaries_symlinks (const char *prefix, const char *appid)
   return FALSE;
 }
 
-static int
-rmsymlinks_recursive (const char *appid,
-                      const char *dir)
+static gboolean
+rmsymlinks_recursive (const char *source_dir,
+                      const char *target_dir)
 {
-  g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
+  g_autoptr(GDir) dp = g_dir_open (source_dir, 0, NULL);
   if (dp == NULL)
     return FALSE;
 
   const char *fn;
 
   while ((fn = g_dir_read_name (dp)) != NULL) {
-    g_autofree char *path = g_build_filename (dir, fn, NULL);
+    g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
+    g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
     struct stat st;
-    if (lstat (path, &st) != 0) {
+    if (lstat (tpath, &st) != 0) {
       /* Bail out, unless the file disappeared */
       if (errno != ENOENT)
         return FALSE;
@@ -832,16 +840,12 @@ rmsymlinks_recursive (const char *appid,
 
     /* If the file is a link, we remove it */
     if (S_ISLNK (st.st_mode)) {
-      g_autofree char *file = g_file_read_link (path, NULL);
+      g_autofree char *file = g_file_read_link (tpath, NULL);
       if (file == NULL)
         continue;
 
-      /* Does it belong to appid? */
-      if (strstr (file, appid) == NULL)
-        continue;
-
       /* Remove link unless the file was removed */
-      if (unlink (path) != 0) {
+      if (unlink (tpath) != 0) {
         /* Bail out, unless the file disappeared */
         if (errno != ENOENT)
           return FALSE;
@@ -851,14 +855,13 @@ rmsymlinks_recursive (const char *appid,
     }
     else if (S_ISDIR (st.st_mode)) {
       /* If the file is a directory, we recurse into it */
-      /* TODO: Recursively remove dirs that match appid exactly */
-      if (!rmsymlinks_recursive (appid, path))
+      if (!rmsymlinks_recursive (spath, tpath))
         return FALSE;
 
       /* Try to cleanup empty directories that had links.
        * We intentionally ignore errors.
        */
-      rmdir (path);
+      rmdir (tpath);
     }
   }
 
@@ -872,18 +875,30 @@ eam_fs_create_symlinks (const char *prefix,
   if (!do_binaries_symlinks (prefix, appid))
     return FALSE;
 
+  const char *app_dir = eam_config_get_applications_dir ();
+
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
     g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
+    g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
     if (!symlinkdirs_recursive (sdir, tdir, appid, is_shallow)) {
       return FALSE;
     }
+
+    if (!symlinkdirs_recursive (tdir, adir, appid, is_shallow)) {
+      return FALSE;
+    }
   }
+
+  g_autofree char *idir = g_build_filename (prefix, appid, NULL);
+  g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
+  if (symlink (idir, adir) != 0 && errno != EEXIST)
+    return FALSE;
 
   return TRUE;
 }
@@ -892,11 +907,21 @@ void
 eam_fs_prune_symlinks (const char *prefix,
                        const char *appid)
 {
-  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
-    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+  const char *app_dir = eam_config_get_applications_dir ();
 
-    (void) rmsymlinks_recursive (appid, tdir);
+  for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
+    const char *sysdir = eam_fs_get_bundle_system_dir (index);
+
+    g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
+    g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
+    g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
+
+    (void) rmsymlinks_recursive (sdir, tdir);
+    (void) rmsymlinks_recursive (tdir, adir);
   }
+
+  g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
+  (void) unlink (adir);
 }
 
 gboolean
@@ -963,4 +988,43 @@ eam_fs_restore_app (const char *prefix,
   }
 
   return FALSE;
+}
+
+static gboolean
+eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
+{
+  gboolean ret = TRUE;
+
+  g_autoptr(GDir) dir = g_dir_open (prefix, 0, NULL);
+  if (!dir)
+    return ret;
+
+  const char *fn;
+  const char *app_dir = eam_config_get_applications_dir ();
+
+  while ((fn = g_dir_read_name (dir)) != NULL) {
+    g_autofree char *epath = g_build_filename (prefix, fn, NULL);
+    g_autofree char *tpath = g_build_filename (app_dir, fn, NULL);
+
+    if (!eam_fs_is_app_dir (epath))
+      continue;
+
+    if (g_file_test (tpath, G_FILE_TEST_IS_SYMLINK))
+      continue;
+
+    ret = ret && eam_fs_create_symlinks (prefix, fn);
+  }
+
+  return ret;
+}
+
+gboolean
+eam_fs_ensure_symlink_farm (void)
+{
+  gboolean ret = TRUE;
+
+  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_primary_storage ());
+  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_secondary_storage ());
+
+  return ret;
 }

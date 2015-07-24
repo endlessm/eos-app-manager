@@ -1,0 +1,14 @@
+[Unit]
+Description=Migrate old application bundle installations
+Documentation=man:eamd(8)
+After=local-fs.target
+Before=systemd-update-done.service
+ConditionNeedsUpdate=/etc
+
+[Service]
+Type=oneshot
+ExecStart=@bindir@/eamctl ensure-symlink-farm
+User=@EAM_USER@
+
+[Install]
+WantedBy=default.target

@@ -10,6 +10,9 @@
 #include "eam-log.h"
 #include "eam-utils.h"
 
+#include <string.h>
+#include <sys/stat.h>
+
 typedef struct _EamUninstallPrivate	EamUninstallPrivate;
 
 struct _EamUninstallPrivate
@@ -198,6 +201,14 @@ eam_uninstall_set_property (GObject *obj, guint prop_id, const GValue *value,
 }
 
 static void
+eam_uninstall_constructed (GObject *object)
+{
+  EamUninstall *self = EAM_UNINSTALL (object);
+  /* initialize prefix to the default */
+  eam_uninstall_set_prefix (self, NULL);
+}
+
+static void
 eam_uninstall_class_init (EamUninstallClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -205,6 +216,7 @@ eam_uninstall_class_init (EamUninstallClass *klass)
   object_class->finalize = eam_uninstall_finalize;
   object_class->get_property = eam_uninstall_get_property;
   object_class->set_property = eam_uninstall_set_property;
+  object_class->constructed = eam_uninstall_constructed;
 
   /**
    * EamUninstall:appid:
@@ -219,8 +231,6 @@ eam_uninstall_class_init (EamUninstallClass *klass)
 static void
 eam_uninstall_init (EamUninstall *self)
 {
-  /* initialize prefix to the default */
-  eam_uninstall_set_prefix (self, NULL);
 }
 
 /**
@@ -248,6 +258,31 @@ eam_uninstall_set_force (EamUninstall *uninstall,
   priv->is_force = !!force;
 }
 
+static char *
+detect_prefix (const char *appid)
+{
+  g_autofree char *appdir = g_build_filename (eam_config_get_applications_dir (), appid, NULL);
+
+  struct stat st;
+  if (lstat (appdir, &st) != 0)
+    return NULL;
+
+  if (!S_ISLNK (st.st_mode))
+    return NULL;
+
+  g_autofree char *resolved_appdir = g_file_read_link (appdir, NULL);
+
+  /* XXX: readlink can return e.g. "/var/endless/audacity/".
+   * g_path_get_dirname trips over the trailing '/', so just remove
+   * it before we call it. */
+  int last_char = strlen (resolved_appdir) - 1;
+  if (resolved_appdir[last_char] == '/')
+    resolved_appdir[last_char] = '\0';
+
+  char *prefix = g_path_get_dirname (resolved_appdir);
+  return prefix;
+}
+
 void
 eam_uninstall_set_prefix (EamUninstall *uninstall,
                           const char   *path)
@@ -256,7 +291,7 @@ eam_uninstall_set_prefix (EamUninstall *uninstall,
   const char *prefix;
 
   if (path == NULL || *path == '\0')
-    prefix = eam_config_get_applications_dir ();
+    prefix = detect_prefix (priv->appid);
   else
     prefix = path;
 

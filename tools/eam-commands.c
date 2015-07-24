@@ -94,4 +94,12 @@ const EamToolCommand commands[EAM_N_COMMANDS] = {
     .flags = EAM_COMMAND_FLAG_REQUIRES_CONFIG
            | EAM_COMMAND_FLAG_MOST_USED,
   },
+
+  [EAM_COMMAND_ENSURE_SYMLINK_FARM] = {
+    .name = "ensure-symlink-farm",
+    .short_desc = "Maintains the symlink farm in /endless",
+    .usage = "ensure-symlink-farm",
+    .command_main = eam_command_ensure_symlink_farm,
+    .flags = EAM_COMMAND_FLAG_REQUIRES_CONFIG,
+  },
 };
