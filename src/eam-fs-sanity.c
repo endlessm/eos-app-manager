@@ -808,21 +808,22 @@ do_binaries_symlinks (const char *prefix, const char *appid)
   return FALSE;
 }
 
-static int
-rmsymlinks_recursive (const char *appid,
-                      const char *dir)
+static gboolean
+rmsymlinks_recursive (const char *source_dir,
+                      const char *target_dir)
 {
-  g_autoptr(GDir) dp = g_dir_open (dir, 0, NULL);
+  g_autoptr(GDir) dp = g_dir_open (source_dir, 0, NULL);
   if (dp == NULL)
     return FALSE;
 
   const char *fn;
 
   while ((fn = g_dir_read_name (dp)) != NULL) {
-    g_autofree char *path = g_build_filename (dir, fn, NULL);
+    g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
+    g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
     struct stat st;
-    if (lstat (path, &st) != 0) {
+    if (lstat (tpath, &st) != 0) {
       /* Bail out, unless the file disappeared */
       if (errno != ENOENT)
         return FALSE;
@@ -832,16 +833,12 @@ rmsymlinks_recursive (const char *appid,
 
     /* If the file is a link, we remove it */
     if (S_ISLNK (st.st_mode)) {
-      g_autofree char *file = g_file_read_link (path, NULL);
+      g_autofree char *file = g_file_read_link (tpath, NULL);
       if (file == NULL)
         continue;
 
-      /* Does it belong to appid? */
-      if (strstr (file, appid) == NULL)
-        continue;
-
       /* Remove link unless the file was removed */
-      if (unlink (path) != 0) {
+      if (unlink (tpath) != 0) {
         /* Bail out, unless the file disappeared */
         if (errno != ENOENT)
           return FALSE;
@@ -851,14 +848,13 @@ rmsymlinks_recursive (const char *appid,
     }
     else if (S_ISDIR (st.st_mode)) {
       /* If the file is a directory, we recurse into it */
-      /* TODO: Recursively remove dirs that match appid exactly */
-      if (!rmsymlinks_recursive (appid, path))
+      if (!rmsymlinks_recursive (spath, tpath))
         return FALSE;
 
       /* Try to cleanup empty directories that had links.
        * We intentionally ignore errors.
        */
-      rmdir (path);
+      rmdir (tpath);
     }
   }
 
@@ -892,10 +888,13 @@ void
 eam_fs_prune_symlinks (const char *prefix,
                        const char *appid)
 {
-  for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
-    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (i), NULL);
+  for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
+    const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
-    (void) rmsymlinks_recursive (appid, tdir);
+    g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
+    g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
+
+    (void) rmsymlinks_recursive (sdir, tdir);
   }
 }
 
