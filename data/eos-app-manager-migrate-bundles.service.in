@@ -3,7 +3,7 @@ Description=Migrate old application bundle installations
 Documentation=man:eamd(8)
 After=local-fs.target
 Before=systemd-update-done.service
-ConditionNeedsUpdate=/etc
+ConditionNeedsUpdate=/var
 
 [Service]
 Type=oneshot
