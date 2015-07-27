@@ -81,7 +81,7 @@ eam_uninstall_run_sync (EamTransaction *trans,
   }
 
   /* This is not fatal */
-  if (!eam_utils_update_desktop (priv->prefix))
+  if (!eam_utils_update_desktop ())
     eam_log_error_message ("Could not update the desktop's metadata");
 
   return TRUE;
