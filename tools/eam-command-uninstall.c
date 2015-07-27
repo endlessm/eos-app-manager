@@ -55,7 +55,7 @@ eam_command_uninstall (int argc, char *argv[])
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
    */
-  if (eam_utils_check_unix_permissions (geteuid ())) {
+  if (eam_utils_can_touch_applications_dir (geteuid ())) {
     g_autoptr(EamUninstall) uninstall = (EamUninstall *) eam_uninstall_new (appid);
 
     eam_uninstall_set_prefix (uninstall, opt_prefix);

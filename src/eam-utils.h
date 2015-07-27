@@ -38,6 +38,7 @@ char *          eam_utils_find_program_in_path  (const char *program,
 GKeyFile *      eam_utils_load_app_info         (const char *prefix,
                                                  const char *appid);
 
+gboolean        eam_utils_can_touch_applications_dir    (uid_t user);
 gboolean        eam_utils_check_unix_permissions        (uid_t user);
 
 G_END_DECLS

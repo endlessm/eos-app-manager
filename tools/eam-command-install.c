@@ -106,7 +106,7 @@ eam_command_install (int argc, char *argv[])
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
    */
-  if (eam_utils_check_unix_permissions (geteuid ())) {
+  if (eam_utils_can_touch_applications_dir (geteuid ())) {
     g_autoptr(EamInstall) install = (EamInstall *) eam_install_new (appid);
 
     /* An explicit prefix takes precedence */

@@ -112,7 +112,7 @@ eam_command_update (int argc, char *argv[])
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
    */
-  if (eam_utils_check_unix_permissions (geteuid ())) {
+  if (eam_utils_can_touch_applications_dir (geteuid ())) {
     g_autoptr(EamUpdate) update = (EamUpdate *) eam_update_new (appid);
 
     /* An explicit prefix takes precedence */

@@ -665,7 +665,7 @@ eam_utils_find_program_in_path (const char *program,
 }
 
 gboolean
-eam_utils_check_unix_permissions (uid_t user)
+eam_utils_can_touch_applications_dir (uid_t user)
 {
   if (user == G_MAXUINT)
     return FALSE;
@@ -680,6 +680,22 @@ eam_utils_check_unix_permissions (uid_t user)
 
   /* Are we the app manager user? */
   if (g_strcmp0 (pw->pw_name, EAM_USER_NAME) == 0)
+    return TRUE;
+
+  return FALSE;
+}
+
+gboolean
+eam_utils_check_unix_permissions (uid_t user)
+{
+  if (user == G_MAXUINT)
+    return FALSE;
+
+  struct passwd *pw = getpwuid (user);
+  if (pw == NULL)
+    return FALSE;
+
+  if (eam_utils_can_touch_applications_dir (user))
     return TRUE;
 
   /* Are we in the admin group? */
