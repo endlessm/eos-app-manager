@@ -64,7 +64,7 @@ eam_command_create_symlinks (int argc, char *argv[])
     }
   }
 
-  eam_utils_update_desktop (opt_migrate_to == NULL ? opt_prefix : opt_migrate_to);
+  eam_utils_update_desktop ();
 
   return EXIT_SUCCESS;
 }

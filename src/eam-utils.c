@@ -569,18 +569,20 @@ eam_utils_cleanup_python (const char *appdir)
 }
 
 gboolean
-eam_utils_update_desktop (const char *prefix)
+eam_utils_update_desktop (void)
 {
+  const char *app_dir = eam_config_get_applications_dir ();
+
   g_autofree char *settingsdir =
-    g_build_filename (prefix, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GSETTINGS_SCHEMAS), NULL);
+    g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GSETTINGS_SCHEMAS), NULL);
   g_autofree char *iconsdir =
-    g_build_filename (prefix, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_ICONS), NULL);
+    g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_ICONS), NULL);
   g_autofree char *desktopdir =
-    g_build_filename (prefix, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_DESKTOP), NULL);
+    g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_DESKTOP), NULL);
 
   const char *cmd[][4] = {
     { "glib-compile-schemas", settingsdir, NULL, NULL },
-    { "gtk-update-icon-cache", "--ignore-theme-index", iconsdir, NULL },
+    { "gtk-update-icon-cache-3.0", "--ignore-theme-index", iconsdir, NULL },
     { "update-desktop-database", desktopdir, NULL, NULL },
   };
 
