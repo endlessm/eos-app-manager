@@ -594,19 +594,21 @@ create_symlink (const char *source,
 }
 
 static gboolean
-symlinkdirs_recursive (const char *source_dir,
+symlinkdirs_recursive (const char *iterate_dir,
+                       const char *source_dir,
                        const char *target_dir,
                        gboolean    shallow)
 {
   if (g_mkdir_with_parents (target_dir, 0755) != 0)
     return FALSE;
 
-  g_autoptr(GDir) dir = g_dir_open (source_dir, 0, NULL);
+  g_autoptr(GDir) dir = g_dir_open (iterate_dir, 0, NULL);
   if (dir == NULL)
     return TRUE; /* it's OK if the bundle doesn't have that dir */
 
   const char *fn;
   while ((fn = g_dir_read_name (dir)) != NULL) {
+    g_autofree char *ipath = g_build_filename (iterate_dir, fn, NULL);
     g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
     g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
@@ -622,7 +624,7 @@ symlinkdirs_recursive (const char *source_dir,
       /* recursive if directory and not shallow */
       if (!shallow) {
         /* If symlinkdirs_recursive() fails, we fail the whole operation */
-        if (!symlinkdirs_recursive (spath, tpath, FALSE))
+        if (!symlinkdirs_recursive (ipath, spath, tpath, FALSE))
           return FALSE;
       }
       else {
@@ -883,11 +885,11 @@ eam_fs_create_symlinks (const char *prefix,
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
-    if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
+    if (!symlinkdirs_recursive (sdir, sdir, tdir, is_shallow)) {
       return FALSE;
     }
 
-    if (!symlinkdirs_recursive (tdir, adir, appid, is_shallow)) {
+    if (!symlinkdirs_recursive (sdir, tdir, adir, is_shallow)) {
       return FALSE;
     }
   }
