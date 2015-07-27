@@ -926,6 +926,18 @@ eam_fs_prune_symlinks (const char *prefix,
     (void) rmsymlinks_recursive (sdir, adir);
   }
 
+  /* As a special case, for apps that normally install in /usr/games in their
+   * bundle, we need to remove the corresponding link we made in /usr/bin. */
+  g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES), NULL);
+  {
+    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
+    (void) rmsymlinks_recursive (sdir, tdir);
+  }
+  {
+    g_autofree char *tdir = g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
+    (void) rmsymlinks_recursive (sdir, tdir);
+  }
+
   g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
   (void) unlink (adir);
 }
