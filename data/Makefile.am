@@ -29,7 +29,10 @@ systemdservice_in_files = eos-app-manager.service.in eos-app-manager-migrate-bun
 systemdservicedir = $(systemdsystemunitdir)
 systemdservice_DATA = $(systemdservice_in_files:.service.in=.service)
 
-$(systemdservice_DATA): $(systemdservice_in_files) Makefile
+eos-app-manager.service: eos-app-manager.service.in Makefile
+	$(do_subst) $< > $@
+
+eos-app-manager-migrate-bundles.service: eos-app-manager-migrate-bundles.service.in Makefile
 	$(do_subst) $< > $@
 
 xsessiondir = $(sysconfdir)/X11/Xsession.d
