@@ -580,7 +580,7 @@ eam_utils_update_desktop (const char *prefix)
 
   const char *cmd[][4] = {
     { "glib-compile-schemas", settingsdir, NULL, NULL },
-    { "gtk-update-icon-cache", "--ignore-theme-index", iconsdir, NULL },
+    { "gtk-update-icon-cache-3.0", "--ignore-theme-index", iconsdir, NULL },
     { "update-desktop-database", desktopdir, NULL, NULL },
   };
 
