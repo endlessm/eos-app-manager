@@ -917,7 +917,7 @@ eam_fs_prune_symlinks (const char *prefix,
     g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
 
     (void) rmsymlinks_recursive (sdir, tdir);
-    (void) rmsymlinks_recursive (tdir, adir);
+    (void) rmsymlinks_recursive (sdir, adir);
   }
 
   g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
