@@ -1009,7 +1009,7 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
     if (g_file_test (tpath, G_FILE_TEST_IS_SYMLINK))
       continue;
 
-    ret = ret && eam_fs_create_symlinks (prefix, fn);
+    ret = eam_fs_create_symlinks (prefix, fn) && ret;
   }
 
   return ret;
@@ -1020,8 +1020,8 @@ eam_fs_ensure_symlink_farm (void)
 {
   gboolean ret = TRUE;
 
-  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_primary_storage ());
-  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_secondary_storage ());
+  ret = eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_primary_storage ()) && ret;
+  ret = eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_secondary_storage ()) && ret;
 
   return ret;
 }
