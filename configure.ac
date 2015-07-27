@@ -26,6 +26,7 @@ LT_INIT([disable-static])
 
 AC_PROG_CC_C_O
 AC_PROG_CC_C99
+AC_PROG_SED
 
 # Compiler warnings
 eam_ADD_CFLAGS([-Wall])
