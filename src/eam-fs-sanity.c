@@ -596,7 +596,6 @@ create_symlink (const char *source,
 static gboolean
 symlinkdirs_recursive (const char *source_dir,
                        const char *target_dir,
-                       const char *appid,
                        gboolean    shallow)
 {
   if (g_mkdir_with_parents (target_dir, 0755) != 0)
@@ -620,12 +619,10 @@ symlinkdirs_recursive (const char *source_dir,
         return FALSE;
     }
     else if (S_ISDIR (st.st_mode)) {
-      g_autofree char *basename = g_path_get_basename (spath);
-      gboolean appid_folder = g_strcmp0 (basename, appid) == 0;
-      /* recursive if directory and (not shallow or name != app_id) */
-      if (!shallow && !appid_folder) {
+      /* recursive if directory and not shallow */
+      if (!shallow) {
         /* If symlinkdirs_recursive() fails, we fail the whole operation */
-        if (!symlinkdirs_recursive (spath, tpath, appid, FALSE))
+        if (!symlinkdirs_recursive (spath, tpath, FALSE))
           return FALSE;
       }
       else {
@@ -886,7 +883,7 @@ eam_fs_create_symlinks (const char *prefix,
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
-    if (!symlinkdirs_recursive (sdir, tdir, appid, is_shallow)) {
+    if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
       return FALSE;
     }
 
