@@ -594,20 +594,21 @@ create_symlink (const char *source,
 }
 
 static gboolean
-symlinkdirs_recursive (const char *source_dir,
+symlinkdirs_recursive (const char *iterate_dir,
+                       const char *source_dir,
                        const char *target_dir,
-                       const char *appid,
                        gboolean    shallow)
 {
   if (g_mkdir_with_parents (target_dir, 0755) != 0)
     return FALSE;
 
-  g_autoptr(GDir) dir = g_dir_open (source_dir, 0, NULL);
+  g_autoptr(GDir) dir = g_dir_open (iterate_dir, 0, NULL);
   if (dir == NULL)
     return TRUE; /* it's OK if the bundle doesn't have that dir */
 
   const char *fn;
   while ((fn = g_dir_read_name (dir)) != NULL) {
+    g_autofree char *ipath = g_build_filename (iterate_dir, fn, NULL);
     g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
     g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
@@ -620,12 +621,10 @@ symlinkdirs_recursive (const char *source_dir,
         return FALSE;
     }
     else if (S_ISDIR (st.st_mode)) {
-      g_autofree char *basename = g_path_get_basename (spath);
-      gboolean appid_folder = g_strcmp0 (basename, appid) == 0;
-      /* recursive if directory and (not shallow or name != app_id) */
-      if (!shallow && !appid_folder) {
+      /* recursive if directory and not shallow */
+      if (!shallow) {
         /* If symlinkdirs_recursive() fails, we fail the whole operation */
-        if (!symlinkdirs_recursive (spath, tpath, appid, FALSE))
+        if (!symlinkdirs_recursive (ipath, spath, tpath, FALSE))
           return FALSE;
       }
       else {
@@ -754,7 +753,9 @@ ensure_desktop_file (const char *dir,
 }
 
 static gboolean
-do_binaries_symlinks (const char *prefix, const char *appid)
+do_binaries_symlinks (const char *prefix,
+                      const char *target,
+                      const char *appid)
 {
   g_autofree char *desktopfile = g_strdup_printf ("%s.desktop", appid);
   g_autofree char *appdesktopdir = g_build_filename (prefix,
@@ -780,7 +781,7 @@ do_binaries_symlinks (const char *prefix, const char *appid)
                       exec,
                       NULL);
 
-  if (make_binary_symlink (prefix, bin, exec))
+  if (make_binary_symlink (target, bin, exec))
     return TRUE;
 
   /* 3. Try in /endless/$appid/games */
@@ -791,7 +792,7 @@ do_binaries_symlinks (const char *prefix, const char *appid)
                           exec,
                           NULL);
 
-  if (make_binary_symlink (prefix, bin, exec))
+  if (make_binary_symlink (target, bin, exec))
     return TRUE;
 
   /* 4. Look if the command we are trying to link is already in $PATH
@@ -872,12 +873,17 @@ gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  if (!do_binaries_symlinks (prefix, appid))
-    return FALSE;
-
   const char *app_dir = eam_config_get_applications_dir ();
 
+  if (!do_binaries_symlinks (prefix, prefix, appid))
+    return FALSE;
+  if (!do_binaries_symlinks (prefix, app_dir, appid))
+    return FALSE;
+
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
+    if (index == EAM_BUNDLE_DIRECTORY_BIN)
+      continue;
+
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
@@ -886,11 +892,11 @@ eam_fs_create_symlinks (const char *prefix,
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
-    if (!symlinkdirs_recursive (sdir, tdir, appid, is_shallow)) {
+    if (!symlinkdirs_recursive (sdir, sdir, tdir, is_shallow)) {
       return FALSE;
     }
 
-    if (!symlinkdirs_recursive (tdir, adir, appid, is_shallow)) {
+    if (!symlinkdirs_recursive (sdir, tdir, adir, is_shallow)) {
       return FALSE;
     }
   }
@@ -917,7 +923,19 @@ eam_fs_prune_symlinks (const char *prefix,
     g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
 
     (void) rmsymlinks_recursive (sdir, tdir);
-    (void) rmsymlinks_recursive (tdir, adir);
+    (void) rmsymlinks_recursive (sdir, adir);
+  }
+
+  /* As a special case, for apps that normally install in /usr/games in their
+   * bundle, we need to remove the corresponding link we made in /usr/bin. */
+  g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES), NULL);
+  {
+    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
+    (void) rmsymlinks_recursive (sdir, tdir);
+  }
+  {
+    g_autofree char *tdir = g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
+    (void) rmsymlinks_recursive (sdir, tdir);
   }
 
   g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
@@ -995,6 +1013,9 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
 {
   gboolean ret = TRUE;
 
+  if (!eam_fs_sanity_check (prefix))
+    return FALSE;
+
   g_autoptr(GDir) dir = g_dir_open (prefix, 0, NULL);
   if (!dir)
     return ret;
@@ -1012,7 +1033,7 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
     if (g_file_test (tpath, G_FILE_TEST_IS_SYMLINK))
       continue;
 
-    ret = ret && eam_fs_create_symlinks (prefix, fn);
+    ret = eam_fs_create_symlinks (prefix, fn) && ret;
   }
 
   return ret;
@@ -1023,8 +1044,8 @@ eam_fs_ensure_symlink_farm (void)
 {
   gboolean ret = TRUE;
 
-  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_primary_storage ());
-  ret = ret && eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_secondary_storage ());
+  ret = eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_primary_storage ()) && ret;
+  ret = eam_fs_ensure_symlink_farm_for_prefix (eam_config_get_secondary_storage ()) && ret;
 
   return ret;
 }
