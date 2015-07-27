@@ -74,7 +74,7 @@ EXTRA_DIST = \
 	eamd.8 \
 	$(NULL)
 
-DISTCLEANFILES = \
+CLEANFILES = \
 	$(dbusservice_DATA) \
 	$(systemdservice_DATA) \
 	$(dbusconf_DATA) \
