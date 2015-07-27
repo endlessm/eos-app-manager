@@ -753,7 +753,9 @@ ensure_desktop_file (const char *dir,
 }
 
 static gboolean
-do_binaries_symlinks (const char *prefix, const char *appid)
+do_binaries_symlinks (const char *prefix,
+                      const char *target,
+                      const char *appid)
 {
   g_autofree char *desktopfile = g_strdup_printf ("%s.desktop", appid);
   g_autofree char *appdesktopdir = g_build_filename (prefix,
@@ -779,7 +781,7 @@ do_binaries_symlinks (const char *prefix, const char *appid)
                       exec,
                       NULL);
 
-  if (make_binary_symlink (prefix, bin, exec))
+  if (make_binary_symlink (target, bin, exec))
     return TRUE;
 
   /* 3. Try in /endless/$appid/games */
@@ -790,7 +792,7 @@ do_binaries_symlinks (const char *prefix, const char *appid)
                           exec,
                           NULL);
 
-  if (make_binary_symlink (prefix, bin, exec))
+  if (make_binary_symlink (target, bin, exec))
     return TRUE;
 
   /* 4. Look if the command we are trying to link is already in $PATH
@@ -871,12 +873,17 @@ gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  if (!do_binaries_symlinks (prefix, appid))
-    return FALSE;
-
   const char *app_dir = eam_config_get_applications_dir ();
 
+  if (!do_binaries_symlinks (prefix, prefix, appid))
+    return FALSE;
+  if (!do_binaries_symlinks (prefix, app_dir, appid))
+    return FALSE;
+
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
+    if (index == EAM_BUNDLE_DIRECTORY_BIN)
+      continue;
+
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
