@@ -992,6 +992,9 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
 {
   gboolean ret = TRUE;
 
+  if (!eam_fs_sanity_check (prefix))
+    return FALSE;
+
   g_autoptr(GDir) dir = g_dir_open (prefix, 0, NULL);
   if (!dir)
     return ret;
