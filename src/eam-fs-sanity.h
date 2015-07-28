@@ -25,10 +25,9 @@ typedef enum {
   EAM_BUNDLE_DIRECTORY_MAX
 } EamBundleDirectory;
 
-gboolean        eam_fs_sanity_check     (const char *prefix);
+gboolean        eam_fs_sanity_check     (void);
 
-gboolean        eam_fs_init_bundle_dir  (const char *prefix,
-                                         EamBundleDirectory dir,
+gboolean        eam_fs_init_bundle_dir  (EamBundleDirectory dir,
                                          GError **error);
 
 gboolean        eam_fs_rmdir_recursive  (const char *path);

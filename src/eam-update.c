@@ -240,7 +240,7 @@ eam_update_run_sync (EamTransaction *trans,
     priv->signature_file = g_build_filename (dirname, filename, NULL);
   }
 
-  if (!eam_fs_sanity_check (priv->prefix)) {
+  if (!eam_fs_sanity_check ()) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Unable to access applications directory");
     return FALSE;
