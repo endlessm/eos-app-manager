@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I build/autotools
 
 SUBDIRS = data src tools po tests
 
-DISTCHECK_CONFIGURE_FLAGS = --enable-debug
+AM_DISTCHECK_CONFIGURE_FLAGS = --enable-debug
 
 EXTRA_DIST = \
 	build/autotools/eam.m4 \

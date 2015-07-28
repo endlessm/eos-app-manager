@@ -247,7 +247,7 @@ eam_install_run_sync (EamTransaction *trans,
     eam_log_error_message ("Python libraries compilation failed");
   }
 
-  if (!eam_utils_update_desktop (priv->prefix)) {
+  if (!eam_utils_update_desktop ()) {
     eam_log_error_message ("Could not update the desktop's metadata");
   }
 

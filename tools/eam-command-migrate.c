@@ -45,7 +45,7 @@ eam_command_migrate (int argc, char *argv[])
 
   eam_fs_prune_symlinks (from, appid);
   eam_utils_compile_python (to, appid);
-  eam_utils_update_desktop (to);
+  eam_utils_update_desktop ();
 
   return EXIT_SUCCESS;
 }

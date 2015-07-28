@@ -106,7 +106,7 @@ eam_command_install (int argc, char *argv[])
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
    */
-  if (eam_utils_check_unix_permissions (geteuid ())) {
+  if (eam_utils_can_touch_applications_dir (geteuid ())) {
     g_autoptr(EamInstall) install = (EamInstall *) eam_install_new (appid);
 
     /* An explicit prefix takes precedence */
@@ -197,13 +197,12 @@ eam_command_install (int argc, char *argv[])
   g_dbus_proxy_set_default_timeout (G_DBUS_PROXY (transaction), G_MAXINT);
 
   GVariantBuilder opts;
-  g_variant_builder_init (&opts, G_VARIANT_TYPE ("(a{sv})"));
-  g_variant_builder_open (&opts, G_VARIANT_TYPE ("a{sv}"));
-  g_variant_builder_add (&opts, "{sv}", "StorageType", g_variant_new_string (opt_storage_type));
+  g_variant_builder_init (&opts, G_VARIANT_TYPE ("a{sv}"));
+  if (opt_storage_type)
+    g_variant_builder_add (&opts, "{sv}", "StorageType", g_variant_new_string (opt_storage_type));
   g_variant_builder_add (&opts, "{sv}", "BundlePath", g_variant_new_string (bundle_file));
   g_variant_builder_add (&opts, "{sv}", "SignaturePath", g_variant_new_string (opt_asc_file));
   g_variant_builder_add (&opts, "{sv}", "ChecksumPath", g_variant_new_string (opt_sha_file));
-  g_variant_builder_close (&opts);
 
   gboolean retval = FALSE;
   eos_app_manager_transaction_call_complete_transaction_sync (transaction,
