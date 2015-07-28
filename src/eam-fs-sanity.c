@@ -682,7 +682,7 @@ make_binary_symlink (const char *prefix,
 
   if (symlink (bin, path) != 0 && errno != EEXIST)
     return FALSE;
-  if (symlink (path, app_dir) != 0 && errno != EEXIST)
+  if (symlink (path, app_path) != 0 && errno != EEXIST)
     return FALSE;
 
   return TRUE;
