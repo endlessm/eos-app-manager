@@ -992,9 +992,6 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
     if (!eam_fs_is_app_dir (epath))
       continue;
 
-    if (g_file_test (tpath, G_FILE_TEST_IS_SYMLINK))
-      continue;
-
     ret = eam_fs_create_symlinks (prefix, fn) && ret;
   }
 
