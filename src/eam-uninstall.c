@@ -42,7 +42,7 @@ eam_uninstall_run_sync (EamTransaction *trans,
   EamUninstall *self = (EamUninstall *) trans;
   EamUninstallPrivate *priv = eam_uninstall_get_instance_private (self);
 
-  if (!eam_fs_sanity_check (priv->prefix)) {
+  if (!eam_fs_sanity_check ()) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Unable to access applications directory");
     return FALSE;

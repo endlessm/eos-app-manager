@@ -53,24 +53,23 @@ eam_fs_get_bundle_system_dir (EamBundleDirectory dir)
 }
 
 static char *
-get_bundle_path (const char *prefix,
-                 EamBundleDirectory dir)
+get_bundle_path (EamBundleDirectory dir)
 {
-  return g_build_filename (prefix, eam_fs_get_bundle_system_dir (dir), NULL);
+  const char *app_dir = eam_config_get_applications_dir ();
+  return g_build_filename (app_dir, eam_fs_get_bundle_system_dir (dir), NULL);
 }
 
 gboolean
-eam_fs_init_bundle_dir (const char *prefix,
-                        EamBundleDirectory dir,
+eam_fs_init_bundle_dir (EamBundleDirectory dir,
                         GError **error)
 {
-  g_autofree char *path = get_bundle_path (prefix, dir);
+  g_autofree char *path = get_bundle_path (dir);
 
   if (g_mkdir_with_parents (path, 0777) != 0) {
     g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
                  "Unable to create bundle directory '%s' in '%s'",
                  eam_fs_get_bundle_system_dir (dir),
-                 prefix);
+                 path);
     return FALSE;
   }
 
@@ -94,11 +93,11 @@ eam_fs_init_bundle_dir (const char *prefix,
 }
 
 static gboolean
-applications_directory_create (const char *prefix)
+applications_directory_create (void)
 {
   for (guint i = 0; i < EAM_BUNDLE_DIRECTORY_MAX; i++) {
     g_autoptr(GError) error = NULL;
-    eam_fs_init_bundle_dir (prefix, i, &error);
+    eam_fs_init_bundle_dir (i, &error);
     if (error != NULL) {
       eam_log_error_message ("%s", error->message);
       return FALSE;
@@ -216,30 +215,42 @@ fix_application_permissions_if_needed (const gchar *path)
     fix_permissions_for_application (path);
 }
 
-static gboolean
-sanity_check_prefix (const char *prefix)
+/**
+ * eam_fs_sanity_check:
+ * @prefix: the installation prefix
+ *
+ * Guarantees the existance of the applications' root installation directory and the
+ * subdirectories required by the Application Manager to work inside @prefix.
+ *
+ * If the applications' directory does not exist, it and its required subdirectories
+ * are created. If the applications' directory is corrupted, FALSE is returned.
+ *
+ * Returns: TRUE if the applications' directory and *all* its subdirectories exist or
+ * are successfully created, FALSE otherwise.
+ **/
+gboolean
+eam_fs_sanity_check (void)
 {
   gboolean retval = TRUE;
-
-  g_assert (prefix);
+  const char *app_dir = eam_config_get_applications_dir ();
 
   /* Ensure the applications installation directory exists */
-  if (!applications_directory_create (prefix)) {
-    eam_log_error_message ("Failed to create the applications directory '%s'", prefix);
+  if (!applications_directory_create ()) {
+    eam_log_error_message ("Failed to create the applications directory '%s'", app_dir);
     return FALSE;
   }
 
   /* Check if the existing applications directory structure is correct */
-  gchar *bin_dir = g_build_filename (prefix, BIN_SUBDIR, NULL);
-  gchar *desktop_files_dir = g_build_filename (prefix, DESKTOP_FILES_SUBDIR, NULL);
-  gchar *desktop_icons_dir = g_build_filename (prefix, DESKTOP_ICONS_SUBDIR, NULL);
-  gchar *dbus_services_dir = g_build_filename (prefix, DBUS_SERVICES_SUBDIR, NULL);
-  gchar *ekn_data_dir = g_build_filename (prefix, EKN_DATA_SUBDIR, NULL);
-  gchar *g_schemas_dir = g_build_filename (prefix, G_SCHEMAS_SUBDIR, NULL);
-  gchar *xdg_autostart_dir = g_build_filename (prefix, XDG_AUTOSTART_SUBDIR, NULL);
+  gchar *bin_dir = g_build_filename (app_dir, BIN_SUBDIR, NULL);
+  gchar *desktop_files_dir = g_build_filename (app_dir, DESKTOP_FILES_SUBDIR, NULL);
+  gchar *desktop_icons_dir = g_build_filename (app_dir, DESKTOP_ICONS_SUBDIR, NULL);
+  gchar *dbus_services_dir = g_build_filename (app_dir, DBUS_SERVICES_SUBDIR, NULL);
+  gchar *ekn_data_dir = g_build_filename (app_dir, EKN_DATA_SUBDIR, NULL);
+  gchar *g_schemas_dir = g_build_filename (app_dir, G_SCHEMAS_SUBDIR, NULL);
+  gchar *xdg_autostart_dir = g_build_filename (app_dir, XDG_AUTOSTART_SUBDIR, NULL);
 
-  if (!g_file_test (prefix, G_FILE_TEST_IS_DIR)) {
-    eam_log_error_message ("Missing directory: '%s' does not exist", prefix);
+  if (!g_file_test (app_dir, G_FILE_TEST_IS_DIR)) {
+    eam_log_error_message ("Missing directory: '%s' does not exist", app_dir);
     retval = FALSE;
   }
   if (!g_file_test (bin_dir, G_FILE_TEST_IS_DIR)) {
@@ -273,12 +284,12 @@ sanity_check_prefix (const char *prefix)
 
   /* Check if application directories have valid permissions, fixing them if needed */
   GError *error = NULL;
-  GFile *file = g_file_new_for_path (prefix);
+  GFile *file = g_file_new_for_path (app_dir);
   GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
                                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                          NULL, &error);
   if (error) {
-    eam_log_error_message ("Failed to get the children of '%s': %s", prefix, error->message);
+    eam_log_error_message ("Failed to get the children of '%s': %s", app_dir, error->message);
     g_clear_error (&error);
     retval = FALSE;
     goto bail;
@@ -298,7 +309,7 @@ sanity_check_prefix (const char *prefix)
   }
 
   if (error) {
-    eam_log_error_message ("Failure while processing the children of '%s': %s", prefix, error->message);
+    eam_log_error_message ("Failure while processing the children of '%s': %s", app_dir, error->message);
     g_clear_error (&error);
     retval = FALSE;
   }
@@ -316,31 +327,6 @@ sanity_check_prefix (const char *prefix)
   g_object_unref (file);
 
   return retval;
-}
-
-/**
- * eam_fs_sanity_check:
- * @prefix: the installation prefix
- *
- * Guarantees the existance of the applications' root installation directory and the
- * subdirectories required by the Application Manager to work inside @prefix.
- *
- * If the applications' directory does not exist, it and its required subdirectories
- * are created. If the applications' directory is corrupted, FALSE is returned.
- *
- * Returns: TRUE if the applications' directory and *all* its subdirectories exist or
- * are successfully created, FALSE otherwise.
- **/
-gboolean
-eam_fs_sanity_check (const char *prefix)
-{
-  if (!sanity_check_prefix (prefix))
-    return FALSE;
-
-  if (!sanity_check_prefix (eam_config_get_applications_dir ()))
-    return FALSE;
-
-  return TRUE;
 }
 
 gboolean
@@ -594,21 +580,19 @@ create_symlink (const char *source,
 }
 
 static gboolean
-symlinkdirs_recursive (const char *iterate_dir,
-                       const char *source_dir,
+symlinkdirs_recursive (const char *source_dir,
                        const char *target_dir,
                        gboolean    shallow)
 {
   if (g_mkdir_with_parents (target_dir, 0755) != 0)
     return FALSE;
 
-  g_autoptr(GDir) dir = g_dir_open (iterate_dir, 0, NULL);
+  g_autoptr(GDir) dir = g_dir_open (source_dir, 0, NULL);
   if (dir == NULL)
     return TRUE; /* it's OK if the bundle doesn't have that dir */
 
   const char *fn;
   while ((fn = g_dir_read_name (dir)) != NULL) {
-    g_autofree char *ipath = g_build_filename (iterate_dir, fn, NULL);
     g_autofree char *spath = g_build_filename (source_dir, fn, NULL);
     g_autofree char *tpath = g_build_filename (target_dir, fn, NULL);
 
@@ -624,7 +608,7 @@ symlinkdirs_recursive (const char *iterate_dir,
       /* recursive if directory and not shallow */
       if (!shallow) {
         /* If symlinkdirs_recursive() fails, we fail the whole operation */
-        if (!symlinkdirs_recursive (ipath, spath, tpath, FALSE))
+        if (!symlinkdirs_recursive (spath, tpath, FALSE))
           return FALSE;
       }
       else {
@@ -662,27 +646,19 @@ remove_dir_from_path (const char *path,
 }
 
 static gboolean
-make_binary_symlink (const char *prefix,
-                     const char *bin,
+make_binary_symlink (const char *bin,
                      const char *exec)
 {
   if (!g_file_test (bin, G_FILE_TEST_EXISTS))
     return FALSE;
 
-  g_autofree char *path = g_build_filename (prefix,
+  const char *app_dir = eam_config_get_applications_dir ();
+  g_autofree char *path = g_build_filename (app_dir,
                                             eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
                                             exec,
                                             NULL);
 
-  const char *app_dir = eam_config_get_applications_dir ();
-  g_autofree char *app_path = g_build_filename (app_dir,
-                                                eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN),
-                                                exec,
-                                                NULL);
-
   if (symlink (bin, path) != 0 && errno != EEXIST)
-    return FALSE;
-  if (symlink (path, app_path) != 0 && errno != EEXIST)
     return FALSE;
 
   return TRUE;
@@ -754,7 +730,6 @@ ensure_desktop_file (const char *dir,
 
 static gboolean
 do_binaries_symlinks (const char *prefix,
-                      const char *target,
                       const char *appid)
 {
   g_autofree char *desktopfile = g_strdup_printf ("%s.desktop", appid);
@@ -781,7 +756,7 @@ do_binaries_symlinks (const char *prefix,
                       exec,
                       NULL);
 
-  if (make_binary_symlink (target, bin, exec))
+  if (make_binary_symlink (bin, exec))
     return TRUE;
 
   /* 3. Try in /endless/$appid/games */
@@ -792,7 +767,7 @@ do_binaries_symlinks (const char *prefix,
                           exec,
                           NULL);
 
-  if (make_binary_symlink (target, bin, exec))
+  if (make_binary_symlink (bin, exec))
     return TRUE;
 
   /* 4. Look if the command we are trying to link is already in $PATH
@@ -873,11 +848,7 @@ gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  const char *app_dir = eam_config_get_applications_dir ();
-
-  if (!do_binaries_symlinks (prefix, prefix, appid))
-    return FALSE;
-  if (!do_binaries_symlinks (prefix, app_dir, appid))
+  if (!do_binaries_symlinks (prefix, appid))
     return FALSE;
 
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
@@ -887,20 +858,18 @@ eam_fs_create_symlinks (const char *prefix,
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
-    g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
-    g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
+    g_autofree char *tdir = get_bundle_path (index);
 
     /* shallow symlinks to EKN data */
     gboolean is_shallow = (index == EAM_BUNDLE_DIRECTORY_EKN_DATA);
-    if (!symlinkdirs_recursive (sdir, sdir, tdir, is_shallow)) {
-      return FALSE;
-    }
-
-    if (!symlinkdirs_recursive (sdir, tdir, adir, is_shallow)) {
+    if (!symlinkdirs_recursive (sdir, tdir, is_shallow)) {
       return FALSE;
     }
   }
 
+  /* Symlink from e.g. /var/endless/com.endlessm.youvideos to
+   * /endless/com.endlessm.youvideos */
+  const char *app_dir = eam_config_get_applications_dir ();
   g_autofree char *idir = g_build_filename (prefix, appid, NULL);
   g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
   if (symlink (idir, adir) != 0 && errno != EEXIST)
@@ -919,25 +888,18 @@ eam_fs_prune_symlinks (const char *prefix,
     const char *sysdir = eam_fs_get_bundle_system_dir (index);
 
     g_autofree char *sdir = g_build_filename (prefix, appid, sysdir, NULL);
-    g_autofree char *tdir = g_build_filename (prefix, sysdir, NULL);
-    g_autofree char *adir = g_build_filename (app_dir, sysdir, NULL);
+    g_autofree char *tdir = get_bundle_path (index);
 
     (void) rmsymlinks_recursive (sdir, tdir);
-    (void) rmsymlinks_recursive (sdir, adir);
   }
 
   /* As a special case, for apps that normally install in /usr/games in their
    * bundle, we need to remove the corresponding link we made in /usr/bin. */
   g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES), NULL);
-  {
-    g_autofree char *tdir = g_build_filename (prefix, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
-    (void) rmsymlinks_recursive (sdir, tdir);
-  }
-  {
-    g_autofree char *tdir = g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
-    (void) rmsymlinks_recursive (sdir, tdir);
-  }
+  g_autofree char *tdir = g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
+  (void) rmsymlinks_recursive (sdir, tdir);
 
+  /* Unlink /endlessm/com.endlessm.youvideos */
   g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
   (void) unlink (adir);
 }
@@ -1013,7 +975,7 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
 {
   gboolean ret = TRUE;
 
-  if (!eam_fs_sanity_check (prefix))
+  if (!eam_fs_sanity_check ())
     return FALSE;
 
   g_autoptr(GDir) dir = g_dir_open (prefix, 0, NULL);
