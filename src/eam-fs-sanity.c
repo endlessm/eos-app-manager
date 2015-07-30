@@ -983,11 +983,9 @@ eam_fs_ensure_symlink_farm_for_prefix (const char *prefix)
     return ret;
 
   const char *fn;
-  const char *app_dir = eam_config_get_applications_dir ();
 
   while ((fn = g_dir_read_name (dir)) != NULL) {
     g_autofree char *epath = g_build_filename (prefix, fn, NULL);
-    g_autofree char *tpath = g_build_filename (app_dir, fn, NULL);
 
     if (!eam_fs_is_app_dir (epath))
       continue;
