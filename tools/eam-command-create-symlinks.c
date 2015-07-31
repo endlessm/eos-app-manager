@@ -45,6 +45,8 @@ eam_command_create_symlinks (int argc, char *argv[])
   const char *appid = opt_appid[0];
 
   if (opt_migrate_to != NULL) {
+    eam_fs_prune_symlinks (opt_prefix, appid);
+
     if (!eam_fs_create_symlinks (opt_migrate_to, appid)) {
       g_printerr ("Unable to migrate symlinks from '%s' to '%s' for app '%s'.\n",
                   opt_prefix,
@@ -52,8 +54,6 @@ eam_command_create_symlinks (int argc, char *argv[])
                   appid);
       return EXIT_FAILURE;
     }
-
-    eam_fs_prune_symlinks (opt_prefix, appid);
   }
   else {
     if (!eam_fs_create_symlinks (opt_prefix, appid)) {

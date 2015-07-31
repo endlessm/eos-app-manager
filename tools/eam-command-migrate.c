@@ -38,12 +38,12 @@ eam_command_migrate (int argc, char *argv[])
   }
 
   /* Recreate symlinks and update the system */
+  eam_fs_prune_symlinks (from, appid);
   if (!eam_fs_create_symlinks (to, appid)) {
     g_printerr ("Could not recreate symlinks for app '%s'.\n", appid);
     return EXIT_FAILURE;
   }
 
-  eam_fs_prune_symlinks (from, appid);
   eam_utils_compile_python (to, appid);
   eam_utils_update_desktop ();
 
