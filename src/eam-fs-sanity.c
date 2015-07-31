@@ -658,10 +658,7 @@ make_binary_symlink (const char *bin,
                                             exec,
                                             NULL);
 
-  if (symlink (bin, path) != 0 && errno != EEXIST)
-    return FALSE;
-
-  return TRUE;
+  return create_symlink (bin, path);
 }
 
 static char *
