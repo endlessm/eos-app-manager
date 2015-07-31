@@ -1,8 +1,10 @@
 [Unit]
 Description=Migrate old application bundle installations
 Documentation=man:eamd(8)
-After=local-fs.target
-Before=systemd-update-done.service
+DefaultDependencies=false
+Conflicts=shutdown.target
+After=local-fs.target systemd-journald.socket
+Before=systemd-update-done.service shutdown.target graphical.target
 ConditionNeedsUpdate=/var
 
 [Service]
