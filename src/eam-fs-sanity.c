@@ -736,8 +736,10 @@ do_binaries_symlinks (const char *prefix,
                                                      NULL);
   g_autofree char *appdesktopfile = ensure_desktop_file (appdesktopdir, desktopfile);
 
-  if (appdesktopfile == NULL)
+  if (appdesktopfile == NULL) {
+    eam_log_error_message ("Could not find .desktop file for app '%s'", appid);
     return FALSE;
+  }
 
   g_autofree char *exec = app_info_get_executable (appdesktopfile);
 
@@ -845,8 +847,10 @@ gboolean
 eam_fs_create_symlinks (const char *prefix,
                         const char *appid)
 {
-  if (!do_binaries_symlinks (prefix, appid))
+  if (!do_binaries_symlinks (prefix, appid)) {
+    eam_log_error_message ("Could not create binaries symlinks for app '%s'", appid);
     return FALSE;
+  }
 
   for (guint index = 0; index < EAM_BUNDLE_DIRECTORY_MAX; index++) {
     if (index == EAM_BUNDLE_DIRECTORY_BIN)
