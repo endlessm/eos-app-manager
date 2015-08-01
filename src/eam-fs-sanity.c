@@ -869,7 +869,7 @@ eam_fs_create_symlinks (const char *prefix,
   const char *app_dir = eam_config_get_applications_dir ();
   g_autofree char *idir = g_build_filename (prefix, appid, NULL);
   g_autofree char *adir = g_build_filename (app_dir, appid, NULL);
-  if (symlink (idir, adir) != 0 && errno != EEXIST)
+  if (!create_symlink (idir, adir))
     return FALSE;
 
   return TRUE;
