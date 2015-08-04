@@ -68,6 +68,22 @@ eam_command_config (int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
+  if (strcmp (argv[1], "reset") == 0) {
+    if (argc != 3) {
+      g_printerr ("Usage: %s config reset <key>\n", eam_argv0);
+      return EXIT_FAILURE;
+    }
+
+    if (!eam_utils_can_modify_configuration (getuid ())) {
+      g_printerr ("You need administrator privileges to modify the app manager configuration\n");
+      return EXIT_FAILURE;
+    }
+
+    eam_config_reset_key (argv[2]);
+
+    return EXIT_SUCCESS;
+  }
+
   if (strcmp (argv[1], "ApplicationsDir") == 0) {
     g_print ("%s\n", eam_config_get_applications_dir ());
     return EXIT_SUCCESS;
