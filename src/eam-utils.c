@@ -686,6 +686,23 @@ eam_utils_can_touch_applications_dir (uid_t user)
 }
 
 gboolean
+eam_utils_can_modify_configuration (uid_t user)
+{
+  if (user == G_MAXUINT)
+    return FALSE;
+
+  struct passwd *pw = getpwuid (user);
+  if (pw == NULL)
+    return FALSE;
+
+  /* Are we root? */
+  if (pw->pw_uid == 0 && pw->pw_gid == 0)
+    return TRUE;
+
+  return FALSE;
+}
+
+gboolean
 eam_utils_check_unix_permissions (uid_t user)
 {
   if (user == G_MAXUINT)
