@@ -106,9 +106,9 @@ static const EamConfigKey eam_config_keys[] = {
 };
 
 static inline void
-eam_config_set_key (const EamConfigKey *key,
-                    EamConfig          *config,
-                    GKeyFile           *keyfile)
+eam_config_set_key_internal (const EamConfigKey *key,
+                             EamConfig          *config,
+                             GKeyFile           *keyfile)
 {
   g_autoptr(GError) error = NULL;
   g_autofree char *str_value = NULL;
@@ -175,13 +175,52 @@ eam_config_get (void)
     for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
       const EamConfigKey *key = &eam_config_keys[i];
 
-      eam_config_set_key (key, config, keyfile);
+      eam_config_set_key_internal (key, config, keyfile);
     }
 
     g_once_init_leave (&eam_config, config);
   }
 
   return eam_config;
+}
+
+void
+eam_config_set_key (const char *key,
+                    const char *value)
+{
+  EamConfig *config = eam_config_get ();
+
+  const char *config_env = g_getenv ("EAM_CONFIG_FILE");
+  if (config_env == NULL)
+    config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
+
+  g_autoptr(GKeyFile) keyfile = g_key_file_new ();
+  g_autoptr(GError) error = NULL;
+  g_key_file_load_from_file (keyfile, config_env, G_KEY_FILE_KEEP_COMMENTS, &error);
+
+  if (error != NULL) {
+    eam_log_error_message ("Unable to load configuration from '%s': %s",
+                           config_env,
+                           error->message);
+    return;
+  }
+
+  for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
+    const EamConfigKey *config_key = &eam_config_keys[i];
+
+    if (strcmp (key, config_key->key_name) == 0) {
+      g_key_file_set_value (keyfile, config_key->key_group, config_key->key_name, value);
+      g_key_file_save_to_file (keyfile, config_env, &error);
+      if (error != NULL)
+        eam_log_error_message ("Unable to save configuration to '%s': %s",
+                               config_env,
+                               error->message);
+      else
+        eam_config_set_key_internal (config_key, config, keyfile);
+
+      return;
+    }
+  }
 }
 
 const char *
