@@ -2,6 +2,7 @@
 
 #include "eam-commands.h"
 #include "eam-config.h"
+#include "eam-utils.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +49,22 @@ eam_command_config (int argc, char *argv[])
              "ProtocolVersion\n"
              "DeltaUpdates\n"
              "InactivityTimeout\n");
+    return EXIT_SUCCESS;
+  }
+
+  if (strcmp (argv[1], "set") == 0) {
+    if (argc != 4) {
+      g_printerr ("Usage: %s config set <key> <value>\n", eam_argv0);
+      return EXIT_FAILURE;
+    }
+
+    if (!eam_utils_can_modify_configuration (getuid ())) {
+      g_printerr ("You need administrator privileges to modify the app manager configuration\n");
+      return EXIT_FAILURE;
+    }
+
+    eam_config_set_key (argv[2], argv[3]);
+
     return EXIT_SUCCESS;
   }
 
