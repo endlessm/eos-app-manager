@@ -12,8 +12,6 @@
 
 const GLib = imports.gi.GLib;
 
-const CONFIG_PATH ='@SYSCONF_DIR@/eos-app-manager';
-
 const servers =
     ' TRUE http://appupdates.endlessm.com' +
     ' FALSE http://staging.appupdates.endlessm.com' +
