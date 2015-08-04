@@ -19,6 +19,7 @@ guint           eam_config_get_inactivity_timeout       (void);
 
 void            eam_config_set_key                      (const char *key,
                                                          const char *value);
+void            eam_config_reset_key                    (const char *key);
 
 G_END_DECLS
 

@@ -223,6 +223,69 @@ eam_config_set_key (const char *key,
   }
 }
 
+void
+eam_config_reset_key (const char *key)
+{
+  EamConfig *config = eam_config_get ();
+
+  const char *config_env = g_getenv ("EAM_CONFIG_FILE");
+  if (config_env == NULL)
+    config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
+
+  g_autoptr(GKeyFile) keyfile = g_key_file_new ();
+  g_autoptr(GError) error = NULL;
+  g_key_file_load_from_file (keyfile, config_env, G_KEY_FILE_KEEP_COMMENTS, &error);
+
+  if (error != NULL) {
+    eam_log_error_message ("Unable to load configuration from '%s': %s",
+                           config_env,
+                           error->message);
+    return;
+  }
+
+  for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
+    const EamConfigKey *config_key = &eam_config_keys[i];
+
+    if (strcmp (key, config_key->key_name) == 0) {
+      switch (config_key->key_type) {
+        case G_TYPE_STRING:
+          g_key_file_set_string (keyfile,
+                                 config_key->key_group,
+                                 config_key->key_name,
+                                 config_key->key_default.str_val);
+          break;
+
+        case G_TYPE_INT:
+          g_key_file_set_integer (keyfile,
+                                  config_key->key_group,
+                                  config_key->key_name,
+                                  config_key->key_default.int_val);
+          break;
+
+        case G_TYPE_BOOLEAN:
+          g_key_file_set_boolean (keyfile,
+                                  config_key->key_group,
+                                  config_key->key_name,
+                                  config_key->key_default.bool_val);
+          break;
+
+        default:
+          g_assert_not_reached ();
+      }
+
+      g_key_file_save_to_file (keyfile, config_env, &error);
+      if (error != NULL)
+        eam_log_error_message ("Unable to save configuration to '%s': %s",
+                               config_env,
+                               error->message);
+      else
+        eam_config_set_key_internal (config_key, config, keyfile);
+
+      return;
+    }
+  }
+}
+
 const char *
 eam_config_get_applications_dir (void)
 {
