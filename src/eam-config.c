@@ -159,7 +159,7 @@ eam_config_get (void)
   if (g_once_init_enter (&eam_config)) {
     const char *config_env = g_getenv ("EAM_CONFIG_FILE");
     if (config_env == NULL)
-      config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
+      config_env = SYSCONFDIR "/eos-app-manager/eos-app-manager.ini";
 
     EamConfig *config = g_new (EamConfig, 1);
 
@@ -192,7 +192,7 @@ eam_config_set_key (const char *key,
 
   const char *config_env = g_getenv ("EAM_CONFIG_FILE");
   if (config_env == NULL)
-    config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
+    config_env = SYSCONFDIR "/eos-app-manager/eos-app-manager.ini";
 
   g_autoptr(GKeyFile) keyfile = g_key_file_new ();
   g_autoptr(GError) error = NULL;
@@ -230,7 +230,7 @@ eam_config_reset_key (const char *key)
 
   const char *config_env = g_getenv ("EAM_CONFIG_FILE");
   if (config_env == NULL)
-    config_env = SYSCONFDIR "/eos-app-manager/eam-default.cfg";
+    config_env = SYSCONFDIR "/eos-app-manager/eos-app-manager.ini";
 
   g_autoptr(GKeyFile) keyfile = g_key_file_new ();
   g_autoptr(GError) error = NULL;

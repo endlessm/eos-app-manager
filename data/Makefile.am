@@ -38,11 +38,11 @@ eos-app-manager-migrate-bundles.service: eos-app-manager-migrate-bundles.service
 xsessiondir = $(sysconfdir)/X11/Xsession.d
 xsession_DATA = 65eam_paths_update
 
-conf_in_files = eam-default.cfg.in
+conf_in_files = eos-app-manager.ini.in
 confdir = $(sysconfdir)/eos-app-manager
-conf_DATA = $(conf_in_files:.cfg.in=.cfg)
+conf_DATA = $(conf_in_files:.ini.in=.ini)
 
-eam-default.cfg: eam-default.cfg.in Makefile
+eos-app-manager.ini: eos-app-manager.ini.in Makefile
 	$(AM_V_GEN) $(do_subst) $< > $@
 
 polkit_rules_in_files = com.endlessm.app-installer.rules.in

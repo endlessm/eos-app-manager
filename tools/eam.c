@@ -14,7 +14,7 @@
 
 #include "eam-utils.h"
 
-#define CONFIG_FILE     SYSCONFDIR "/eos-app-manager/eam-default.cfg"
+#define CONFIG_FILE     SYSCONFDIR "/eos-app-manager/eos-app-manager.ini"
 
 char *eam_argv0;
 
