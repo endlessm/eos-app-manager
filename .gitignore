@@ -99,4 +99,3 @@ tests/version
 tools/eos-app-manager-service.[ch]
 tools/eos-app-manager-transaction.[ch]
 tools/eamctl
-tools/eos-select-app-server

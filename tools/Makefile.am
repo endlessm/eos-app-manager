@@ -12,17 +12,7 @@ completiondir = $(datadir)/bash-completion/completions
 completion_DATA = completion/eamctl
 EXTRA_DIST += $(completion_DATA)
 
-do_subst = sed \
-	-e 's|@DATA_DIR[@]|$(datadir)|g' \
-	-e 's|@SYSCONF_DIR[@]|$(sysconfdir)|g'
-
-eos-select-app-server: eos-select-app-server.in Makefile
-	$(AM_V_GEN) $(do_subst) $< > $@
-	chmod +x $@
-
 bin_SCRIPTS += eos-select-app-server
-EXTRA_DIST += eos-select-app-server.in
-CLEANFILES += eos-select-app-server
 
 bin_PROGRAMS += eamctl
 
