@@ -63,7 +63,10 @@ eam_command_config (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    eam_config_set_key (argv[2], argv[3]);
+    if (!eam_config_set_key (argv[2], argv[3])) {
+      g_printerr ("Could not set configuration key '%s'\n", argv[2]);
+      return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
   }
@@ -79,7 +82,10 @@ eam_command_config (int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    eam_config_reset_key (argv[2]);
+    if (!eam_config_reset_key (argv[2])) {
+      g_printerr ("Could not reset configuration key '%s'\n", argv[2]);
+      return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
   }
