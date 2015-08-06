@@ -184,7 +184,7 @@ eam_config_get (void)
   return eam_config;
 }
 
-void
+gboolean
 eam_config_set_key (const char *key,
                     const char *value)
 {
@@ -202,7 +202,7 @@ eam_config_set_key (const char *key,
     eam_log_error_message ("Unable to load configuration from '%s': %s",
                            config_env,
                            error->message);
-    return;
+    return FALSE;
   }
 
   for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
@@ -211,19 +211,24 @@ eam_config_set_key (const char *key,
     if (strcmp (key, config_key->key_name) == 0) {
       g_key_file_set_value (keyfile, config_key->key_group, config_key->key_name, value);
       g_key_file_save_to_file (keyfile, config_env, &error);
-      if (error != NULL)
-        eam_log_error_message ("Unable to save configuration to '%s': %s",
-                               config_env,
-                               error->message);
-      else
-        eam_config_set_key_internal (config_key, config, keyfile);
+      if (error != NULL) {
+          eam_log_error_message ("Unable to save configuration to '%s': %s",
+                                 config_env,
+                                 error->message);
+          return FALSE;
+      }
 
-      return;
+      eam_config_set_key_internal (config_key, config, keyfile);
+      return TRUE;
     }
   }
+
+  /* Key wasn't found */
+  eam_log_error_message ("Unknown configuration key '%s'", key);
+  return FALSE;
 }
 
-void
+gboolean
 eam_config_reset_key (const char *key)
 {
   EamConfig *config = eam_config_get ();
@@ -240,7 +245,7 @@ eam_config_reset_key (const char *key)
     eam_log_error_message ("Unable to load configuration from '%s': %s",
                            config_env,
                            error->message);
-    return;
+    return FALSE;
   }
 
   for (int i = 0; i < G_N_ELEMENTS (eam_config_keys); i++) {
@@ -274,16 +279,21 @@ eam_config_reset_key (const char *key)
       }
 
       g_key_file_save_to_file (keyfile, config_env, &error);
-      if (error != NULL)
+      if (error != NULL) {
         eam_log_error_message ("Unable to save configuration to '%s': %s",
                                config_env,
                                error->message);
-      else
-        eam_config_set_key_internal (config_key, config, keyfile);
+        return FALSE;
+      }
 
-      return;
+      eam_config_set_key_internal (config_key, config, keyfile);
+      return TRUE;
     }
   }
+
+  /* Key wasn't found */
+  eam_log_error_message ("Unknown configuration key '%s'", key);
+  return FALSE;
 }
 
 const char *
