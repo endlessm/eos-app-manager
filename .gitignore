@@ -57,7 +57,7 @@ configure
 data/com.endlessm.AppManager.conf
 data/com.endlessm.AppManager.service
 data/com.endlessm.app-installer.rules
-data/eam-default.cfg
+data/eos-app-manager.ini
 data/eos-app-manager.service
 data/eos-app-manager-migrate-bundles.service
 depcomp
@@ -99,4 +99,3 @@ tests/version
 tools/eos-app-manager-service.[ch]
 tools/eos-app-manager-transaction.[ch]
 tools/eamctl
-tools/eos-select-app-server

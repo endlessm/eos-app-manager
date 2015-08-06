@@ -10,10 +10,7 @@
 //   eos-select-app-server              -- prompts user to select app server
 //   eos-select-app-server http://my-server-url   -- custom server URL
 
-const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
-
-const CONFIG_PATH ='@SYSCONF_DIR@/eos-app-manager';
 
 const servers =
     ' TRUE http://appupdates.endlessm.com' +
@@ -64,28 +61,21 @@ const restartDaemon = function() {
     try {
         GLib.spawn_command_line_sync(command);
     } catch (e) {
-        logError(e, 'Error executing \'' + localizedExec + '\'');
+        logError(e, 'Error executing \'' + command + '\'');
+    }
+}
+
+const setConfigKey = function(key, value) {
+    let command = 'eamctl config set ' + key + ' ' + value;
+    try {
+        GLib.spawn_command_line_sync(command);
+    } catch (e) {
+        logError(e, 'Error executing \'' + command + '\'');
     }
 }
 
 let server = getServer(ARGV);
-
 if (server) {
-    // Read in existing config file
-    let configFilePath = CONFIG_PATH + '/eam-default.cfg';
-    let configKeyFile = new GLib.KeyFile();
-
-    configKeyFile.load_from_file(configFilePath,
-                                 GLib.KeyFileFlags.KEEP_COMMENTS |
-                                 GLib.KeyFileFlags.KEEP_TRANSLATIONS);
-
-    configKeyFile.set_string("Repository", "ServerUrl", server);
-
-    // Write out new config file
-    let configFile = Gio.File.new_for_path(configFilePath);
-    let configFileData = configKeyFile.to_data()[0];
-    configFile.replace_contents(configFileData, null, true,
-                                Gio.FileCreateFlags.NONE, null);
-
+    setConfigKey('ServerUrl', server);
     restartDaemon();
 }

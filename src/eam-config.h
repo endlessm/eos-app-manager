@@ -17,6 +17,10 @@ const char *    eam_config_get_api_version              (void);
 gboolean        eam_config_get_enable_delta_updates     (void);
 guint           eam_config_get_inactivity_timeout       (void);
 
+gboolean        eam_config_set_key                      (const char *key,
+                                                         const char *value);
+gboolean        eam_config_reset_key                    (const char *key);
+
 G_END_DECLS
 
 #endif /* EAM_CONFIG_H */

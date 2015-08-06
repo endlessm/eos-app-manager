@@ -40,6 +40,7 @@ GKeyFile *      eam_utils_load_app_info         (const char *prefix,
 
 gboolean        eam_utils_can_touch_applications_dir    (uid_t user);
 gboolean        eam_utils_check_unix_permissions        (uid_t user);
+gboolean        eam_utils_can_modify_configuration      (uid_t user);
 
 G_END_DECLS
 
