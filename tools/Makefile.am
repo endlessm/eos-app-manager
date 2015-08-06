@@ -1,5 +1,5 @@
 bin_PROGRAMS =
-bin_SCRIPTS =
+dist_bin_SCRIPTS =
 
 BUILT_SOURCES =
 
@@ -12,7 +12,7 @@ completiondir = $(datadir)/bash-completion/completions
 completion_DATA = completion/eamctl
 EXTRA_DIST += $(completion_DATA)
 
-bin_SCRIPTS += eos-select-app-server
+dist_bin_SCRIPTS += eos-select-app-server
 
 bin_PROGRAMS += eamctl
 
