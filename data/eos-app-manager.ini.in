@@ -6,7 +6,7 @@ SecondaryStorage = @localstatedir@/endless-extra
 GpgKeyring = @pkgdatadir@/eos-keyring.gpg
 
 [Repository]
-ServerUrl = http://appupdates.endlessm.com
+ServerUrl = https://appupdates.endlessm.com
 ApiVersion = v1
 EnableDeltaUpdates = true
 
