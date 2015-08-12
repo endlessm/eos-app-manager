@@ -44,8 +44,16 @@ eam_command_migrate (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  eam_utils_compile_python (to, appid);
-  eam_utils_update_desktop ();
+  /* Run all update hooks, but pass back failures */
+  int ret = EXIT_SUCCESS;
+  if (!eam_utils_compile_python (to, appid)) {
+    g_printerr ("Could not compile python objects for app '%s'.\n", appid);
+    ret = EXIT_FAILURE;
+  }
+  if (!eam_utils_update_desktop ()) {
+    g_printerr ("Could not update desktop caches.\n");
+    ret = EXIT_FAILURE;
+  }
 
-  return EXIT_SUCCESS;
+  return ret;
 }
