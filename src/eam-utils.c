@@ -88,13 +88,13 @@ run_cmd (const char * const *argv)
 
   if (err != NULL) {
     eam_log_error_message ("%s failed: %s", argv[0], err->message);
-    return -1;
+    return FALSE;
   }
 
   g_subprocess_wait (sub, NULL, &err);
   if (err != NULL) {
     eam_log_error_message ("%s failed: %s", argv[0], err->message);
-    return -1;
+    return FALSE;
   }
 
   return g_subprocess_get_exit_status (sub) == 0;

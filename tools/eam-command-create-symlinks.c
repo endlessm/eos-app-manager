@@ -64,7 +64,10 @@ eam_command_create_symlinks (int argc, char *argv[])
     }
   }
 
-  eam_utils_update_desktop ();
+  if (!eam_utils_update_desktop ()) {
+    g_printerr ("Unable to update desktop caches.\n");
+    return EXIT_FAILURE;
+  }
 
   return EXIT_SUCCESS;
 }
