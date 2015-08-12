@@ -97,7 +97,7 @@ run_cmd (const char * const *argv)
     return FALSE;
   }
 
-  return g_subprocess_get_exit_status (sub) == 0;
+  return g_subprocess_get_successful (sub);
 }
 
 gboolean
