@@ -106,10 +106,26 @@ eam_service_dispose (GObject *obj)
 }
 
 static void
+eam_service_constructed (GObject *obj)
+{
+  G_OBJECT_CLASS (eam_service_parent_class)->constructed (obj);
+
+  g_object_set (obj,
+                "applications-dir", eam_config_get_applications_dir (),
+                "primary-storage", eam_config_get_primary_storage (),
+                "secondary-storage", eam_config_get_secondary_storage (),
+                "server-url", eam_config_get_server_url (),
+                "api-version", eam_config_get_api_version (),
+                "enable-delta-updates", eam_config_get_enable_delta_updates (),
+                NULL);
+}
+
+static void
 eam_service_class_init (EamServiceClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
+  object_class->constructed = eam_service_constructed;
   object_class->dispose = eam_service_dispose;
 }
 
