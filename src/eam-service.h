@@ -48,6 +48,10 @@ guint           eam_service_get_idle                              (EamService *s
 gboolean        eam_service_load_authority                        (EamService *service,
                                                                    GError **error);
 
+void            eam_service_pop_busy                              (EamService *service);
+void            eam_service_reset_timer                           (EamService *service);
+char *          eam_service_get_next_transaction_path             (EamService *service);
+
 G_END_DECLS
 
 #endif /* EAM_SERVICE_H */

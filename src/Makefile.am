@@ -14,6 +14,7 @@ source_c = \
 	eam-service.c \
 	eam-config.c \
 	eam-transaction.c \
+	eam-transaction-dbus.c \
 	eam-install.c \
 	eam-update.c \
 	eam-uninstall.c \
@@ -29,6 +30,7 @@ source_h = \
 	eam-service.h \
 	eam-config.h \
 	eam-transaction.h \
+	eam-transaction-dbus.h \
 	eam-install.h \
 	eam-update.h \
 	eam-uninstall.h \
