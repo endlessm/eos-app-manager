@@ -88,6 +88,7 @@ po/stamp-it
 po/stamp-po
 src/eamd
 src/eam-resources.[ch]
+src/*generated.[ch]
 stamp-h1
 tests/cfg
 tests/pkg

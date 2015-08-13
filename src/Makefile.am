@@ -43,6 +43,8 @@ source_h = \
 eam_built_sources = \
 	eam-resources.h \
 	eam-resources.c \
+	eam-service-generated.h \
+	eam-service-generated.c \
 	$(NULL)
 
 gresource_file = $(top_srcdir)/data/eam.gresource.xml
@@ -59,6 +61,13 @@ eam-resources.h: $(gresource_file) $(resource_files)
 		--target=$@ \
 		--generate-header \
 	$<
+
+eam-service-generated.h eam-service-generated.c: $(top_srcdir)/data/eam-service-interface.xml Makefile
+	$(AM_V_GEN) $(GDBUS_CODEGEN) \
+		--interface-prefix com.endlessm. \
+		--generate-c-code eam-service-generated \
+		--c-namespace Eam \
+		$<
 
 BUILT_SOURCES = $(eam_built_sources)
 
