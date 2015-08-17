@@ -82,5 +82,12 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value="error" />
       </arg>
     </method>
+
+    <property name="ApplicationsDir" type="s" access="read" />
+    <property name="PrimaryStorage" type="s" access="read" />
+    <property name="SecondaryStorage" type="s" access="read" />
+    <property name="ServerUrl" type="s" access="read" />
+    <property name="ApiVersion" type="s" access="read" />
+    <property name="EnableDeltaUpdates" type="b" access="read" />
   </interface>
 </node>

@@ -87,7 +87,7 @@ static const EamConfigKey eam_config_keys[] = {
     .key_group = EAM_CONFIG_REPOSITORY,
     .key_field = G_STRUCT_OFFSET (EamConfig, server_url),
     .key_type = G_TYPE_STRING,
-    .key_default.str_val = "http://appupdates.endlessm.com",
+    .key_default.str_val = "https://appupdates.endlessm.com",
   },
   {
     .key_name = "ApiVersion",

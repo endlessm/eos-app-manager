@@ -13,9 +13,9 @@
 const GLib = imports.gi.GLib;
 
 const servers =
-    ' TRUE http://appupdates.endlessm.com' +
-    ' FALSE http://staging.appupdates.endlessm.com' +
-    ' FALSE http://master.appupdates.endlessm-sf.com'
+    ' TRUE https://appupdates.endlessm.com' +
+    ' FALSE https://staging.appupdates.endlessm.com' +
+    ' FALSE https://master.appupdates.endlessm-sf.com'
 
 const selectServer = function() {
     let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection --width 450 --height 200' + servers;
