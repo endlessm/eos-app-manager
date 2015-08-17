@@ -70,6 +70,7 @@ eam-service-generated.h eam-service-generated.c: $(top_srcdir)/data/eam-service-
 		$<
 
 BUILT_SOURCES = $(eam_built_sources)
+CLEANFILES = $(eam_built_sources)
 
 noinst_LTLIBRARIES = libeam.la
 libeam_la_CFLAGS = $(EAM_CFLAGS)
