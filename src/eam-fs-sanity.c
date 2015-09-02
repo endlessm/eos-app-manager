@@ -22,6 +22,7 @@
 #include <glib/gstdio.h>
 
 #define BIN_SUBDIR "bin"
+#define GAMES_SUBDIR "games"
 #define DESKTOP_FILES_SUBDIR "share/applications"
 #define DESKTOP_ICONS_SUBDIR "share/icons"
 #define DBUS_SERVICES_SUBDIR "share/dbus-1/services"
@@ -41,7 +42,6 @@ static const char *fs_layout[] = {
   [EAM_BUNDLE_DIRECTORY_SHELL_SEARCH] = "share/gnome-shell/search-providers",
   [EAM_BUNDLE_DIRECTORY_KDE4] = "share/kde4",
   [EAM_BUNDLE_DIRECTORY_XDG_AUTOSTART] = "xdg/autostart",
-  [EAM_BUNDLE_DIRECTORY_GAMES] = "games",
 };
 
 const char *
@@ -760,7 +760,7 @@ do_binaries_symlinks (const char *prefix,
   g_free (bin);
   bin = g_build_filename (prefix,
                           appid,
-                          eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES),
+                          GAMES_SUBDIR,
                           exec,
                           NULL);
 
@@ -892,7 +892,7 @@ eam_fs_prune_symlinks (const char *prefix,
 
   /* As a special case, for apps that normally install in /usr/games in their
    * bundle, we need to remove the corresponding link we made in /usr/bin. */
-  g_autofree char *sdir = g_build_filename (prefix, appid, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_GAMES), NULL);
+  g_autofree char *sdir = g_build_filename (prefix, appid, GAMES_SUBDIR, NULL);
   g_autofree char *tdir = g_build_filename (app_dir, eam_fs_get_bundle_system_dir (EAM_BUNDLE_DIRECTORY_BIN), NULL);
   (void) rmsymlinks_recursive (sdir, tdir);
 
