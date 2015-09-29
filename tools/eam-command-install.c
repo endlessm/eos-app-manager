@@ -21,14 +21,12 @@
 
 static char *opt_prefix;
 static char *opt_asc_file;
-static char *opt_sha_file;
 static char **opt_appid;
 static char *opt_storage_type;
 
 static const GOptionEntry install_entries[] = {
  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Prefix to use when installing", "DIRECTORY" },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
- { "checksum-file", 'c', 0, G_OPTION_ARG_FILENAME, &opt_sha_file, "Path to the SHA file", "FILE" },
  { "storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_storage_type, "Storage type ('primary' or 'secondary')", "TYPE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
  { NULL },
@@ -92,17 +90,6 @@ eam_command_install (int argc, char *argv[])
     }
   }
 
-  if (opt_sha_file == NULL) {
-    g_autofree char *dirname = g_path_get_dirname (bundle_file);
-    g_autofree char *filename = g_strconcat (appid, ".sha256", NULL);
-    opt_sha_file = g_build_filename (dirname, filename, NULL);
-
-    if (!g_file_test (opt_sha_file, G_FILE_TEST_EXISTS)) {
-      g_printerr ("No checksum file found. Use --checksum-file to specify the checksum file.\n");
-      return EXIT_FAILURE;
-    }
-  }
-
   /* If we are being called by a privileged user, then we bypass the
    * daemon entirely, because we have enough privileges.
    */
@@ -124,7 +111,6 @@ eam_command_install (int argc, char *argv[])
 
     eam_install_set_bundle_file (install, bundle_file);
     eam_install_set_signature_file (install, opt_asc_file);
-    eam_install_set_checksum_file (install, opt_sha_file);
 
     g_autoptr(GError) error = NULL;
     eam_transaction_run_sync (EAM_TRANSACTION (install), NULL, &error);
@@ -202,7 +188,6 @@ eam_command_install (int argc, char *argv[])
     g_variant_builder_add (&opts, "{sv}", "StorageType", g_variant_new_string (opt_storage_type));
   g_variant_builder_add (&opts, "{sv}", "BundlePath", g_variant_new_string (bundle_file));
   g_variant_builder_add (&opts, "{sv}", "SignaturePath", g_variant_new_string (opt_asc_file));
-  g_variant_builder_add (&opts, "{sv}", "ChecksumPath", g_variant_new_string (opt_sha_file));
 
   gboolean retval = FALSE;
   eos_app_manager_transaction_call_complete_transaction_sync (transaction,

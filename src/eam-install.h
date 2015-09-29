@@ -47,8 +47,6 @@ void                    eam_install_set_bundle_file     (EamInstall *install,
                                                          const char *path);
 void                    eam_install_set_signature_file  (EamInstall *install,
                                                          const char *path);
-void                    eam_install_set_checksum_file   (EamInstall *install,
-                                                         const char *path);
 
 const char *            eam_install_get_app_id          (EamInstall *install);
 

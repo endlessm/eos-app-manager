@@ -47,8 +47,6 @@ void                    eam_update_set_bundle_file      (EamUpdate      *update,
                                                          const char     *path);
 void                    eam_update_set_signature_file   (EamUpdate      *update,
                                                          const char     *path);
-void                    eam_update_set_checksum_file    (EamUpdate      *update,
-                                                         const char     *path);
 
 const char *            eam_update_get_app_id           (EamUpdate  *update);
 
