@@ -9,8 +9,6 @@
 
 G_BEGIN_DECLS
 
-gboolean        eam_utils_verify_checksum       (const char *source_file,
-                                                 const char *checksum_file);
 gboolean        eam_utils_verify_signature      (const char *source_file,
                                                  const char *signature_file);
 

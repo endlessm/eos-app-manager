@@ -25,7 +25,6 @@ struct _EamUpdatePrivate
   char *prefix;
   char *bundle_file;
   char *signature_file;
-  char *checksum_file;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -66,7 +65,6 @@ eam_update_finalize (GObject *obj)
   g_free (priv->appid);
   g_free (priv->bundle_file);
   g_free (priv->signature_file);
-  g_free (priv->checksum_file);
   g_free (priv->prefix);
 
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
@@ -222,17 +220,9 @@ eam_update_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  /* If we don't have an explicit checksum file, we're going to look for one
+  /* If we don't have an explicit signature file, we're going to look for one
    * in the same directory as the bundle, using the appid as the basename
    */
-  if (priv->checksum_file == NULL) {
-    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
-    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_DIGEST_EXT, NULL);
-
-    priv->checksum_file = g_build_filename (dirname, filename, NULL);
-  }
-
-  /* Same as above, for the signature file */
   if (priv->signature_file == NULL) {
     g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
     g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
@@ -249,12 +239,6 @@ eam_update_run_sync (EamTransaction *trans,
   if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Application is not installed");
-    return FALSE;
-  }
-
-  if (!eam_utils_verify_checksum (priv->bundle_file, priv->checksum_file)) {
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                         "The checksum for the application bundle is invalid");
     return FALSE;
   }
 
@@ -377,16 +361,6 @@ eam_update_set_signature_file (EamUpdate *update,
 
   g_free (priv->signature_file);
   priv->signature_file = g_strdup (path);
-}
-
-void
-eam_update_set_checksum_file (EamUpdate *update,
-                              const char *path)
-{
-  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
-
-  g_free (priv->checksum_file);
-  priv->checksum_file = g_strdup (path);
 }
 
 void

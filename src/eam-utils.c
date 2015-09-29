@@ -22,7 +22,6 @@
 #include "eam-log.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"
-#define BUNDLE_HASH_EXT ".sha256"
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose)
 
@@ -65,19 +64,6 @@ verify_checksum_hash (const char    *source_file,
   const char *hash = g_checksum_get_string (checksum);
 
   return (g_ascii_strncasecmp (checksum_str, hash, hash_len) == 0);
-}
-
-gboolean
-eam_utils_verify_checksum (const char *source_file,
-                           const char *checksum_file)
-{
-  g_autofree char *checksum_str;
-  gsize checksum_len;
-
-  if (!g_file_get_contents (checksum_file, &checksum_str, &checksum_len, NULL))
-    return FALSE;
-
-  return verify_checksum_hash (source_file, checksum_str, checksum_len, G_CHECKSUM_SHA256);
 }
 
 static gboolean
