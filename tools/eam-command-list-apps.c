@@ -91,12 +91,12 @@ eam_command_list_apps (int argc, char *argv[])
         g_autofree char *ext_sum = g_key_file_get_string (keyfile, "External", "sha256sum", NULL);
 
         g_print ("%*s └─external─┬─url───%s\n"
-                 "%*s            └─sha256───%s\n",
+                 "%*s            └─sha256───%s\n\n",
                  (int) strlen (appid), " ", ext_url != NULL ? ext_url : "<none>",
                  (int) strlen (appid), " ", ext_sum != NULL ? ext_sum : "<none>");
       }
       else {
-	g_print ("%*s └─version───%s\n",
+	g_print ("%*s └─version───%s\n\n",
 		 (int) strlen (appid), " ", version != NULL ? version : "<none>");
       }
     }
