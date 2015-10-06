@@ -39,7 +39,9 @@ eam_command_list_apps (int argc, char *argv[])
   g_autoptr(GError) error = NULL;
   g_autoptr(GFile) file = g_file_new_for_path (appdir);
   g_autoptr(GFileEnumerator) enumerator =
-    g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
+    g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME ","
+			             G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK ","
+			             G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                NULL, &error);
 
@@ -61,7 +63,16 @@ eam_command_list_apps (int argc, char *argv[])
     if (child_info == NULL)
       break;
 
-    g_autofree char *child_path = g_file_get_path (child);
+    g_autoptr(GFile) target_dir = NULL;
+    if (g_file_info_get_is_symlink (child_info))
+      target_dir = g_file_resolve_relative_path (
+          child,
+	  g_file_info_get_symlink_target (child_info));
+    else
+      target_dir = g_object_ref (child);
+
+    g_autofree char *child_path = g_file_get_path (target_dir);    
+    
     if (!eam_fs_is_app_dir (child_path))
       continue;
 
