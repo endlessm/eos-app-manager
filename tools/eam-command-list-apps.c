@@ -82,10 +82,11 @@ eam_command_list_apps (int argc, char *argv[])
       g_print ("%s─┬─path───%s\n", appid, child_path);
 
       g_autofree char *version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
-      g_print ("%*s ├─version───%s\n",
-	       (int) strlen (appid), " ", version != NULL ? version : "<none>");
 
       if (g_key_file_has_group (keyfile, "External")) {
+	g_print ("%*s ├─version───%s\n",
+		 (int) strlen (appid), " ", version != NULL ? version : "<none>");
+
         g_autofree char *ext_url = g_key_file_get_string (keyfile, "External", "url", NULL);
         g_autofree char *ext_sum = g_key_file_get_string (keyfile, "External", "sha256sum", NULL);
 
@@ -95,7 +96,8 @@ eam_command_list_apps (int argc, char *argv[])
                  (int) strlen (appid), " ", ext_sum != NULL ? ext_sum : "<none>");
       }
       else {
-        g_print ("%*s └─ no external script\n", (int) strlen (appid), " ");
+	g_print ("%*s └─version───%s\n",
+		 (int) strlen (appid), " ", version != NULL ? version : "<none>");
       }
     }
   }
