@@ -19,6 +19,88 @@ static const GOptionEntry list_apps_entries[] = {
   { NULL }
 };
 
+typedef struct _AppFile {
+  GFileInfo *child_info;
+  GFile *child;
+} AppFile;
+
+static gint
+app_file_compare (gconstpointer a, gconstpointer b)
+{
+  AppFile *app_file_a = (AppFile *) a;
+  AppFile *app_file_b = (AppFile *) b;
+  return g_utf8_collate (g_file_info_get_name (app_file_a->child_info),
+			 g_file_info_get_name (app_file_b->child_info));
+}
+
+static void
+app_file_print (gpointer data, gpointer user_data)
+{
+  AppFile *app_file = (AppFile *) data;
+  GFileInfo *child_info = app_file->child_info;
+  GFile *child = app_file->child;
+
+  const char *appdir = (const char *) user_data;
+
+  g_autoptr(GFile) target_dir = NULL;
+  if (g_file_info_get_is_symlink (child_info))
+    target_dir = g_file_resolve_relative_path (
+	child,
+	g_file_info_get_symlink_target (child_info));
+  else
+    target_dir = g_object_ref (child);
+
+  g_autofree char *child_path = g_file_get_path (target_dir);
+
+  if (!eam_fs_is_app_dir (child_path))
+    return;
+
+  if (!list_apps_verbose) {
+    g_print ("%s\n", g_file_info_get_name (child_info));
+  }
+  else {
+    g_autoptr(GKeyFile) keyfile =
+      eam_utils_load_app_info (appdir, g_file_info_get_name (child_info));
+
+    if (keyfile == NULL) {
+      g_printerr ("*** Unable to load bundle info for '%s' ***\n",
+		  g_file_info_get_name (child_info));
+      return;
+    }
+
+    g_autofree char *appid = g_key_file_get_string (keyfile, "Bundle", "app_id", NULL);
+    g_print ("%s─┬─path───%s\n", appid, child_path);
+
+    g_autofree char *version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
+
+    if (g_key_file_has_group (keyfile, "External")) {
+      g_print ("%*s ├─version───%s\n",
+	       (int) strlen (appid), " ", version != NULL ? version : "<none>");
+
+      g_autofree char *ext_url = g_key_file_get_string (keyfile, "External", "url", NULL);
+      g_autofree char *ext_sum = g_key_file_get_string (keyfile, "External", "sha256sum", NULL);
+
+      g_print ("%*s └─external─┬─url───%s\n"
+	       "%*s            └─sha256───%s\n\n",
+	       (int) strlen (appid), " ", ext_url != NULL ? ext_url : "<none>",
+	       (int) strlen (appid), " ", ext_sum != NULL ? ext_sum : "<none>");
+    }
+    else {
+      g_print ("%*s └─version───%s\n\n",
+	       (int) strlen (appid), " ", version != NULL ? version : "<none>");
+    }
+  }
+}
+
+static void
+app_file_free (gpointer data)
+{
+  AppFile *app_file = (AppFile *) data;
+  g_object_unref (app_file->child_info);
+  g_object_unref (app_file->child);
+  g_free (app_file);
+}
+
 int
 eam_command_list_apps (int argc, char *argv[])
 {
@@ -51,7 +133,11 @@ eam_command_list_apps (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  GList* file_list = NULL;
+
   while (TRUE) {
+
+    AppFile *app_file = g_new0 (AppFile, 1);
     GFileInfo *child_info = NULL;
     GFile *child = NULL;
 
@@ -63,55 +149,17 @@ eam_command_list_apps (int argc, char *argv[])
     if (child_info == NULL)
       break;
 
-    g_autoptr(GFile) target_dir = NULL;
-    if (g_file_info_get_is_symlink (child_info))
-      target_dir = g_file_resolve_relative_path (
-          child,
-	  g_file_info_get_symlink_target (child_info));
-    else
-      target_dir = g_object_ref (child);
-
-    g_autofree char *child_path = g_file_get_path (target_dir);    
+    app_file->child_info = g_object_ref (child_info);
+    app_file->child = g_object_ref (child);
     
-    if (!eam_fs_is_app_dir (child_path))
-      continue;
-
-    if (!list_apps_verbose) {
-      g_print ("%s\n", g_file_info_get_name (child_info));
-    }
-    else {
-      g_autoptr(GKeyFile) keyfile =
-        eam_utils_load_app_info (appdir, g_file_info_get_name (child_info));
-
-      if (keyfile == NULL) {
-        g_printerr ("*** Unable to load bundle info for '%s' ***\n",
-                    g_file_info_get_name (child_info));
-        continue;
-      }
-
-      g_autofree char *appid = g_key_file_get_string (keyfile, "Bundle", "app_id", NULL);
-      g_print ("%s─┬─path───%s\n", appid, child_path);
-
-      g_autofree char *version = g_key_file_get_string (keyfile, "Bundle", "version", NULL);
-
-      if (g_key_file_has_group (keyfile, "External")) {
-	g_print ("%*s ├─version───%s\n",
-		 (int) strlen (appid), " ", version != NULL ? version : "<none>");
-
-        g_autofree char *ext_url = g_key_file_get_string (keyfile, "External", "url", NULL);
-        g_autofree char *ext_sum = g_key_file_get_string (keyfile, "External", "sha256sum", NULL);
-
-        g_print ("%*s └─external─┬─url───%s\n"
-                 "%*s            └─sha256───%s\n\n",
-                 (int) strlen (appid), " ", ext_url != NULL ? ext_url : "<none>",
-                 (int) strlen (appid), " ", ext_sum != NULL ? ext_sum : "<none>");
-      }
-      else {
-	g_print ("%*s └─version───%s\n\n",
-		 (int) strlen (appid), " ", version != NULL ? version : "<none>");
-      }
-    }
+    file_list = g_list_insert_sorted (file_list,
+				      (gpointer) app_file,
+				      app_file_compare);
   }
 
+  g_list_foreach (file_list, app_file_print, (gpointer) appdir);
+
+  g_list_free_full (file_list, (GDestroyNotify) app_file_free);
+  
   return EXIT_SUCCESS;
 }
