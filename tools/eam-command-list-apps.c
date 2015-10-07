@@ -30,23 +30,23 @@ app_file_compare (gconstpointer a, gconstpointer b)
   AppFile *app_file_a = (AppFile *) a;
   AppFile *app_file_b = (AppFile *) b;
   return g_utf8_collate (g_file_info_get_name (app_file_a->child_info),
-			 g_file_info_get_name (app_file_b->child_info));
+                         g_file_info_get_name (app_file_b->child_info));
 }
 
 static void
 app_file_print (gpointer data, gpointer user_data)
 {
-  AppFile *app_file = (AppFile *) data;
+  AppFile *app_file = data;
   GFileInfo *child_info = app_file->child_info;
   GFile *child = app_file->child;
 
-  const char *appdir = (const char *) user_data;
+  const char *appdir = user_data;
 
   g_autoptr(GFile) target_dir = NULL;
   if (g_file_info_get_is_symlink (child_info))
     target_dir = g_file_resolve_relative_path (
-	child,
-	g_file_info_get_symlink_target (child_info));
+        child,
+        g_file_info_get_symlink_target (child_info));
   else
     target_dir = g_object_ref (child);
 
@@ -64,7 +64,7 @@ app_file_print (gpointer data, gpointer user_data)
 
     if (keyfile == NULL) {
       g_printerr ("*** Unable to load bundle info for '%s' ***\n",
-		  g_file_info_get_name (child_info));
+                  g_file_info_get_name (child_info));
       return;
     }
 
@@ -75,27 +75,26 @@ app_file_print (gpointer data, gpointer user_data)
 
     if (g_key_file_has_group (keyfile, "External")) {
       g_print ("%*s ├─version───%s\n",
-	       (int) strlen (appid), " ", version != NULL ? version : "<none>");
+               (int) strlen (appid), " ", version != NULL ? version : "<none>");
 
       g_autofree char *ext_url = g_key_file_get_string (keyfile, "External", "url", NULL);
       g_autofree char *ext_sum = g_key_file_get_string (keyfile, "External", "sha256sum", NULL);
 
       g_print ("%*s └─external─┬─url───%s\n"
-	       "%*s            └─sha256───%s\n\n",
-	       (int) strlen (appid), " ", ext_url != NULL ? ext_url : "<none>",
-	       (int) strlen (appid), " ", ext_sum != NULL ? ext_sum : "<none>");
+               "%*s            └─sha256───%s\n\n",
+               (int) strlen (appid), " ", ext_url != NULL ? ext_url : "<none>",
+               (int) strlen (appid), " ", ext_sum != NULL ? ext_sum : "<none>");
     }
     else {
       g_print ("%*s └─version───%s\n\n",
-	       (int) strlen (appid), " ", version != NULL ? version : "<none>");
+               (int) strlen (appid), " ", version != NULL ? version : "<none>");
     }
   }
 }
 
 static void
-app_file_free (gpointer data)
+app_file_free (AppFile *app_file)
 {
-  AppFile *app_file = (AppFile *) data;
   g_object_unref (app_file->child_info);
   g_object_unref (app_file->child);
   g_free (app_file);
@@ -122,8 +121,8 @@ eam_command_list_apps (int argc, char *argv[])
   g_autoptr(GFile) file = g_file_new_for_path (appdir);
   g_autoptr(GFileEnumerator) enumerator =
     g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME ","
-			             G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK ","
-			             G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
+                                     G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK ","
+                                     G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                NULL, &error);
 
@@ -136,7 +135,6 @@ eam_command_list_apps (int argc, char *argv[])
   GList* file_list = NULL;
 
   while (TRUE) {
-
     AppFile *app_file = g_new0 (AppFile, 1);
     GFileInfo *child_info = NULL;
     GFile *child = NULL;
@@ -153,11 +151,11 @@ eam_command_list_apps (int argc, char *argv[])
     app_file->child = g_object_ref (child);
     
     file_list = g_list_insert_sorted (file_list,
-				      (gpointer) app_file,
-				      app_file_compare);
+                                      app_file,
+                                      app_file_compare);
   }
 
-  g_list_foreach (file_list, app_file_print, (gpointer) appdir);
+  g_list_foreach (file_list, app_file_print, (char *) appdir);
 
   g_list_free_full (file_list, (GDestroyNotify) app_file_free);
   
