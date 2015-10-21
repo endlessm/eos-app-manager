@@ -52,6 +52,11 @@ eam_remote_transaction_cancel (EamRemoteTransaction *remote)
   eam_log_info_message ("Transaction '%s' was cancelled.", remote->obj_path);
   g_cancellable_cancel (remote->cancellable);
 
+  if (remote->invocation != NULL)
+    g_dbus_method_invocation_return_error_literal
+      (remote->invocation, G_IO_ERROR, G_IO_ERROR_CANCELLED,
+       "Transaction was cancelled");
+
   eam_service_pop_busy (remote->service);
 
   eam_remote_transaction_free (remote);
@@ -60,12 +65,16 @@ eam_remote_transaction_cancel (EamRemoteTransaction *remote)
 static void
 transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
 {
+  EamTransaction *transaction = EAM_TRANSACTION (source);
+  GError *error = NULL;
+  gboolean ret = eam_transaction_finish (transaction, res, &error);
+
+  /* If we were cancelled, there's nothing left to do */
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    return;
+
   EamRemoteTransaction *remote = data;
   EamService *service = remote->service;
-
-  GError *error = NULL;
-  gboolean ret = eam_transaction_finish (remote->transaction, res, &error);
-
   eam_log_info_message ("Transaction '%s' result: %s", remote->obj_path, ret ? "success" : "failure");
 
   if (error != NULL) {
@@ -76,14 +85,8 @@ transaction_complete_cb (GObject *source, GAsyncResult *res, gpointer data)
     g_dbus_method_invocation_return_value (remote->invocation, value);
   }
 
-  /* When the GCancellable is cancelled, we will free the transaction
-   * with eam_remote_transaction_cancel().
-   */
-  if (!g_cancellable_is_cancelled (remote->cancellable))
-    {
-      eam_remote_transaction_free (remote);
-      eam_service_pop_busy (service);
-    }
+  eam_remote_transaction_free (remote);
+  eam_service_pop_busy (service);
 }
 
 static void
