@@ -13,7 +13,6 @@
 
 #define XDELTA_BUNDLE_EXT               "xdelta"
 #define INSTALL_BUNDLE_EXT              "bundle"
-#define INSTALL_BUNDLE_DIGEST_EXT       "sha256"
 #define INSTALL_BUNDLE_SIGNATURE_EXT    "asc"
 
 typedef struct _EamUpdatePrivate        EamUpdatePrivate;
