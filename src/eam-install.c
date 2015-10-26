@@ -4,12 +4,13 @@
 
 #include <glib/gi18n.h>
 
-#include "eam-log.h"
-#include "eam-error.h"
 #include "eam-install.h"
+
 #include "eam-config.h"
+#include "eam-error.h"
+#include "eam-fs-utils.h"
+#include "eam-log.h"
 #include "eam-utils.h"
-#include "eam-fs-sanity.h"
 
 #define INSTALL_BUNDLE_EXT              "bundle"
 #define INSTALL_BUNDLE_SIGNATURE_EXT    "asc"
