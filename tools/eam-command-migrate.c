@@ -31,7 +31,7 @@ eam_command_migrate (int argc, char *argv[])
   }
 
   /* Deploy app */
-  if (!eam_fs_deploy_app (from, to, appid)) {
+  if (!eam_fs_deploy_app (from, to, appid, NULL)) {
     g_printerr ("Could not move application '%s' from '%s' to '%s'.\n",
                 appid, from, to);
     return EXIT_FAILURE;

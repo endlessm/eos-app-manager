@@ -210,7 +210,7 @@ eam_install_run_sync (EamTransaction *trans,
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), priv->prefix, priv->appid)) {
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), priv->prefix, priv->appid, cancellable)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), priv->appid);
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not deploy the bundle in the application directory");

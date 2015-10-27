@@ -414,13 +414,14 @@ eam_fs_prune_dir (const char *prefix,
 
 static gboolean
 cp_internal (GFile *source,
-             GFile *target)
+             GFile *target,
+             GCancellable *cancellable)
 {
   g_autoptr(GError) error = NULL;
   g_autoptr(GFileEnumerator) enumerator =
     g_file_enumerate_children (source, CP_ENUMERATE_ATTRS,
                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               NULL, &error);
+                               cancellable, &error);
 
   if (error != NULL) {
     eam_log_error_message ("Unable to enumerate source: %s", error->message);
@@ -430,7 +431,7 @@ cp_internal (GFile *source,
   g_autoptr(GFileInfo) source_info =
     g_file_query_info (source, CP_QUERY_ATTRS,
                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                       NULL, &error);
+                       cancellable, &error);
   if (error != NULL) {
     eam_log_error_message ("Unable to query source info: %s", error->message);
     return FALSE;
@@ -483,8 +484,12 @@ cp_internal (GFile *source,
     GFileInfo *file_info = NULL;
     GFile *source_child = NULL;
 
-    if (!g_file_enumerator_iterate (enumerator, &file_info, &source_child, NULL, &error)) {
-      eam_log_error_message ("Unable to enumerate source: %s", error->message);
+    if (!g_file_enumerator_iterate (enumerator, &file_info, &source_child, cancellable, &error)) {
+      if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+        eam_log_error_message ("Recursive copy operation was cancelled");
+      else
+        eam_log_error_message ("Unable to enumerate source: %s", error->message);
+
       return FALSE;
     }
 
@@ -494,7 +499,7 @@ cp_internal (GFile *source,
     g_autoptr(GFile) target_child = g_file_get_child (target, g_file_info_get_name (file_info));
 
     if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY) {
-      if (!cp_internal (source_child, target_child)) {
+      if (!cp_internal (source_child, target_child, cancellable)) {
         return FALSE;
       }
     }
@@ -503,7 +508,7 @@ cp_internal (GFile *source,
                              G_FILE_COPY_NOFOLLOW_SYMLINKS |
                              G_FILE_COPY_ALL_METADATA;
 
-      if (!g_file_copy (source_child, target_child, flags, NULL, NULL, NULL, &error)) {
+      if (!g_file_copy (source_child, target_child, flags, cancellable, NULL, NULL, &error)) {
         eam_log_error_message ("Unable to copy source file: %s", error->message);
         return FALSE;
       }
@@ -515,18 +520,20 @@ cp_internal (GFile *source,
 
 gboolean
 eam_fs_cpdir_recursive (const char *src,
-                        const char *dst)
+                        const char *dst,
+                        GCancellable *cancellable)
 {
   g_autoptr(GFile) source = g_file_new_for_path (src);
   g_autoptr(GFile) target = g_file_new_for_path (dst);
 
-  return cp_internal (source, target);
+  return cp_internal (source, target, cancellable);
 }
 
 gboolean
 eam_fs_deploy_app (const char *source,
                    const char *target,
-                   const char *appid)
+                   const char *appid,
+                   GCancellable *cancellable)
 {
   g_autofree char *sdir = g_build_filename (source, appid, NULL);
   g_autofree char *tdir = g_build_filename (target, appid, NULL);
@@ -539,7 +546,7 @@ eam_fs_deploy_app (const char *source,
      * copy.
      */
     if (errno == EXDEV)
-      ret = eam_fs_cpdir_recursive (sdir, tdir);
+      ret = eam_fs_cpdir_recursive (sdir, tdir, cancellable);
   } else {
     ret = TRUE;
   }
@@ -927,7 +934,7 @@ eam_fs_backup_app (const char *prefix,
    * we fall back to a recursive copy, and then we delete the source
    * directory
    */
-  if (eam_fs_cpdir_recursive (sdir, tdir)) {
+  if (eam_fs_cpdir_recursive (sdir, tdir, NULL)) {
     eam_fs_rmdir_recursive (sdir);
     *backup_dir = g_strdup (tdir);
     return TRUE;
@@ -958,7 +965,7 @@ eam_fs_restore_app (const char *prefix,
   if (errno != EXDEV)
     return FALSE;
 
-  if (eam_fs_cpdir_recursive (backup_dir, tdir)) {
+  if (eam_fs_cpdir_recursive (backup_dir, tdir, NULL)) {
     eam_fs_rmdir_recursive (backup_dir);
     eam_fs_create_symlinks (prefix, appid);
     return TRUE;

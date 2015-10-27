@@ -3,7 +3,7 @@
 #ifndef EAM_FS_SANITY_H
 #define EAM_FS_SANITY_H
 
-#include <glib.h>
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
@@ -31,13 +31,15 @@ gboolean        eam_fs_init_bundle_dir  (EamBundleDirectory dir,
 
 gboolean        eam_fs_rmdir_recursive  (const char *path);
 gboolean        eam_fs_cpdir_recursive  (const char *src,
-                                         const char *dst);
+                                         const char *dst,
+                                         GCancellable *cancellable);
 gboolean        eam_fs_prune_dir        (const char *prefix,
                                          const char *appdir);
 
 gboolean        eam_fs_deploy_app       (const char *source,
                                          const char *target,
-                                         const char *appdir);
+                                         const char *appdir,
+                                         GCancellable *cancellable);
 gboolean        eam_fs_create_symlinks  (const char *prefix,
                                          const char *appid);
 void            eam_fs_prune_symlinks   (const char *prefix,
