@@ -4,12 +4,13 @@
 
 #include <glib/gi18n.h>
 
-#include "eam-log.h"
-#include "eam-error.h"
 #include "eam-update.h"
+
 #include "eam-config.h"
+#include "eam-error.h"
+#include "eam-fs-utils.h"
+#include "eam-log.h"
 #include "eam-utils.h"
-#include "eam-fs-sanity.h"
 
 #define XDELTA_BUNDLE_EXT               "xdelta"
 #define INSTALL_BUNDLE_EXT              "bundle"
@@ -145,21 +146,28 @@ do_xdelta_update (const char *prefix,
                   const char *appid,
                   const char *source_dir,
                   const char *delta_file,
+                  GCancellable *cancellable,
                   GError **error)
 {
   eam_utils_cleanup_python (source_dir);
 
-  if (!eam_utils_apply_xdelta (source_dir, appid, delta_file)) {
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
-                         "Could not update the application via xdelta");
+  if (!eam_utils_apply_xdelta (source_dir, appid, delta_file, cancellable)) {
+    if (g_cancellable_is_cancelled (cancellable))
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+    else
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Could not update the application via xdelta");
     return FALSE;
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), prefix, appid)) {
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), prefix, appid, cancellable)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
-                         "Could not deploy the bundle in the application directory");
+    if (g_cancellable_is_cancelled (cancellable))
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+    else
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Could not deploy the bundle in the application directory");
 
     return FALSE;
   }
@@ -171,28 +179,38 @@ static gboolean
 do_full_update (const char *prefix,
                 const char *appid,
                 const char *bundle_file,
+                GCancellable *cancellable,
                 GError **error)
 {
-  if (!eam_utils_bundle_extract (bundle_file, eam_config_get_cache_dir (), appid)) {
+  if (!eam_utils_bundle_extract (bundle_file, eam_config_get_cache_dir (), appid, cancellable)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
-                         "Could not extract the bundle");
+    if (g_cancellable_is_cancelled (cancellable))
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+    else
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Could not extract the bundle");
     return FALSE;
   }
 
   /* run 3rd party scripts */
-  if (!eam_utils_run_external_scripts (eam_config_get_cache_dir (), appid)) {
+  if (!eam_utils_run_external_scripts (eam_config_get_cache_dir (), appid, cancellable)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
-                         "Could not process the external script");
+    if (g_cancellable_is_cancelled (cancellable))
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+    else
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Could not process the external script");
     return FALSE;
   }
 
   /* Deploy the appdir from the extraction directory to the app directory */
-  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), prefix, appid)) {
+  if (!eam_fs_deploy_app (eam_config_get_cache_dir (), prefix, appid, cancellable)) {
     eam_fs_prune_dir (eam_config_get_cache_dir (), appid);
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
-                         "Could not deploy the bundle in the application directory");
+    if (g_cancellable_is_cancelled (cancellable))
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+    else
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
+                           "Could not deploy the bundle in the application directory");
     return FALSE;
   }
 
@@ -241,9 +259,12 @@ eam_update_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file)) {
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                         "The signature for the application bundle is invalid");
+  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
+    if (g_cancellable_is_cancelled (cancellable))
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+    else
+      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                           "The signature for the application bundle is invalid");
     return FALSE;
   }
 
@@ -259,9 +280,9 @@ eam_update_run_sync (EamTransaction *trans,
   gboolean res;
 
   if (g_str_has_suffix (priv->bundle_file, INSTALL_BUNDLE_EXT))
-    res = do_full_update (priv->prefix, priv->appid, priv->bundle_file, &internal_error);
+    res = do_full_update (priv->prefix, priv->appid, priv->bundle_file, cancellable, &internal_error);
   else if (g_str_has_suffix (priv->bundle_file, XDELTA_BUNDLE_EXT))
-    res = do_xdelta_update (priv->prefix, priv->appid, backupdir, priv->bundle_file, &internal_error);
+    res = do_xdelta_update (priv->prefix, priv->appid, backupdir, priv->bundle_file, cancellable, &internal_error);
   else
     g_assert_not_reached ();
 

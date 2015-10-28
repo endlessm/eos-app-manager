@@ -4,22 +4,24 @@
 #define EAM_UTILS_H
 
 #include <sys/types.h>
-#include <glib.h>
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
 gboolean        eam_utils_verify_signature      (const char *source_file,
-                                                 const char *signature_file);
+                                                 const char *signature_file,
+                                                 GCancellable *cancellable);
 
 gboolean        eam_utils_bundle_extract        (const char *bundle_file,
                                                  const char *prefix,
-                                                 const char *appdir);
+                                                 const char *appdir,
+                                                 GCancellable *cancellable);
 gboolean        eam_utils_app_is_installed      (const char *prefix,
                                                  const char *appdir);
 
 gboolean        eam_utils_run_external_scripts  (const char *prefix,
-                                                 const char *appdir);
+                                                 const char *appdir,
+                                                 GCancellable *cancellable);
 
 gboolean        eam_utils_compile_python        (const char *prefix,
                                                  const char *appdir);
@@ -28,7 +30,8 @@ gboolean        eam_utils_update_desktop        (void);
 
 gboolean        eam_utils_apply_xdelta          (const char *prefix,
                                                  const char *appid,
-                                                 const char *delta_bundle);
+                                                 const char *delta_bundle,
+                                                 GCancellable *cancellable);
 
 char *          eam_utils_find_program_in_path  (const char *program,
                                                  const char *path);

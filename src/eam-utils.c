@@ -18,7 +18,7 @@
 
 #include "eam-config.h"
 #include "eam-error.h"
-#include "eam-fs-sanity.h"
+#include "eam-fs-utils.h"
 #include "eam-log.h"
 
 #define BUNDLE_SIGNATURE_EXT ".asc"
@@ -67,7 +67,8 @@ verify_checksum_hash (const char    *source_file,
 }
 
 static gboolean
-run_cmd (const char * const *argv)
+run_cmd (const char * const *argv,
+         GCancellable *cancellable)
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
@@ -77,7 +78,7 @@ run_cmd (const char * const *argv)
     return FALSE;
   }
 
-  g_subprocess_wait (sub, NULL, &err);
+  g_subprocess_wait (sub, cancellable, &err);
   if (err != NULL) {
     eam_log_error_message ("%s failed: %s", argv[0], err->message);
     return FALSE;
@@ -88,7 +89,8 @@ run_cmd (const char * const *argv)
 
 gboolean
 eam_utils_verify_signature (const char *source_file,
-                            const char *signature_file)
+                            const char *signature_file,
+                            GCancellable *cancellable)
 {
   const char *gpgdir = eam_config_get_gpg_keyring ();
 
@@ -104,7 +106,7 @@ eam_utils_verify_signature (const char *source_file,
     NULL
   };
 
-  return run_cmd ((const char * const *) argv);
+  return run_cmd ((const char * const *) argv, cancellable);
 }
 
 GKeyFile *
@@ -195,7 +197,8 @@ copy_data (struct archive *ar,
 gboolean
 eam_utils_bundle_extract (const char *bundle_file,
                           const char *target_prefix,
-                          const char *appid)
+                          const char *appid,
+                          GCancellable *cancellable)
 {
 #define READ_ARCHIVE_BLOCK_SIZE      8192
 
@@ -219,6 +222,17 @@ eam_utils_bundle_extract (const char *bundle_file,
 
   while (TRUE) {
     struct archive_entry *entry;
+
+    /* This is not a libarchive error condition, so we reset the error code
+     * and log the cancellation here
+     */
+    if (g_cancellable_is_cancelled (cancellable)) {
+      err = ARCHIVE_OK;
+      ret = FALSE;
+
+      eam_log_error_message ("Extracting bundle was cancelled");
+      goto bail;
+    }
 
     err = archive_read_next_header (a, &entry);
 
@@ -326,10 +340,11 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupMessage, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupURI, soup_uri_free)
 
 static gboolean
-download_external_file (const char  *appid,
-                        const char  *url,
-                        const char  *dir,
-                        const char  *filename)
+download_external_file (const char *appid,
+                        const char *url,
+                        const char *dir,
+                        const char *filename,
+                        GCancellable *cancellable)
 {
   g_autoptr(SoupURI) uri = soup_uri_new (url);
   if (!uri) {
@@ -347,7 +362,7 @@ download_external_file (const char  *appid,
   g_autoptr(SoupMessage) msg = soup_message_new_from_uri ("GET", uri);
 
   g_autoptr(GError) err = NULL;
-  g_autoptr(GInputStream) ins = soup_session_send (session, msg, NULL, &err);
+  g_autoptr(GInputStream) ins = soup_session_send (session, msg, cancellable, &err);
   if (err != NULL) {
     eam_log_error_message ("Couldn't download %s: %s", url, err->message);
     return FALSE;
@@ -361,7 +376,7 @@ download_external_file (const char  *appid,
   g_autoptr(GOutputStream) outs =
     G_OUTPUT_STREAM (g_file_replace (file, NULL, FALSE,
                                      G_FILE_CREATE_PRIVATE | G_FILE_CREATE_REPLACE_DESTINATION,
-                                     NULL, &err));
+                                     cancellable, &err));
   if (err != NULL) {
     eam_log_error_message ("Could not create %s: %s", path, err->message);
     return FALSE;
@@ -370,7 +385,7 @@ download_external_file (const char  *appid,
   eam_log_info_message ("Downloading %s into %s", url, path);
   gssize siz = g_output_stream_splice (outs, ins,
                                        G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                       NULL, &err);
+                                       cancellable, &err);
   if (err != NULL) {
     eam_log_error_message ("Could not save %s: %s", path, err->message);
     return FALSE;
@@ -386,7 +401,8 @@ download_external_file (const char  *appid,
 
 static gboolean
 run_external_script (const char *prefix,
-                     const char *appid)
+                     const char *appid,
+                     GCancellable *cancellable)
 {
   g_autofree char *wd = g_build_filename (prefix, appid, NULL);
   g_autofree char *fn = g_build_filename (wd, ".script.install", NULL);
@@ -403,12 +419,13 @@ run_external_script (const char *prefix,
     NULL,
   };
 
-  return run_cmd ((const char * const *) argv);
+  return run_cmd ((const char * const *) argv, cancellable);
 }
 
 gboolean
 eam_utils_run_external_scripts (const char *prefix,
-                                const char *appid)
+                                const char *appid,
+                                GCancellable *cancellable)
 {
   g_autofree char *url = NULL;
   g_autofree char *filename = NULL;
@@ -432,7 +449,7 @@ eam_utils_run_external_scripts (const char *prefix,
   if (g_mkdir_with_parents (dir, 0755) < 0)
     return FALSE;
 
-  if (!download_external_file (appid, url, dir, filename)) {
+  if (!download_external_file (appid, url, dir, filename, cancellable)) {
     eam_fs_rmdir_recursive (dir);
     return FALSE;
   }
@@ -443,7 +460,7 @@ eam_utils_run_external_scripts (const char *prefix,
     return FALSE;
   }
 
-  if (!run_external_script (prefix, appid)) {
+  if (!run_external_script (prefix, appid, cancellable)) {
     eam_fs_rmdir_recursive (dir);
     return FALSE;
   }
@@ -494,7 +511,7 @@ eam_utils_compile_python (const char *prefix,
          * other from running, and we consider the update a success if
          * at least one succeeded.
          */
-        compilation_successful |= run_cmd (cmd[idx]);
+        compilation_successful |= run_cmd (cmd[idx], NULL);
       }
     }
   }
@@ -579,7 +596,7 @@ eam_utils_update_desktop (void)
      * other from running, and we consider the update a success if
      * at least one succeeded.
      */
-    res |= run_cmd (cmd[i]);
+    res |= run_cmd (cmd[i], NULL);
   }
 
   return res;
@@ -588,7 +605,8 @@ eam_utils_update_desktop (void)
 gboolean
 eam_utils_apply_xdelta (const char *source_dir,
                         const char *appid,
-                        const char *delta_bundle)
+                        const char *delta_bundle,
+                        GCancellable *cancellable)
 {
   g_autofree char *target_dir = g_build_filename (eam_config_get_cache_dir (), appid,
                                                   NULL);
@@ -610,7 +628,7 @@ eam_utils_apply_xdelta (const char *source_dir,
     NULL,
   };
 
-  gboolean res = run_cmd (cmd);
+  gboolean res = run_cmd (cmd, cancellable);
 
   return res;
 }
