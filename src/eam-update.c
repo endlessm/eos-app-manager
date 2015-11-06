@@ -254,8 +254,9 @@ eam_update_run_sync (EamTransaction *trans,
   }
 
   if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
-    g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
-                         "Application is not installed");
+    g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
+                 "Application '%s' is not installed",
+                 priv->appid);
     return FALSE;
   }
 
