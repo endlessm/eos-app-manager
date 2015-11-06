@@ -131,8 +131,10 @@ eam_utils_app_is_installed (const char *prefix,
 {
   g_autofree char *appdir = g_build_filename (prefix, appid, NULL);
 
-  if (!g_file_test (appdir, G_FILE_TEST_IS_DIR))
+  if (!g_file_test (appdir, G_FILE_TEST_IS_DIR)) {
+    eam_log_error_message ("Unable to inspect path '%s': not a directory", appdir);
     return FALSE;
+  }
 
   g_autofree char *info_file = g_build_filename (appdir, ".info", NULL);
 
@@ -156,17 +158,14 @@ eam_utils_app_is_installed (const char *prefix,
     return FALSE;
   }
 
-  gboolean res = FALSE;
   if (g_strcmp0 (info_appid, appid) != 0) {
     eam_log_error_message ("Invalid bundle metadata for '%s': unexpected app id '%s' found",
                            appid,
                            info_appid);
-  }
-  else {
-    res = TRUE;
+    return FALSE;
   }
 
-  return res;
+  return TRUE;
 }
 
 static int
