@@ -17,16 +17,29 @@ const servers =
     ' FALSE https://staging.appupdates.endlessm.com' +
     ' FALSE https://master.appupdates.endlessm-sf.com'
 
+const doSpawn = function(cmdline) {
+    try {
+        let [res, stdout, stderr, status] = GLib.spawn_command_line_sync(cmdline);
+        if (status != 0) {
+            printerr('Error executing \'' + cmdline + '\'');
+            if (stderr) {
+                printerr(stderr);
+            }
+            res = false;
+        }
+
+        return [res, stdout, stderr, status];
+    } catch (e) {
+        logError(e, 'Error executing \'' + cmdline + '\'');
+    }
+
+    return [false, '', '', 256];
+}
+
 const selectServer = function() {
     let command = 'zenity --list --title="App server" --text="Select an option and hit OK\n(Cancel to keep existing configuration)" --radiolist --hide-header --column=button --column=selection --width 450 --height 200' + servers;
 
-    let response;
-    try {
-        response = GLib.spawn_command_line_sync(command);
-    } catch (e) {
-        logError(e, 'Error executing \'' + localizedExec + '\'');
-        return null;
-    }
+    let response = doSpawn(command);
 
     const STATUS = 3;
     const SELECTION = 1;
@@ -57,25 +70,17 @@ const getServer = function(args) {
 }
 
 const restartDaemon = function() {
-    let command = 'pkill eamd';
-    try {
-        GLib.spawn_command_line_sync(command);
-    } catch (e) {
-        logError(e, 'Error executing \'' + command + '\'');
-    }
+    return doSpawn('pkill eamd');
 }
 
 const setConfigKey = function(key, value) {
-    let command = 'eamctl config set ' + key + ' ' + value;
-    try {
-        GLib.spawn_command_line_sync(command);
-    } catch (e) {
-        logError(e, 'Error executing \'' + command + '\'');
-    }
+    return doSpawn('eamctl config set ' + key + ' ' + value);
 }
 
 let server = getServer(ARGV);
 if (server) {
-    setConfigKey('ServerUrl', server);
-    restartDaemon();
+    let [res, ] = setConfigKey('ServerUrl', server);
+    if (res) {
+        restartDaemon();
+    }
 }
