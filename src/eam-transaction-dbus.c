@@ -11,6 +11,7 @@
 #include "eam-service.h"
 #include "eam-uninstall.h"
 #include "eam-update.h"
+#include "eam-utils.h"
 
 struct _EamRemoteTransaction {
   EamTransaction *transaction;
@@ -110,14 +111,16 @@ handle_transaction_method_call (GDBusConnection *connection,
 
   if (g_strcmp0 (method, "CompleteTransaction") == 0) {
     const char *bundle_path = NULL, *signature_path = NULL;
-    const char *storage_type = NULL;
+    const char *source_storage_type = NULL;
+    const char *target_storage_type = NULL;
     GVariant *properties;
     GVariantDict dict;
 
     g_variant_get (params, "(@a{sv})", &properties);
     g_variant_dict_init (&dict, properties);
 
-    g_variant_dict_lookup (&dict, "StorageType", "&s", &storage_type);
+    g_variant_dict_lookup (&dict, "SourceStorageType", "&s", &source_storage_type);
+    g_variant_dict_lookup (&dict, "TargetStorageType", "&s", &target_storage_type);
     g_variant_dict_lookup (&dict, "BundlePath", "&s", &bundle_path);
     g_variant_dict_lookup (&dict, "SignaturePath", "&s", &signature_path);
 
@@ -126,20 +129,14 @@ handle_transaction_method_call (GDBusConnection *connection,
                             bundle_path,
                             remote->obj_path);
 
-      const char *prefix;
-
-      /* We use NULL to tell the transaction to use its own default */
-      if (g_strcmp0 (storage_type, "primary") == 0)
-        prefix = eam_config_get_primary_storage ();
-      else if (g_strcmp0 (storage_type, "secondary") == 0)
-        prefix = eam_config_get_secondary_storage ();
-      else
-        prefix = NULL;
+      const char *source_prefix = eam_utils_storage_type_to_path (source_storage_type);
+      const char *target_prefix = eam_utils_storage_type_to_path (target_storage_type);
 
       if (EAM_IS_INSTALL (remote->transaction)) {
         EamInstall *install = EAM_INSTALL (remote->transaction);
 
-        eam_install_set_prefix (install, prefix);
+        /* Installation only cares about the target prefix */
+        eam_install_set_prefix (install, target_prefix);
 
         eam_install_set_bundle_file (install, bundle_path);
         eam_install_set_signature_file (install, signature_path);
@@ -147,7 +144,9 @@ handle_transaction_method_call (GDBusConnection *connection,
       else if (EAM_IS_UPDATE (remote->transaction)) {
         EamUpdate *update = EAM_UPDATE (remote->transaction);
 
-        eam_update_set_prefix (update, prefix);
+        /* Updating may require moving an application between storage prefixes */
+        eam_update_set_source_prefix (update, source_prefix);
+        eam_update_set_target_prefix (update, target_prefix);
 
         eam_update_set_bundle_file (update, bundle_path);
         eam_update_set_signature_file (update, signature_path);

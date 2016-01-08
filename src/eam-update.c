@@ -22,7 +22,11 @@ struct _EamUpdatePrivate
 {
   gchar *appid;
 
-  char *prefix;
+  /* Where the app is */
+  char *source_prefix;
+  /* Where the app should be */
+  char *target_prefix;
+
   char *bundle_file;
   char *signature_file;
 };
@@ -65,7 +69,8 @@ eam_update_finalize (GObject *obj)
   g_free (priv->appid);
   g_free (priv->bundle_file);
   g_free (priv->signature_file);
-  g_free (priv->prefix);
+  g_free (priv->source_prefix);
+  g_free (priv->target_prefix);
 
   G_OBJECT_CLASS (eam_update_parent_class)->finalize (obj);
 }
@@ -124,7 +129,8 @@ eam_update_class_init (EamUpdateClass *klass)
 static void
 eam_update_init (EamUpdate *self)
 {
-  eam_update_set_prefix (self, NULL);
+  eam_update_set_source_prefix (self, NULL);
+  eam_update_set_target_prefix (self, NULL);
 }
 
 /**
@@ -253,7 +259,7 @@ eam_update_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  if (!eam_utils_app_is_installed (priv->prefix, priv->appid)) {
+  if (!eam_utils_app_is_installed (priv->source_prefix, priv->appid)) {
     g_set_error (error, EAM_ERROR, EAM_ERROR_FAILED,
                  "Application '%s' is not installed",
                  priv->appid);
@@ -271,7 +277,7 @@ eam_update_run_sync (EamTransaction *trans,
 
   /* Keep a copy of the old app around, in case the update fails */
   g_autofree char *backupdir = NULL;
-  if (!eam_fs_backup_app (priv->prefix, priv->appid, &backupdir)) {
+  if (!eam_fs_backup_app (priv->source_prefix, priv->appid, &backupdir)) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not keep a copy of the app");
     return FALSE;
@@ -281,26 +287,26 @@ eam_update_run_sync (EamTransaction *trans,
   gboolean res;
 
   if (g_str_has_suffix (priv->bundle_file, INSTALL_BUNDLE_EXT))
-    res = do_full_update (priv->prefix, priv->appid, priv->bundle_file, cancellable, &internal_error);
+    res = do_full_update (priv->target_prefix, priv->appid, priv->bundle_file, cancellable, &internal_error);
   else if (g_str_has_suffix (priv->bundle_file, XDELTA_BUNDLE_EXT))
-    res = do_xdelta_update (priv->prefix, priv->appid, backupdir, priv->bundle_file, cancellable, &internal_error);
+    res = do_xdelta_update (priv->target_prefix, priv->appid, backupdir, priv->bundle_file, cancellable, &internal_error);
   else
     g_assert_not_reached ();
 
   /* If the update failed, restore from backup and bail out */
   if (!res) {
     if (backupdir)
-      eam_fs_restore_app (priv->prefix, priv->appid, backupdir);
+      eam_fs_restore_app (priv->source_prefix, priv->appid, backupdir);
 
     g_propagate_error (error, internal_error);
     return FALSE;
   }
 
   /* If the symbolic link creation fails, we restore from backup */
-  res = eam_fs_create_symlinks (priv->prefix, priv->appid);
+  res = eam_fs_create_symlinks (priv->target_prefix, priv->appid);
   if (!res) {
     if (backupdir)
-      eam_fs_restore_app (priv->prefix, priv->appid, backupdir);
+      eam_fs_restore_app (priv->source_prefix, priv->appid, backupdir);
 
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Could not create symbolic links");
@@ -308,7 +314,7 @@ eam_update_run_sync (EamTransaction *trans,
   }
 
   /* These two errors are non-fatal */
-  if (!eam_utils_compile_python (priv->prefix, priv->appid)) {
+  if (!eam_utils_compile_python (priv->target_prefix, priv->appid)) {
     eam_log_error_message ("Python libraries compilation failed");
   }
 
@@ -385,8 +391,8 @@ eam_update_set_signature_file (EamUpdate *update,
 }
 
 void
-eam_update_set_prefix (EamUpdate *update,
-                       const char *path)
+eam_update_set_source_prefix (EamUpdate *update,
+                              const char *path)
 {
   EamUpdatePrivate *priv = eam_update_get_instance_private (update);
   const char *prefix;
@@ -396,11 +402,30 @@ eam_update_set_prefix (EamUpdate *update,
   else
     prefix = path;
 
-  if (g_strcmp0 (priv->prefix, prefix) == 0)
+  if (g_strcmp0 (priv->source_prefix, prefix) == 0)
     return;
 
-  g_free (priv->prefix);
-  priv->prefix = g_strdup (prefix);
+  g_free (priv->source_prefix);
+  priv->source_prefix = g_strdup (prefix);
+}
+
+void
+eam_update_set_target_prefix (EamUpdate *update,
+                              const char *path)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+  const char *prefix;
+
+  if (path == NULL || *path == '\0')
+    prefix = eam_config_get_applications_dir ();
+  else
+    prefix = path;
+
+  if (g_strcmp0 (priv->target_prefix, prefix) == 0)
+    return;
+
+  g_free (priv->target_prefix);
+  priv->target_prefix = g_strdup (prefix);
 }
 
 const char *
