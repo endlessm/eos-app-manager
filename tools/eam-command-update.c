@@ -22,12 +22,14 @@
 static char *opt_prefix;
 static char *opt_asc_file;
 static char **opt_appid;
-static char *opt_storage_type;
+static char *opt_source_storage_type;
+static char *opt_target_storage_type;
 
 static const GOptionEntry install_entries[] = {
  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Prefix to use when updating", "DIRECTORY" },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
- { "storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_storage_type, "Storage type ('primary' or 'secondary')", "TYPE" },
+ { "source-storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_source_storage_type, "Source storage type ('primary' or 'secondary')", "TYPE" },
+ { "target-storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_source_storage_type, "Target storage type ('primary' or 'secondary')", "TYPE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
  { NULL },
 };
@@ -52,14 +54,24 @@ eam_command_update (int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  if (opt_storage_type != NULL &&
-      !(strcmp (opt_storage_type, "primary") == 0 ||
-        strcmp (opt_storage_type, "secondary") == 0)) {
-    g_printerr ("Invalid storage type '%s'; you can only use either 'primary' "
+  if (opt_source_storage_type != NULL &&
+      !(strcmp (opt_source_storage_type, "primary") == 0 ||
+        strcmp (opt_source_storage_type, "secondary") == 0)) {
+    g_printerr ("Invalid source storage type '%s'; you can only use either 'primary' "
                 "or 'secondary'\n",
-                opt_storage_type);
+                opt_source_storage_type);
     return EXIT_FAILURE;
   }
+
+  if (opt_target_storage_type != NULL &&
+      !(strcmp (opt_target_storage_type, "primary") == 0 ||
+        strcmp (opt_target_storage_type, "secondary") == 0)) {
+    g_printerr ("Invalid target storage type '%s'; you can only use either 'primary' "
+                "or 'secondary'\n",
+                opt_target_storage_type);
+    return EXIT_FAILURE;
+  }
+
   const char *appid = opt_appid[0];
   if (appid == NULL) {
     g_printerr ("Usage: %s update [-S SIGNATURE] [-c CHECKSUM] [-d] APPID BUNDLE\n", eam_argv0);
@@ -104,13 +116,22 @@ eam_command_update (int argc, char *argv[])
 
     /* An explicit prefix takes precedence */
     if (opt_prefix != NULL) {
-      eam_update_set_prefix (update, opt_prefix);
+      eam_update_set_source_prefix (update, opt_prefix);
     }
-    else if (opt_storage_type != NULL) {
-      if (strcmp (opt_storage_type, "primary") == 0)
-        eam_update_set_prefix (update, eam_config_get_primary_storage ());
-      else if (strcmp (opt_storage_type, "secondary") == 0)
-        eam_update_set_prefix (update, eam_config_get_secondary_storage ());
+    else if (opt_source_storage_type != NULL) {
+      if (strcmp (opt_source_storage_type, "primary") == 0)
+        eam_update_set_source_prefix (update, eam_config_get_primary_storage ());
+      else if (strcmp (opt_source_storage_type, "secondary") == 0)
+        eam_update_set_source_prefix (update, eam_config_get_secondary_storage ());
+      else
+        g_assert_not_reached ();
+    }
+
+    if (opt_target_storage_type != NULL) {
+      if (strcmp (opt_target_storage_type, "primary") == 0)
+        eam_update_set_target_prefix (update, eam_config_get_primary_storage ());
+      else if (strcmp (opt_target_storage_type, "secondary") == 0)
+        eam_update_set_target_prefix (update, eam_config_get_secondary_storage ());
       else
         g_assert_not_reached ();
     }
@@ -191,8 +212,10 @@ eam_command_update (int argc, char *argv[])
 
   GVariantBuilder opts;
   g_variant_builder_init (&opts, G_VARIANT_TYPE ("a{sv}"));
-  if (opt_storage_type)
-    g_variant_builder_add (&opts, "{sv}", "StorageType", g_variant_new_string (opt_storage_type));
+  if (opt_source_storage_type)
+    g_variant_builder_add (&opts, "{sv}", "SourceStorageType", g_variant_new_string (opt_source_storage_type));
+  if (opt_target_storage_type)
+    g_variant_builder_add (&opts, "{sv}", "TargetStorageType", g_variant_new_string (opt_target_storage_type));
   g_variant_builder_add (&opts, "{sv}", "BundlePath", g_variant_new_string (bundle_file));
   g_variant_builder_add (&opts, "{sv}", "SignaturePath", g_variant_new_string (opt_asc_file));
 

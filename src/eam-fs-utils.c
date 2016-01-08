@@ -231,7 +231,6 @@ fix_application_permissions_if_needed (const gchar *path)
 gboolean
 eam_fs_sanity_check (void)
 {
-  gboolean retval = TRUE;
   const char *app_dir = eam_config_get_applications_dir ();
 
   /* Ensure the applications installation directory exists */
@@ -241,92 +240,77 @@ eam_fs_sanity_check (void)
   }
 
   /* Check if the existing applications directory structure is correct */
-  gchar *bin_dir = g_build_filename (app_dir, BIN_SUBDIR, NULL);
-  gchar *desktop_files_dir = g_build_filename (app_dir, DESKTOP_FILES_SUBDIR, NULL);
-  gchar *desktop_icons_dir = g_build_filename (app_dir, DESKTOP_ICONS_SUBDIR, NULL);
-  gchar *dbus_services_dir = g_build_filename (app_dir, DBUS_SERVICES_SUBDIR, NULL);
-  gchar *ekn_data_dir = g_build_filename (app_dir, EKN_DATA_SUBDIR, NULL);
-  gchar *g_schemas_dir = g_build_filename (app_dir, G_SCHEMAS_SUBDIR, NULL);
-  gchar *xdg_autostart_dir = g_build_filename (app_dir, XDG_AUTOSTART_SUBDIR, NULL);
+  g_autofree char *bin_dir = g_build_filename (app_dir, BIN_SUBDIR, NULL);
+  g_autofree char *desktop_files_dir = g_build_filename (app_dir, DESKTOP_FILES_SUBDIR, NULL);
+  g_autofree char *desktop_icons_dir = g_build_filename (app_dir, DESKTOP_ICONS_SUBDIR, NULL);
+  g_autofree char *dbus_services_dir = g_build_filename (app_dir, DBUS_SERVICES_SUBDIR, NULL);
+  g_autofree char *ekn_data_dir = g_build_filename (app_dir, EKN_DATA_SUBDIR, NULL);
+  g_autofree char *g_schemas_dir = g_build_filename (app_dir, G_SCHEMAS_SUBDIR, NULL);
+  g_autofree char *xdg_autostart_dir = g_build_filename (app_dir, XDG_AUTOSTART_SUBDIR, NULL);
+
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GFile) file = g_file_new_for_path (app_dir);
 
   if (!g_file_test (app_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", app_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (bin_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", bin_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (desktop_files_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", desktop_files_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (desktop_icons_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", desktop_icons_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (dbus_services_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", dbus_services_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (ekn_data_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", ekn_data_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (g_schemas_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", g_schemas_dir);
-    retval = FALSE;
+    return FALSE;
   }
   if (!g_file_test (xdg_autostart_dir, G_FILE_TEST_IS_DIR)) {
     eam_log_error_message ("Missing directory: '%s' does not exist", xdg_autostart_dir);
-    retval = FALSE;
+    return FALSE;
   }
 
   /* Check if application directories have valid permissions, fixing them if needed */
-  GError *error = NULL;
-  GFile *file = g_file_new_for_path (app_dir);
-  GFileEnumerator *children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
-                                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                         NULL, &error);
-  if (error) {
+  g_autoptr(GFileEnumerator) children =
+    g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                               NULL, &error);
+  if (error != NULL) {
     eam_log_error_message ("Failed to get the children of '%s': %s", app_dir, error->message);
-    g_clear_error (&error);
-    retval = FALSE;
-    goto bail;
+    return FALSE;
   }
 
   GFileInfo *child_info = NULL;
-  while ((child_info = g_file_enumerator_next_file (children, NULL, &error))) {
-    GFile *dir = g_file_get_child (file, g_file_info_get_name (child_info));
-    gchar *path = g_file_get_path (dir);
-    g_object_unref (child_info);
-    g_object_unref (dir);
+  GFile *child = NULL;
+  while (TRUE) {
+    if (!g_file_enumerator_iterate (children, &child_info, &child, NULL, &error)) {
+      eam_log_error_message ("Unable to enumerate app dir: %s", error->message);
+      return FALSE;
+    }
 
+    if (child_info == NULL)
+      break;
+
+    g_autofree char *path = g_file_get_path (child);
     if (eam_fs_is_app_dir (path))
       fix_application_permissions_if_needed (path);
-
-    g_free (path);
   }
 
-  if (error) {
-    eam_log_error_message ("Failure while processing the children of '%s': %s", app_dir, error->message);
-    g_clear_error (&error);
-    retval = FALSE;
-  }
-
- bail:
-  g_free (bin_dir);
-  g_free (desktop_files_dir);
-  g_free (desktop_icons_dir);
-  g_free (dbus_services_dir);
-  g_free (ekn_data_dir);
-  g_free (g_schemas_dir);
-  g_free (xdg_autostart_dir);
-
-  g_object_unref (children);
-  g_object_unref (file);
-
-  return retval;
+  return TRUE;
 }
 
 gboolean

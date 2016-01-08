@@ -5,14 +5,15 @@
 #include <gio/gio.h>
 
 static const GDBusErrorEntry eam_error_entries[] = {
-  { EAM_ERROR_FAILED,         "com.endlessm.AppManager.Error.Failed" },
-  { EAM_ERROR_PROTOCOL_ERROR, "com.endlessm.AppManager.Error.ProtocolError" },
-  { EAM_ERROR_INVALID_FILE,   "com.endlessm.AppManager.Error.InvalidFile" },
-  { EAM_ERROR_NO_NETWORK,     "com.endlessm.AppManager.Error.NoNetwork" },
-  { EAM_ERROR_PKG_UNKNOWN,    "com.endlessm.AppManager.Error.UnknownPackage" },
-  { EAM_ERROR_UNIMPLEMENTED,  "com.endlessm.AppManager.Error.Unimplemented" },
-  { EAM_ERROR_AUTHORIZATION,  "com.endlessm.AppManager.Error.Authorization" },
-  { EAM_ERROR_NOT_AUTHORIZED, "com.endlessm.AppManager.Error.NotAuthorized" },
+  { EAM_ERROR_FAILED,                   "com.endlessm.AppManager.Error.Failed" },
+  { EAM_ERROR_PROTOCOL_ERROR,           "com.endlessm.AppManager.Error.ProtocolError" },
+  { EAM_ERROR_INVALID_FILE,             "com.endlessm.AppManager.Error.InvalidFile" },
+  { EAM_ERROR_NO_NETWORK,               "com.endlessm.AppManager.Error.NoNetwork" },
+  { EAM_ERROR_PKG_UNKNOWN,              "com.endlessm.AppManager.Error.UnknownPackage" },
+  { EAM_ERROR_UNIMPLEMENTED,            "com.endlessm.AppManager.Error.Unimplemented" },
+  { EAM_ERROR_AUTHORIZATION,            "com.endlessm.AppManager.Error.Authorization" },
+  { EAM_ERROR_NOT_AUTHORIZED,           "com.endlessm.AppManager.Error.NotAuthorized" },
+  { EAM_ERROR_NOT_ENOUGH_DISK_SPACE,    "com.endlessm.AppManager.Error.NotEnoughDiskSpace" },
 };
 
 GQuark

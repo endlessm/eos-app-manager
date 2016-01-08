@@ -758,3 +758,15 @@ eam_utils_check_unix_permissions (uid_t user)
 
   return retval;
 }
+
+const char *
+eam_utils_storage_type_to_path (const char *storage_type)
+{
+  if (g_strcmp0 (storage_type, "primary") == 0)
+    return eam_config_get_primary_storage ();
+
+  if (g_strcmp0 (storage_type, "secondary") == 0)
+    return eam_config_get_secondary_storage ();
+
+  return NULL;
+}
