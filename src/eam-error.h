@@ -17,6 +17,7 @@ G_BEGIN_DECLS
  * @EAM_ERROR_UNIMPLEMENTED: Asked for an unimplemented feature.
  * @EAM_ERROR_AUTHORIZATION: Authorization not granted.
  * @EAM_ERROR_NOT_AUTHORIZED: Operation not authorized.
+ * @EAM_ERROR_NOT_ENOUGH_DISK_SPACE: Not enough disk space.
  *
  * These constants identify all the available errors managed by
  * the Endless Application Manager.
@@ -30,6 +31,7 @@ typedef enum {
   EAM_ERROR_UNIMPLEMENTED,
   EAM_ERROR_AUTHORIZATION,
   EAM_ERROR_NOT_AUTHORIZED,
+  EAM_ERROR_NOT_ENOUGH_DISK_SPACE
 } EamError;
 
 #define EAM_ERROR eam_error_quark ()
