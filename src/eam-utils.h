@@ -43,6 +43,8 @@ gboolean        eam_utils_can_touch_applications_dir    (uid_t user);
 gboolean        eam_utils_check_unix_permissions        (uid_t user);
 gboolean        eam_utils_can_modify_configuration      (uid_t user);
 
+const char *    eam_utils_storage_type_to_path          (const char *storage_type);
+
 G_END_DECLS
 
 #endif
