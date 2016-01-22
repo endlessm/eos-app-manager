@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: eos-app-manger
 Upstream-Contact: Endless Mobile <maintainers@endlessm.com>
-Disclaimer: This package is not part of Debian. It is proprietary software.
+Disclaimer: This package is part of Endless OS
 Copyright: Copyright 2014 Endless Mobile, Inc.
-License: Proprietary
+License: GPL-2+
