@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_CONFIG_H
-#define EAM_CONFIG_H
-
+#pragma once
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -39,5 +37,3 @@ gboolean        eam_config_set_key                      (const char *key,
 gboolean        eam_config_reset_key                    (const char *key);
 
 G_END_DECLS
-
-#endif /* EAM_CONFIG_H */

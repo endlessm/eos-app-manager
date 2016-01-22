@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_LOG_H
-#define EAM_LOG_H
-
+#pragma once
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -32,5 +30,3 @@ void    eam_log_info_message    (const char *fmt,
                                  ...) G_GNUC_PRINTF (1, 2);
 
 G_END_DECLS
-
-#endif /* EAM_OS_H */

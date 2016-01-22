@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_TRANSACTION_DBUS_H
-#define EAM_TRANSACTION_DBUS_H
-
+#pragma once
 #include "eam-service.h"
 #include "eam-transaction.h"
 
@@ -35,5 +33,3 @@ EamRemoteTransaction * eam_remote_transaction_new (EamService *service,
 const char * eam_remote_transaction_get_obj_path (EamRemoteTransaction *remote);
 
 G_END_DECLS
-
-#endif

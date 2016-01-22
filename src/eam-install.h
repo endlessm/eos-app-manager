@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_INSTALL_H
-#define EAM_INSTALL_H
-
+#pragma once
 #include "eam-transaction.h"
 
 G_BEGIN_DECLS
@@ -70,5 +68,3 @@ const char *            eam_install_get_app_id          (EamInstall *install);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamInstall, g_object_unref)
 
 G_END_DECLS
-
-#endif /* EAM_INSTALL_H */

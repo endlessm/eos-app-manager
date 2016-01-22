@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_DBUS_UTILS_H
-#define EAM_DBUS_UTILS_H
-
+#pragma once
 #include <gio/gio.h>
 #include <sys/types.h>
 
@@ -29,5 +27,3 @@ uid_t   eam_dbus_get_uid_for_sender     (GDBusConnection *connection,
                                          const char      *sender);
 
 G_END_DECLS
-
-#endif

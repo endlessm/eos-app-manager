@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_ERROR_H
-#define EAM_ERROR_H
-
+#pragma once
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -56,5 +54,3 @@ typedef enum {
 GQuark eam_error_quark (void) G_GNUC_CONST;
 
 G_END_DECLS
-
-#endif /* EAM_ERROR_H */

@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_SERVICE_H
-#define EAM_SERVICE_H
-
+#pragma once
 #include <glib-object.h>
 #include <gio/gio.h>
 
@@ -72,5 +70,3 @@ void            eam_service_reset_timer                           (EamService *s
 char *          eam_service_get_next_transaction_path             (EamService *service);
 
 G_END_DECLS
-
-#endif /* EAM_SERVICE_H */

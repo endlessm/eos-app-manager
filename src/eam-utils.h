@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_UTILS_H
-#define EAM_UTILS_H
-
+#pragma once
 #include <sys/types.h>
 #include <gio/gio.h>
 
@@ -63,5 +61,3 @@ gboolean        eam_utils_can_modify_configuration      (uid_t user);
 const char *    eam_utils_storage_type_to_path          (const char *storage_type);
 
 G_END_DECLS
-
-#endif

@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_FS_SANITY_H
-#define EAM_FS_SANITY_H
-
+#pragma once
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
@@ -76,5 +74,3 @@ const char *    eam_fs_get_bundle_system_dir    (EamBundleDirectory dir);
 gboolean        eam_fs_ensure_symlink_farm (void);
 
 G_END_DECLS
-
-#endif /* EAM_FS_SANITY_H */

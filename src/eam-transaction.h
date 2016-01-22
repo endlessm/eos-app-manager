@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_TRANSACTION_H
-#define EAM_TRANSACTION_H
-
+#pragma once
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
@@ -87,5 +85,3 @@ gboolean         eam_transaction_finish         (EamTransaction *trans,
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamTransaction, g_object_unref)
 
 G_END_DECLS
-
-#endif /* EAM_TRANSACTION_H */

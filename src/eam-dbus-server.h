@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_DBUS_SERVER_H
-#define EAM_DBUS_SERVER_H
-
+#pragma once
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -61,5 +59,3 @@ gboolean       eam_dbus_server_run              (EamDbusServer *server);
 void           eam_dbus_server_quit             (EamDbusServer *server);
 
 G_END_DECLS
-
-#endif /* EAM_DBUS_SERVER_H */

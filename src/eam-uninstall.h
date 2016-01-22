@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_UNINSTALL_H
-#define EAM_UNINSTALL_H
-
+#pragma once
 #include "eam-transaction.h"
 
 G_BEGIN_DECLS
@@ -66,5 +64,3 @@ void            eam_uninstall_set_prefix        (EamUninstall *uninstall,
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUninstall, g_object_unref)
 
 G_END_DECLS
-
-#endif /* EAM_UNINSTALL_H */

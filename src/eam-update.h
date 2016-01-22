@@ -17,9 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef EAM_UPDATE_H
-#define EAM_UPDATE_H
-
+#pragma once
 #include "eam-transaction.h"
 
 G_BEGIN_DECLS
@@ -72,5 +70,3 @@ const char *            eam_update_get_app_id           (EamUpdate  *update);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (EamUpdate, g_object_unref)
 
 G_END_DECLS
-
-#endif /* EAM_UPDATE_H */
