@@ -56,7 +56,7 @@ PKG_CHECK_MODULES([DEPENDENCIES],
                     polkit-gobject-1 >= $POLKIT_GOBJECT_REQUIRED
                     libarchive >= $LIBARCHIVE_REQUIRED
                     libsoup-2.4 >= $LIBSOUP_REQUIRED
-                    libsystemd-journal
+                    libsystemd
                     systemd
                   ])
 
