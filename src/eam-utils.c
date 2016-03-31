@@ -348,14 +348,6 @@ has_external_script (const char  *prefix,
   return 1;
 }
 
-/* XXX: These will eventually be defined by libsoup, but we don't have a way to
- * check for them beforehand, so the build will fail once libsoup adds these
- * symbols.
- */
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupSession, g_object_unref)
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupMessage, g_object_unref)
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (SoupURI, soup_uri_free)
-
 static gboolean
 download_external_file (const char *appid,
                         const char *url,
