@@ -30,7 +30,6 @@
 #include "eam-utils.h"
 
 #define INSTALL_BUNDLE_EXT              "bundle"
-#define INSTALL_BUNDLE_SIGNATURE_EXT    "asc"
 
 typedef struct _EamInstallPrivate        EamInstallPrivate;
 
@@ -180,17 +179,6 @@ eam_install_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  /* If we don't have a signature file specified, then we are going to
-   * look for one in the same directory as the bundle file, using the
-   * appid as the base name
-   */
-  if (priv->signature_file == NULL) {
-    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
-    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
-
-    priv->signature_file = g_build_filename (dirname, filename, NULL);
-  }
-
   if (!eam_fs_sanity_check ()) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Unable to access applications directory");
@@ -204,7 +192,7 @@ eam_install_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
+  if (priv->signature_file && !eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
     if (g_cancellable_is_cancelled (cancellable))
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
     else
