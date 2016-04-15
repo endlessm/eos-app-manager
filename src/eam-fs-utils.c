@@ -60,7 +60,6 @@ static const char *fs_layout[] = {
   [EAM_BUNDLE_DIRECTORY_SHELL_SEARCH] = "share/gnome-shell/search-providers",
   [EAM_BUNDLE_DIRECTORY_KDE4] = "share/kde4",
   [EAM_BUNDLE_DIRECTORY_XDG_AUTOSTART] = "xdg/autostart",
-  [EAM_BUNDLE_DIRECTORY_SPLASH] = "share/eos-shell-content/splash",
 };
 
 const char *
