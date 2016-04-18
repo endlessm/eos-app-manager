@@ -42,12 +42,12 @@ static char *opt_prefix;
 static char *opt_asc_file;
 static char **opt_appid;
 static char *opt_storage_type;
-static gboolean opt_no_signature_file = FALSE;
+static gboolean opt_skip_signature = FALSE;
 
 static const GOptionEntry install_entries[] = {
  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Prefix to use when installing", "DIRECTORY" },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
- { "no-signature-file", 'N', 0, G_OPTION_ARG_NONE, &opt_no_signature_file, "Don't verify signature when installing", NULL },
+ { "skip-signature", 'N', 0, G_OPTION_ARG_NONE, &opt_skip_signature, "Don't verify signature when installing", NULL },
  { "storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_storage_type, "Storage type ('primary' or 'secondary')", "TYPE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
  { NULL },
@@ -100,13 +100,16 @@ eam_command_install (int argc, char *argv[])
     }
   }
 
-  if (!opt_no_signature_file && opt_asc_file == NULL) {
+  gboolean should_skip_signature = opt_skip_signature && eam_utils_can_touch_applications_dir (geteuid ());
+
+  if (!should_skip_signature && opt_asc_file == NULL) {
     g_autofree char *dirname = g_path_get_dirname (bundle_file);
     g_autofree char *filename = g_strconcat (appid, ".asc", NULL);
     opt_asc_file = g_build_filename (dirname, filename, NULL);
 
     if (!g_file_test (opt_asc_file, G_FILE_TEST_EXISTS)) {
-      g_printerr ("No signature file found. Use --signature-file to specify the signature file.\n");
+      g_printerr ("No signature file found. Use --signature-file to specify the signature file,"
+                  " or --skip-signature to skip the signature check.\n");
       return EXIT_FAILURE;
     }
   }
@@ -131,8 +134,8 @@ eam_command_install (int argc, char *argv[])
     }
 
     eam_install_set_bundle_file (install, bundle_file);
-    if (opt_asc_file)
-      eam_install_set_signature_file (install, opt_asc_file);
+    eam_install_set_signature_file (install, opt_asc_file);
+    eam_install_set_skip_signature (install, should_skip_signature);
 
     g_autoptr(GError) error = NULL;
     eam_transaction_run_sync (EAM_TRANSACTION (install), NULL, &error);
@@ -209,8 +212,7 @@ eam_command_install (int argc, char *argv[])
   if (opt_storage_type)
     g_variant_builder_add (&opts, "{sv}", "StorageType", g_variant_new_string (opt_storage_type));
   g_variant_builder_add (&opts, "{sv}", "BundlePath", g_variant_new_string (bundle_file));
-  if (opt_asc_file)
-    g_variant_builder_add (&opts, "{sv}", "SignaturePath", g_variant_new_string (opt_asc_file));
+  g_variant_builder_add (&opts, "{sv}", "SignaturePath", g_variant_new_string (opt_asc_file));
 
   gboolean retval = FALSE;
   eos_app_manager_transaction_call_complete_transaction_sync (transaction,
