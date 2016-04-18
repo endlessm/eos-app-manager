@@ -48,7 +48,7 @@ static const GOptionEntry install_entries[] = {
  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Prefix to use when updating", "DIRECTORY" },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
  { "source-storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_source_storage_type, "Source storage type ('primary' or 'secondary')", "TYPE" },
- { "target-storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_source_storage_type, "Target storage type ('primary' or 'secondary')", "TYPE" },
+ { "target-storage-type", 'T', 0, G_OPTION_ARG_STRING, &opt_target_storage_type, "Target storage type ('primary' or 'secondary')", "TYPE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
  { NULL },
 };
