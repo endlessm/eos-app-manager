@@ -43,10 +43,12 @@ static char *opt_asc_file;
 static char **opt_appid;
 static char *opt_source_storage_type;
 static char *opt_target_storage_type;
+static gboolean opt_skip_signature = FALSE;
 
 static const GOptionEntry install_entries[] = {
  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Prefix to use when updating", "DIRECTORY" },
  { "signature-file", 's', 0, G_OPTION_ARG_FILENAME, &opt_asc_file, "Path to the ASC file", "FILE" },
+ { "skip-signature", 'N', 0, G_OPTION_ARG_NONE, &opt_skip_signature, "Don't verify signature when installing", NULL },
  { "source-storage-type", 'S', 0, G_OPTION_ARG_STRING, &opt_source_storage_type, "Source storage type ('primary' or 'secondary')", "TYPE" },
  { "target-storage-type", 'T', 0, G_OPTION_ARG_STRING, &opt_target_storage_type, "Target storage type ('primary' or 'secondary')", "TYPE" },
  { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_appid, "Application id", "APPID" },
@@ -116,13 +118,16 @@ eam_command_update (int argc, char *argv[])
     }
   }
 
-  if (opt_asc_file == NULL) {
+  gboolean should_skip_signature = opt_skip_signature && eam_utils_can_touch_applications_dir (geteuid ());
+
+  if (!should_skip_signature && opt_asc_file == NULL) {
     g_autofree char *dirname = g_path_get_dirname (bundle_file);
     g_autofree char *filename = g_strconcat (appid, ".asc", NULL);
     opt_asc_file = g_build_filename (dirname, filename, NULL);
 
     if (!g_file_test (opt_asc_file, G_FILE_TEST_EXISTS)) {
-      g_printerr ("No signature file found. Use --signature-file to specify the signature file.\n");
+      g_printerr ("No signature file found. Use --signature-file to specify the signature file,"
+                  " or --skip-signature to skip the signature check.\n");
       return EXIT_FAILURE;
     }
   }
@@ -157,6 +162,7 @@ eam_command_update (int argc, char *argv[])
 
     eam_update_set_bundle_file (update, bundle_file);
     eam_update_set_signature_file (update, opt_asc_file);
+    eam_update_set_skip_signature (update, should_skip_signature);
 
     g_autoptr(GError) error = NULL;
     eam_transaction_run_sync (EAM_TRANSACTION (update), NULL, &error);
