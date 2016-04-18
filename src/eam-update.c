@@ -31,7 +31,6 @@
 
 #define XDELTA_BUNDLE_EXT               "xdelta"
 #define INSTALL_BUNDLE_EXT              "bundle"
-#define INSTALL_BUNDLE_SIGNATURE_EXT    "asc"
 
 typedef struct _EamUpdatePrivate        EamUpdatePrivate;
 
@@ -46,6 +45,8 @@ struct _EamUpdatePrivate
 
   char *bundle_file;
   char *signature_file;
+
+  gboolean skip_signature;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -260,16 +261,6 @@ eam_update_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  /* If we don't have an explicit signature file, we're going to look for one
-   * in the same directory as the bundle, using the appid as the basename
-   */
-  if (priv->signature_file == NULL) {
-    g_autofree char *dirname = g_path_get_dirname (priv->bundle_file);
-    g_autofree char *filename = g_strconcat (priv->appid, ".", INSTALL_BUNDLE_SIGNATURE_EXT, NULL);
-
-    priv->signature_file = g_build_filename (dirname, filename, NULL);
-  }
-
   if (!eam_fs_sanity_check ()) {
     g_set_error_literal (error, EAM_ERROR, EAM_ERROR_FAILED,
                          "Unable to access applications directory");
@@ -283,13 +274,15 @@ eam_update_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
-    if (g_cancellable_is_cancelled (cancellable))
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
-    else
-      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                           "The signature for the application bundle is invalid");
-    return FALSE;
+  if (!priv->skip_signature) {
+    if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
+      if (g_cancellable_is_cancelled (cancellable))
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+      else
+        g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "The signature for the application bundle is invalid");
+      return FALSE;
+    }
   }
 
   /* Keep a copy of the old app around, in case the update fails */
@@ -405,6 +398,14 @@ eam_update_set_signature_file (EamUpdate *update,
 
   g_free (priv->signature_file);
   priv->signature_file = g_strdup (path);
+}
+
+void
+eam_update_set_skip_signature (EamUpdate *update,
+                               gboolean skip_signature)
+{
+  EamUpdatePrivate *priv = eam_update_get_instance_private (update);
+  priv->skip_signature = skip_signature;
 }
 
 void

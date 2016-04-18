@@ -40,6 +40,8 @@ struct _EamInstallPrivate
   char *prefix;
   char *bundle_file;
   char *signature_file;
+
+  gboolean skip_signature;
 };
 
 static void transaction_iface_init (EamTransactionInterface *iface);
@@ -192,13 +194,15 @@ eam_install_run_sync (EamTransaction *trans,
     return FALSE;
   }
 
-  if (priv->signature_file && !eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
-    if (g_cancellable_is_cancelled (cancellable))
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
-    else
-      g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
-                           "The signature for the application bundle is invalid");
-    return FALSE;
+  if (!priv->skip_signature) {
+    if (!eam_utils_verify_signature (priv->bundle_file, priv->signature_file, cancellable)) {
+      if (g_cancellable_is_cancelled (cancellable))
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_CANCELLED, "Operation cancelled");
+      else
+        g_set_error_literal (error, EAM_ERROR, EAM_ERROR_INVALID_FILE,
+                             "The signature for the application bundle is invalid");
+      return FALSE;
+    }
   }
 
   /* Further operations require rollback */
@@ -315,6 +319,14 @@ eam_install_set_signature_file (EamInstall *install,
 
   g_free (priv->signature_file);
   priv->signature_file = g_strdup (path);
+}
+
+void
+eam_install_set_skip_signature (EamInstall *install,
+                                gboolean skip_signature)
+{
+  EamInstallPrivate *priv = eam_install_get_instance_private (install);
+  priv->skip_signature = skip_signature;
 }
 
 void

@@ -62,6 +62,8 @@ void                    eam_install_set_bundle_file     (EamInstall *install,
                                                          const char *path);
 void                    eam_install_set_signature_file  (EamInstall *install,
                                                          const char *path);
+void                    eam_install_set_skip_signature  (EamInstall *install,
+                                                         gboolean    skip_signature);
 
 const char *            eam_install_get_app_id          (EamInstall *install);
 
