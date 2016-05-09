@@ -100,7 +100,14 @@ eam_command_install (int argc, char *argv[])
     }
   }
 
-  gboolean should_skip_signature = opt_skip_signature && eam_utils_can_touch_applications_dir (geteuid ());
+  gboolean can_touch_appdir = eam_utils_can_touch_applications_dir (geteuid ());
+  gboolean should_skip_signature = opt_skip_signature && can_touch_appdir;
+
+  if (opt_skip_signature && !can_touch_appdir) {
+    g_printerr ("--skip-signature can only be used from a privileged user. "
+                "Run `sudo -u app-manager eamctl` instead.\n");
+    return EXIT_FAILURE;
+  }
 
   if (!should_skip_signature && opt_asc_file == NULL) {
     g_autofree char *dirname = g_path_get_dirname (bundle_file);
