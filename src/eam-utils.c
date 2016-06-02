@@ -172,7 +172,6 @@ eam_utils_app_is_installed (const char *prefix,
     eam_log_error_message ("Invalid bundle metadata for '%s': %s",
                            appid,
                            error->message);
-    g_error_free (error);
     return FALSE;
   }
 
