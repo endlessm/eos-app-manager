@@ -89,7 +89,7 @@ run_cmd (const char * const *argv,
          GCancellable *cancellable)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
+  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &err);
 
   if (err != NULL) {
     eam_log_error_message ("%s failed: %s", argv[0], err->message);
