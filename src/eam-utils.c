@@ -89,7 +89,7 @@ run_cmd (const char * const *argv,
          GCancellable *cancellable)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_NONE, &err);
+  g_autoptr(GSubprocess) sub = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &err);
 
   if (err != NULL) {
     eam_log_error_message ("%s failed: %s", argv[0], err->message);
@@ -172,7 +172,6 @@ eam_utils_app_is_installed (const char *prefix,
     eam_log_error_message ("Invalid bundle metadata for '%s': %s",
                            appid,
                            error->message);
-    g_error_free (error);
     return FALSE;
   }
 
