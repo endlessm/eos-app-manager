@@ -13,4 +13,4 @@ ExecStart=@bindir@/eamctl ensure-symlink-farm
 User=@EAM_USER@
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
