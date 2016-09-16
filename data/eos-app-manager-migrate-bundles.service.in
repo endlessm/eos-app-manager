@@ -6,6 +6,7 @@ Conflicts=shutdown.target
 After=local-fs.target systemd-journald.socket
 Before=systemd-update-done.service shutdown.target graphical.target
 ConditionNeedsUpdate=/var
+RequiresMountsFor=/var/endless /var/endless-extra
 
 [Service]
 Type=oneshot
